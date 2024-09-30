@@ -13,5 +13,6 @@ The first tile and the distenation tiles has green light and road tiles has an o
 The game has a simple AI that chooses the shortest path to travel on.
 
 # Note
+Water tiles are not clickable.
 This template is provided with basic textures and requires custom artwork for a complete game.
 The included A* pathfinding script is not my own and requires attribution if used. If you are the original developer, please contact me for proper credit or removal.
