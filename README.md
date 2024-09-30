@@ -4,7 +4,10 @@ A 3D hexagonal game template with basic map generation and AI that chooses the s
 ![Gameplay Gif](https://github.com/alsharefee/3D-Hex-Game-Template/blob/main/Assets/ReadMe/AStar-Main-WindowsMacLinux-Unity2021.3.18f1Personal_DX11_2024-09-2717-38-33-ezgif.com-video-to-gif-converter.gif)
 
 # Travel time
-Each tile has its own travel time.
+Each tile has its own travel time eg., 1 day, 3 days, etc.
+
+# Colors
+The first tile and the distenation tiles has green light and road tiles has an orange color.
 
 # AI
 The game has a simple AI that chooses the shortest path to travel on.
