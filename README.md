@@ -14,4 +14,4 @@ The game has a simple AI that chooses the shortest path to travel on.
 
 # Note
 This project doesn't include the art. If you want to add art simply change the textures of the prefabs.
-AStar scripts doesn't belong to me and I have no idea who their owner is. If it is you, then please contact me if you want me to remove them.
+AStar scripts doesn't belong to me and I have no idea who their owner is. If it is you, then please contact me if you want me to credit you or if you want them removed.
