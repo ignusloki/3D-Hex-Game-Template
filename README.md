@@ -13,5 +13,5 @@ The first tile and the distenation tiles has green light and road tiles has an o
 The game has a simple AI that chooses the shortest path to travel on.
 
 # Note
-This project doesn't include the art. If you want to add art simply change the textures of the prefabs.
-AStar scripts doesn't belong to me and I have no idea who their owner is. If it is you, then please contact me if you want me to credit you or if you want them removed.
+This template is provided with basic textures and requires custom artwork for a complete game.
+The included A* pathfinding script is not my own and requires attribution if used. If you are the original developer, please contact me for proper credit or removal.
