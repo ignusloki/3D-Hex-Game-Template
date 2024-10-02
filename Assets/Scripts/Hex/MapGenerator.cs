@@ -8,8 +8,10 @@ public class MapGenerator : MonoBehaviour
     public GameObject[] tilePrefabs; // Array of tile prefabs to instantiate
     public int Rows = 5; // Number of rows in the grid
     public int Columns = 5; // Number of columns in the grid
+    public float X1stTileSpacing = 1f; // Horizontal space for first tile
     public float XTileSpacing = 1f; // Horizontal space between tiles
-    public float YTileSpacing = 0.75f; // Vertical space between tiles
+    public float YTileSpacing = .8870f; // Vertical space between tiles
+    public float rotation = 30f;
 
     private HexagonTile[,] tiles; // 2D array to hold the instantiated tiles
 
@@ -23,27 +25,25 @@ public class MapGenerator : MonoBehaviour
     private void GenerateTilesAndAssignNeighbors()
     {
         tiles = new HexagonTile[Rows, Columns];
-        float rowOffset = 0;
 
         for (int row = 0; row < Rows; row++)
         {
             for (int col = 0; col < Columns; col++)
             {
-                Vector3 spawnPosition = CalculateTilePosition(row, col, rowOffset);
-                HexagonTile tile = InstantiateTile(spawnPosition);
+                Vector3 spawnPosition = CalculateTilePosition(row, col, YTileSpacing);
+                HexagonTile tile = InstantiateTile(spawnPosition, row, col);
                 tiles[row, col] = tile;
             }
-            rowOffset += YTileSpacing;
         }
 
         AssignNeighbors();
     }
 
     // Calculates the position of a tile based on its row and column
-    private Vector3 CalculateTilePosition(int row, int col, float rowOffset)
-    {
-        float posX = col + XTileSpacing;
-        float posY = rowOffset;
+    private Vector3 CalculateTilePosition(int row, int col, float rowOffset) {
+        
+        float posX = col + X1stTileSpacing;
+        float posY = row * rowOffset;
 
         if (row % 2 == 1) // Adjust for hexagonal staggering
         {
@@ -54,9 +54,10 @@ public class MapGenerator : MonoBehaviour
     }
 
     // Instantiates a tile prefab at the given position
-    private HexagonTile InstantiateTile(Vector3 position)
+    private HexagonTile InstantiateTile(Vector3 position, int row, int col)
     {
-        GameObject tileObject = Instantiate(tilePrefabs[Random.Range(0, tilePrefabs.Length)], position, Quaternion.Euler(0, 90, 0));
+        GameObject tileObject = Instantiate(tilePrefabs[Random.Range(0, tilePrefabs.Length)], position, Quaternion.Euler(0, rotation, 0));
+        tileObject.name = $"{row}_{col}";
         tileObject.transform.SetParent(transform);
         return tileObject.GetComponent<HexagonTile>();
     }
