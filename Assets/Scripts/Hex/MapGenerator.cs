@@ -12,13 +12,75 @@ public class MapGenerator : MonoBehaviour
     public float XTileSpacing = 1f; // Horizontal space between tiles
     public float YTileSpacing = .8870f; // Vertical space between tiles
     public float rotation = 30f;
+    public GameObject[] forestTiles;
+    public GameObject[] grassTiles;
+    public GameObject[] mountainTiles;
+    public GameObject[] waterTiles;
+    public GameObject[] desertTiles;
+    public Biome primary, secondary, tertiary;
+    public float chancePrimary, chanceSecondary, chanceTertiary;
 
     private HexagonTile[,] tiles; // 2D array to hold the instantiated tiles
 
-    // Start is called before the first frame update
     void Start()
     {
         GenerateTilesAndAssignNeighbors();
+    }
+
+    private GameObject DefineBiome() {
+
+        float chance = Random.Range(0,100);
+
+        Debug.Log($"Chance: {chance}");
+
+        if (chancePrimary > chance) {
+             Debug.Log($"Primary!");
+            SetHexPriorities(primary);
+            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+        } else if (chanceSecondary + chancePrimary > chance){
+             Debug.Log($"Secondary!");
+            SetHexPriorities(secondary);
+            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+        } else if (chanceTertiary + chanceSecondary + chancePrimary > chance){
+             Debug.Log($"Tertiary!");
+            SetHexPriorities(tertiary);
+            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+        } else {
+             Debug.Log($"Random!");
+            SetHexPriorities(primary);
+            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+        }
+
+    }
+
+    private void SetHexPriorities(Biome chosen) {
+        
+        switch (chosen) {
+            case Biome.desert:
+                tilePrefabs = desertTiles;
+                break;
+
+            case Biome.forest:
+                tilePrefabs = forestTiles;
+                break;
+
+            case Biome.grass:
+                tilePrefabs = grassTiles;
+                break;
+            
+            case Biome.mountain:
+                tilePrefabs = mountainTiles;
+                break;
+
+            case Biome.water:
+                tilePrefabs = waterTiles;
+                break;
+
+            default:
+                tilePrefabs = forestTiles;
+                break;
+        }
+
     }
 
     // Generates hexagonal tiles and assigns their neighbors
@@ -56,7 +118,7 @@ public class MapGenerator : MonoBehaviour
     // Instantiates a tile prefab at the given position
     private HexagonTile InstantiateTile(Vector3 position, int row, int col)
     {
-        GameObject tileObject = Instantiate(tilePrefabs[Random.Range(0, tilePrefabs.Length)], position, Quaternion.Euler(0, rotation, 0));
+        GameObject tileObject = Instantiate(DefineBiome(), position, Quaternion.Euler(0, rotation, 0));
         tileObject.name = $"{row}_{col}";
         tileObject.transform.SetParent(transform);
         return tileObject.GetComponent<HexagonTile>();
