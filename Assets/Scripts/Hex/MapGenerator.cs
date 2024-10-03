@@ -6,24 +6,26 @@ using System.Collections.Generic;
 public class MapGenerator : MonoBehaviour
 {
     public GameObject[] tilePrefabs; // Array of tile prefabs to instantiate
+    public GameObject[] forestTiles;
+    public GameObject[] grassTiles;
+    public GameObject[] mountainTiles;
+    public GameObject[] waterTiles;
+    public GameObject[] desertTiles;
+    public HexScriptableObject[] hexProperties;
+    private Dictionary<string, HexScriptableObject> hexsDictionary;
     public int Rows = 5; // Number of rows in the grid
     public int Columns = 5; // Number of columns in the grid
     public float X1stTileSpacing = 1f; // Horizontal space for first tile
     public float XTileSpacing = 1f; // Horizontal space between tiles
     public float YTileSpacing = .8870f; // Vertical space between tiles
     public float rotation = 30f;
-    public GameObject[] forestTiles;
-    public GameObject[] grassTiles;
-    public GameObject[] mountainTiles;
-    public GameObject[] waterTiles;
-    public GameObject[] desertTiles;
     public Biome primary, secondary, tertiary;
     public float chancePrimary, chanceSecondary, chanceTertiary;
 
     private HexagonTile[,] tiles; // 2D array to hold the instantiated tiles
 
-    void Start()
-    {
+    void Start() {
+        LoadScriptableObjects();
         GenerateTilesAndAssignNeighbors();
     }
 
@@ -31,25 +33,18 @@ public class MapGenerator : MonoBehaviour
 
         float chance = Random.Range(0,100);
 
-        Debug.Log($"Chance: {chance}");
-
         if (chancePrimary > chance) {
-             Debug.Log($"Primary!");
             SetHexPriorities(primary);
-            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
         } else if (chanceSecondary + chancePrimary > chance){
-             Debug.Log($"Secondary!");
             SetHexPriorities(secondary);
-            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
         } else if (chanceTertiary + chanceSecondary + chancePrimary > chance){
-             Debug.Log($"Tertiary!");
             SetHexPriorities(tertiary);
-            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
         } else {
-             Debug.Log($"Random!");
-            SetHexPriorities(primary);
-            return tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+            SetHexPriorities(primary);            
         }
+
+        GameObject createdTile = tilePrefabs[Random.Range(0, tilePrefabs.Length)];
+        return createdTile;
 
     }
 
@@ -58,26 +53,32 @@ public class MapGenerator : MonoBehaviour
         switch (chosen) {
             case Biome.desert:
                 tilePrefabs = desertTiles;
+                AttachScriptableObjectToHex(Biome.desert);
                 break;
 
             case Biome.forest:
                 tilePrefabs = forestTiles;
+                AttachScriptableObjectToHex(Biome.forest);
                 break;
 
             case Biome.grass:
                 tilePrefabs = grassTiles;
+                AttachScriptableObjectToHex(Biome.grass);
                 break;
             
             case Biome.mountain:
                 tilePrefabs = mountainTiles;
+                AttachScriptableObjectToHex(Biome.mountain);
                 break;
 
             case Biome.water:
                 tilePrefabs = waterTiles;
+                AttachScriptableObjectToHex(Biome.water);
                 break;
 
             default:
                 tilePrefabs = forestTiles;
+                AttachScriptableObjectToHex(Biome.forest);
                 break;
         }
 
@@ -164,4 +165,36 @@ public class MapGenerator : MonoBehaviour
             }
         }
     }
+
+    private void LoadScriptableObjects() {
+        hexProperties = Resources.LoadAll<HexScriptableObject>("Scriptable Object"); // Assumes your items are in a Resources/Items folder
+        InitializeDictionary();
+    }
+
+    private void InitializeDictionary() {
+
+        hexsDictionary = new Dictionary<string, HexScriptableObject>();
+
+        foreach (HexScriptableObject hex in hexProperties) {
+
+            if (hex != null) {
+                if (!hexsDictionary.ContainsKey(hex.type.ToString())) {
+                    hexsDictionary.Add(hex.type.ToString().ToLower(), hex);
+                } else {
+                    Debug.LogWarning($"Duplicate hex '{hex.type}' found. Skipping item '{hex.type}'.");
+                }
+            } else {
+                Debug.LogWarning("Hex is null. Skipping item.");
+            }
+        }
+    }
+
+    private void AttachScriptableObjectToHex(Biome type) {
+
+        foreach (GameObject preFab in tilePrefabs) {
+            preFab.GetComponent<HexagonTile>().properties = hexsDictionary[type.ToString().ToLower()];            
+        }
+
+    }
+
 }

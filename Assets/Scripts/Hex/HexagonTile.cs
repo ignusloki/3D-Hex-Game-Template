@@ -5,8 +5,7 @@ using Pathing;
 using System.Collections.Generic;
 using System.Linq;
 
-public class HexagonTile : MonoBehaviour, IAStarNode
-{
+public class HexagonTile : MonoBehaviour, IAStarNode {
     public int travelCost; // Cost to travel through this tile
     public bool canTravelThrough = true; // Whether the tile can be traversed
 
@@ -19,10 +18,12 @@ public class HexagonTile : MonoBehaviour, IAStarNode
 
     // Provides a collection of neighboring tiles cast to IAStarNode
     public IEnumerable<IAStarNode> Neighbours => neighbors.Cast<IAStarNode>();
+    public HexScriptableObject properties;
 
-    void Start()
-    {
+    void Start() {
         originalMaterial = GetComponent<Renderer>().material; // Fetch and store the original material on start
+        travelCost = properties.travelCost;
+        canTravelThrough = properties.passable;
     }
 
     // Method to highlight the road on the path
@@ -61,7 +62,7 @@ public class HexagonTile : MonoBehaviour, IAStarNode
 
     public float CostTo(IAStarNode next)
     {
-        // Return the cost based on your game’s logic, e.g., terrain difficulty
+        // Return the cost based on your gameï¿½s logic, e.g., terrain difficulty
         return ((HexagonTile)next).travelCost;
     }
 
