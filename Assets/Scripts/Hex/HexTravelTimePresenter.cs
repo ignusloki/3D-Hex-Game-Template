@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine.UI;
 
 public sealed class HexTravelTimePresenter
@@ -24,7 +23,7 @@ public sealed class HexTravelTimePresenter
             return;
         }
 
-        int totalTravelTime = path?.Sum(tile => tile.TravelCost) ?? 0;
+        int totalTravelTime = HexPathMetrics.GetTravelCost(path);
         travelTimeText.text = "Travel Time: " + totalTravelTime + " days";
     }
 
