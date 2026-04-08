@@ -3,8 +3,8 @@
 using UnityEngine;
 using Pathing;
 using System.Collections.Generic;
-using System.Linq;
 
+[RequireComponent(typeof(Renderer))]
 public class HexagonTile : MonoBehaviour, IAStarNode {
     public int travelCost; // Cost to travel through this tile
     public bool canTravelThrough = true; // Whether the tile can be traversed
@@ -12,18 +12,62 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
     // Materials used for different states of the tiles
     private Material originalMaterial; // Original material of the tile
     private Material highlightMaterial; // Material used for highlighting tiles
+    private Renderer tileRenderer;
 
     // List of neighboring tiles
-    public List<HexagonTile> neighbors;
+    public List<HexagonTile> neighbors = new();
 
     // Provides a collection of neighboring tiles cast to IAStarNode
-    public IEnumerable<IAStarNode> Neighbours => neighbors.Cast<IAStarNode>();
-    public HexScriptableObject properties;
+    public IEnumerable<IAStarNode> Neighbours => neighbors;
+    [SerializeField] private HexScriptableObject properties;
+    [SerializeField] private int row;
+    [SerializeField] private int column;
 
-    void Start() {
-        originalMaterial = GetComponent<Renderer>().material; // Fetch and store the original material on start
-        travelCost = properties.travelCost;
-        canTravelThrough = properties.passable;
+    public HexCoordinates Coordinates => new(row, column);
+    public HexTileData TileData { get; private set; }
+
+    private void Awake() {
+        tileRenderer = GetComponent<Renderer>();
+        originalMaterial = tileRenderer.material; // Fetch and store the original material on creation
+        ApplyProperties();
+    }
+
+    private void OnValidate()
+    {
+        neighbors ??= new List<HexagonTile>();
+
+        if (properties != null)
+        {
+            travelCost = properties.travelCost;
+            canTravelThrough = properties.passable;
+        }
+    }
+
+    public void Initialize(HexTileData tileData)
+    {
+        TileData = tileData;
+        properties = tileData?.Properties;
+        row = tileData?.Coordinates.Row ?? 0;
+        column = tileData?.Coordinates.Column ?? 0;
+        ApplyProperties();
+    }
+
+    public void ClearNeighbors()
+    {
+        neighbors.Clear();
+    }
+
+    private void ApplyProperties()
+    {
+        if (properties == null)
+        {
+            travelCost = TileData?.TravelCost ?? 0;
+            canTravelThrough = TileData?.IsPassable ?? true;
+            return;
+        }
+
+        travelCost = TileData?.TravelCost ?? properties.travelCost;
+        canTravelThrough = TileData?.IsPassable ?? properties.passable;
     }
 
     // Method to highlight the road on the path
@@ -45,26 +89,24 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
         highlightMaterial = Instantiate(originalMaterial);
         highlightMaterial.SetColor("_EmissionColor", color);
         highlightMaterial.EnableKeyword("_EMISSION");
-        GetComponent<Renderer>().material = highlightMaterial;
+        tileRenderer.material = highlightMaterial;
     }
 
     // Resets the tile's material to its original state
     public void ResetMaterial()
     {
-        GetComponent<Renderer>().material = originalMaterial;
+        tileRenderer.material = originalMaterial;
     }
 
     public float EstimatedCostTo(IAStarNode other)
     {
-        // Implement your heuristic here (e.g., Euclidean distance, Manhattan distance)
-        return Vector3.Distance(this.transform.position, ((HexagonTile)other).transform.position);
+        return Coordinates.DistanceTo(((HexagonTile)other).Coordinates);
     }
 
     public float CostTo(IAStarNode next)
     {
-        // Return the cost based on your game�s logic, e.g., terrain difficulty
-        return ((HexagonTile)next).travelCost;
+        HexagonTile nextTile = (HexagonTile)next;
+        return nextTile.TileData?.TravelCost ?? nextTile.travelCost;
     }
 
 }
-

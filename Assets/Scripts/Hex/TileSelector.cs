@@ -1,64 +1,71 @@
 /// Author: Mohammed Marzouq
 /// Date: 19 Sep 2024
 using UnityEngine;
-using Pathing;
 using System.Collections.Generic;
 using UnityEngine.UI;
-using System.Linq;
 
 public class TileSelector : MonoBehaviour
 {
     // Public reference to the UI Text component to display travel time
     public Text travelTimeText;
+    public Text selectionStatusText;
+    public Text tileDetailsText;
+    public Text hintText;
 
-    // Stores the starting tile for the path
-    private HexagonTile startTile;
-    // Stores the ending tile for the path
-    private HexagonTile endTile;
-    // Flag to check if the next tile to select is the start tile
-    private bool selectingStart = true;
-    // List to store the calculated path
-    private IList<IAStarNode> path;
+    private HexTileInputService inputService;
+    private HexPathSelectionState selectionState;
+    private HexPathHighlighter pathHighlighter;
+    private HexTravelTimePresenter travelTimePresenter;
+    private HexHudPresenter hudPresenter;
+    private MapGenerator mapGenerator;
+
+    private void Awake()
+    {
+        AutoAssignTextReferences();
+
+        inputService = new HexTileInputService();
+        selectionState = new HexPathSelectionState();
+        pathHighlighter = new HexPathHighlighter();
+        travelTimePresenter = new HexTravelTimePresenter(travelTimeText);
+        hudPresenter = new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
+        mapGenerator = FindAnyObjectByType<MapGenerator>();
+        travelTimePresenter.Reset();
+        hudPresenter.ShowAwaitingStart();
+        hudPresenter.ResetTileDetails();
+    }
+
+    private void OnValidate()
+    {
+        AutoAssignTextReferences();
+    }
 
     // Update is called once per frame
     void Update()
     {
-        DetectTileSelection();
-    }
+        UpdateHoveredTileDetails();
 
-    // Detects tile selection based on mouse input
-    private void DetectTileSelection()
-    {
-        if (Input.GetMouseButtonDown(0))
+        if (inputService.TryGetClickedTile(Camera.main, Input.mousePosition, out HexagonTile tile)
+            && (tile.TileData?.IsPassable ?? tile.canTravelThrough))
         {
-            RaycastHit hit;
-            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit))
-            {
-                HexagonTile tile = hit.collider.GetComponent<HexagonTile>();
-                if (tile != null && tile.canTravelThrough) // Ensure the tile is traversable
-                {
-                    HandleTileSelection(tile);
-                }
-            }
+            HandleTileSelection(tile);
         }
     }
 
     // Handles the tile selection logic for both start and end tiles
     private void HandleTileSelection(HexagonTile tile)
     {
-        if (selectingStart)
+        if (selectionState.IsSelectingStart)
         {
-            ResetHighlightedTiles(startTile);
-            startTile = tile;
-            tile.SelectAsStartOrEnd();
-            selectingStart = false;
+            ResetHighlightedTiles();
+            selectionState.BeginSelection(tile);
+            pathHighlighter.HighlightEndpoint(tile);
+            hudPresenter.ShowAwaitingDestination(tile);
         }
         else
         {
-            endTile?.ResetMaterial();
-            endTile = tile;
-            tile.SelectAsStartOrEnd();
-            selectingStart = true;
+            pathHighlighter.Reset(null, selectionState.EndTile, null, mapGenerator);
+            selectionState.CompleteSelection(tile, mapGenerator);
+            pathHighlighter.HighlightEndpoint(tile);
             FindAndHighlightPath();
         }
     }
@@ -66,42 +73,68 @@ public class TileSelector : MonoBehaviour
     // Finds and highlights the path between selected tiles
     public void FindAndHighlightPath()
     {
-        path = AStar.GetPath(startTile, endTile);
+        if (mapGenerator == null || selectionState.StartTile == null || selectionState.EndTile == null)
+        {
+            Debug.Log("No path found or one of the required references is null.");
+            return;
+        }
+
+        IReadOnlyList<HexTileData> path = selectionState.Path ?? selectionState.CompleteSelection(selectionState.EndTile, mapGenerator);
         if (path != null)
         {
-            HighlightPath();
-            UpdateTravelTimeText();
+            pathHighlighter.HighlightPath(path, selectionState.StartTile, selectionState.EndTile, mapGenerator);
+            travelTimePresenter.ShowPath(path);
+            hudPresenter.ShowPathPreview(path);
         }
         else
         {
             Debug.Log("No path found or one of the tiles is null.");
+            travelTimePresenter.Reset();
+            hudPresenter.ShowNoPath();
         }
-    }
-
-    // Highlights each tile in the path except the start and end tiles
-    private void HighlightPath()
-    {
-        foreach (HexagonTile tile in path.Cast<HexagonTile>().Where(t => t != startTile && t != endTile))
-        {
-            tile.HighlightedRoad();
-        }
-    }
-
-    // Updates the travel time text in the UI
-    private void UpdateTravelTimeText()
-    {
-        int totalTravelTime = path.Cast<HexagonTile>().Sum(tile => tile.travelCost);
-        travelTimeText.text = "Travel Time: " + totalTravelTime + " days";
     }
 
     // Resets the highlighted tiles and clears the path
-    public void ResetHighlightedTiles(HexagonTile tile)
+    public void ResetHighlightedTiles()
     {
-        tile?.ResetMaterial();
-        startTile = null;
-        endTile = null;
-        path?.ToList().ForEach(t => ((HexagonTile)t).ResetMaterial());
-        path = null;
-        travelTimeText.text = "Travel Time: 0 days";
+        pathHighlighter.Reset(selectionState.StartTile, selectionState.EndTile, selectionState.Path, mapGenerator);
+        selectionState.Reset();
+        travelTimePresenter.Reset();
+        hudPresenter.ShowAwaitingStart();
+    }
+
+    private void UpdateHoveredTileDetails()
+    {
+        if (hudPresenter == null)
+        {
+            return;
+        }
+
+        if (inputService.TryGetTileUnderPointer(Camera.main, Input.mousePosition, out HexagonTile tile))
+        {
+            hudPresenter.ShowTileDetails(tile);
+            return;
+        }
+
+        hudPresenter.ResetTileDetails();
+    }
+
+    private void AutoAssignTextReferences()
+    {
+        travelTimeText = FindTextReference(travelTimeText, "Travel Time Text");
+        selectionStatusText = FindTextReference(selectionStatusText, "Selection Status Text");
+        tileDetailsText = FindTextReference(tileDetailsText, "Tile Details Text");
+        hintText = FindTextReference(hintText, "Hint Text");
+    }
+
+    private static Text FindTextReference(Text currentValue, string objectName)
+    {
+        if (currentValue != null)
+        {
+            return currentValue;
+        }
+
+        GameObject textObject = GameObject.Find(objectName);
+        return textObject != null ? textObject.GetComponent<Text>() : null;
     }
 }

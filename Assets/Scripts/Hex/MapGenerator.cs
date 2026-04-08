@@ -12,93 +12,124 @@ public class MapGenerator : MonoBehaviour
     public GameObject[] waterTiles;
     public GameObject[] desertTiles;
     public HexScriptableObject[] hexProperties;
-    private Dictionary<string, HexScriptableObject> hexsDictionary;
-    public int Rows = 5; // Number of rows in the grid
-    public int Columns = 5; // Number of columns in the grid
-    public float X1stTileSpacing = 1f; // Horizontal space for first tile
-    public float XTileSpacing = 1f; // Horizontal space between tiles
-    public float YTileSpacing = .8870f; // Vertical space between tiles
+    private Dictionary<Biome, HexScriptableObject> hexsDictionary;
+    [Min(1)] public int Rows = 5; // Number of rows in the grid
+    [Min(1)] public int Columns = 5; // Number of columns in the grid
+    [Min(0.01f)] public float X1stTileSpacing = 1f; // Horizontal space for first tile
+    [Min(0.01f)] public float XTileSpacing = 1f; // Horizontal space between tiles
+    [Min(0.01f)] public float YTileSpacing = .8870f; // Vertical space between tiles
     public float rotation = 30f;
     public Biome primary, secondary, tertiary;
-    public float chancePrimary, chanceSecondary, chanceTertiary;
+    [Range(0f, 100f)] public float chancePrimary;
+    [Range(0f, 100f)] public float chanceSecondary;
+    [Range(0f, 100f)] public float chanceTertiary;
 
     private HexagonTile[,] tiles; // 2D array to hold the instantiated tiles
+    private Dictionary<HexCoordinates, HexagonTile> tileViews = new();
+    private HexGridData gridData;
+    private HexPathfinder pathfinder;
+
+    public HexGridData GridData => gridData;
+    public HexPathfinder Pathfinder => pathfinder;
 
     void Start() {
         LoadScriptableObjects();
+        if (!ValidateConfiguration())
+        {
+            return;
+        }
+
         GenerateTilesAndAssignNeighbors();
     }
 
-    private GameObject DefineBiome() {
+    private void OnValidate()
+    {
+        Rows = Mathf.Max(1, Rows);
+        Columns = Mathf.Max(1, Columns);
+        X1stTileSpacing = Mathf.Max(0.01f, X1stTileSpacing);
+        XTileSpacing = Mathf.Max(0.01f, XTileSpacing);
+        YTileSpacing = Mathf.Max(0.01f, YTileSpacing);
+        chancePrimary = Mathf.Clamp(chancePrimary, 0f, 100f);
+        chanceSecondary = Mathf.Clamp(chanceSecondary, 0f, 100f);
+        chanceTertiary = Mathf.Clamp(chanceTertiary, 0f, 100f);
+    }
+
+    private Biome ChooseBiome() {
 
         float chance = Random.Range(0,100);
 
         if (chancePrimary > chance) {
-            SetHexPriorities(primary);
+            return primary;
         } else if (chanceSecondary + chancePrimary > chance){
-            SetHexPriorities(secondary);
+            return secondary;
         } else if (chanceTertiary + chanceSecondary + chancePrimary > chance){
-            SetHexPriorities(tertiary);
+            return tertiary;
         } else {
-            SetHexPriorities(primary);            
+            return primary;
         }
-
-        GameObject createdTile = tilePrefabs[Random.Range(0, tilePrefabs.Length)];
-        return createdTile;
-
     }
 
-    private void SetHexPriorities(Biome chosen) {
-        
+    private GameObject[] GetBiomePrefabs(Biome chosen) {
         switch (chosen) {
             case Biome.desert:
-                tilePrefabs = desertTiles;
-                AttachScriptableObjectToHex(Biome.desert);
-                break;
+                return desertTiles;
 
             case Biome.forest:
-                tilePrefabs = forestTiles;
-                AttachScriptableObjectToHex(Biome.forest);
-                break;
+                return forestTiles;
 
             case Biome.grass:
-                tilePrefabs = grassTiles;
-                AttachScriptableObjectToHex(Biome.grass);
-                break;
+                return grassTiles;
             
             case Biome.mountain:
-                tilePrefabs = mountainTiles;
-                AttachScriptableObjectToHex(Biome.mountain);
-                break;
+                return mountainTiles;
 
             case Biome.water:
-                tilePrefabs = waterTiles;
-                AttachScriptableObjectToHex(Biome.water);
-                break;
+                return waterTiles;
 
             default:
-                tilePrefabs = forestTiles;
-                AttachScriptableObjectToHex(Biome.forest);
-                break;
+                return forestTiles;
+        }
+    }
+
+    private HexScriptableObject GetHexProperties(Biome biome)
+    {
+        if (hexsDictionary.TryGetValue(biome, out HexScriptableObject properties))
+        {
+            return properties;
         }
 
+        Debug.LogWarning($"No HexScriptableObject configured for biome '{biome}'.");
+        return null;
     }
 
     // Generates hexagonal tiles and assigns their neighbors
     private void GenerateTilesAndAssignNeighbors()
     {
         tiles = new HexagonTile[Rows, Columns];
+        tileViews = new Dictionary<HexCoordinates, HexagonTile>();
+        gridData = new HexGridData(Rows, Columns);
 
         for (int row = 0; row < Rows; row++)
         {
             for (int col = 0; col < Columns; col++)
             {
+                HexCoordinates coordinates = new(row, col);
+                Biome chosenBiome = ChooseBiome();
+                HexTileData tileData = new(coordinates, chosenBiome, GetHexProperties(chosenBiome));
+                gridData.SetTile(tileData);
+
                 Vector3 spawnPosition = CalculateTilePosition(row, col, YTileSpacing);
-                HexagonTile tile = InstantiateTile(spawnPosition, row, col);
+                HexagonTile tile = InstantiateTile(spawnPosition, tileData);
                 tiles[row, col] = tile;
+
+                if (tile != null)
+                {
+                    tileViews[coordinates] = tile;
+                }
             }
         }
 
+        pathfinder = new HexPathfinder(gridData);
         AssignNeighbors();
     }
 
@@ -117,12 +148,28 @@ public class MapGenerator : MonoBehaviour
     }
 
     // Instantiates a tile prefab at the given position
-    private HexagonTile InstantiateTile(Vector3 position, int row, int col)
+    private HexagonTile InstantiateTile(Vector3 position, HexTileData tileData)
     {
-        GameObject tileObject = Instantiate(DefineBiome(), position, Quaternion.Euler(0, rotation, 0));
-        tileObject.name = $"{row}_{col}";
+        GameObject[] biomePrefabs = GetBiomePrefabs(tileData.Biome);
+        if (biomePrefabs == null || biomePrefabs.Length == 0)
+        {
+            Debug.LogError($"No prefabs configured for biome '{tileData.Biome}'.");
+            return null;
+        }
+
+        GameObject tileObject = Instantiate(biomePrefabs[Random.Range(0, biomePrefabs.Length)], position, Quaternion.Euler(0, rotation, 0));
+        tileObject.name = tileData.Coordinates.ToString();
         tileObject.transform.SetParent(transform);
-        return tileObject.GetComponent<HexagonTile>();
+
+        HexagonTile tile = tileObject.GetComponent<HexagonTile>();
+        if (tile == null)
+        {
+            Debug.LogError($"Spawned tile '{tileObject.name}' is missing a HexagonTile component.");
+            return null;
+        }
+
+        tile.Initialize(tileData);
+        return tile;
     }
 
     // Assigns neighbors to each tile based on hexagonal grid logic
@@ -133,53 +180,106 @@ public class MapGenerator : MonoBehaviour
             for (int y = 0; y < Columns; y++)
             {
                 HexagonTile tile = tiles[x, y];
-                List<Vector2Int> neighborCoords = GetNeighborCoordinates(x, y);
-                AddValidNeighbors(tile, neighborCoords);
+                if (tile == null)
+                {
+                    continue;
+                }
+
+                tile.ClearNeighbors();
+                foreach (HexTileData neighborData in gridData.GetNeighbors(tile.Coordinates))
+                {
+                    if (!neighborData.IsPassable)
+                    {
+                        continue;
+                    }
+
+                    if (tileViews.TryGetValue(neighborData.Coordinates, out HexagonTile neighborView))
+                    {
+                        tile.neighbors.Add(neighborView);
+                    }
+                }
             }
         }
     }
 
-    // Returns a list of potential neighbor coordinates based on even or odd row logic
-    private List<Vector2Int> GetNeighborCoordinates(int x, int y)
+    public bool TryGetTileData(HexCoordinates coordinates, out HexTileData tileData)
     {
-        bool evenRow = x % 2 == 0;
-        return new List<Vector2Int>
-        {
-            new Vector2Int(x, y + 1),
-            new Vector2Int(x, y - 1),
-            new Vector2Int(x - 1, evenRow ? y : y + 1),
-            new Vector2Int(x + 1, evenRow ? y : y + 1),
-            new Vector2Int(x - 1, evenRow ? y - 1 : y),
-            new Vector2Int(x + 1, evenRow ? y - 1 : y)
-        };
+        tileData = null;
+        return gridData != null && gridData.TryGetTile(coordinates, out tileData);
     }
 
-    // Adds valid neighbors to a tile, ensuring they can be traveled through
-    private void AddValidNeighbors(HexagonTile tile, List<Vector2Int> neighborCoords)
+    public bool TryGetTileView(HexCoordinates coordinates, out HexagonTile tile)
     {
-        foreach (Vector2Int coord in neighborCoords)
+        return tileViews.TryGetValue(coordinates, out tile);
+    }
+
+    public IReadOnlyList<HexTileData> FindPath(HexCoordinates start, HexCoordinates goal)
+    {
+        return pathfinder?.FindPath(start, goal);
+    }
+
+    public IReadOnlyList<HexTileData> GetReachableTiles(HexCoordinates start, int movementBudget)
+    {
+        if (movementBudget < 0)
         {
-            if (coord.x >= 0 && coord.x < Rows && coord.y >= 0 && coord.y < Columns && tiles[coord.x, coord.y].canTravelThrough)
-            {
-                tile.neighbors.Add(tiles[coord.x, coord.y]);
-            }
+            return new List<HexTileData>();
         }
+
+        return pathfinder?.GetReachableTiles(start, movementBudget) ?? new List<HexTileData>();
+    }
+
+    private bool ValidateConfiguration()
+    {
+        bool isValid = true;
+
+        if (hexProperties == null || hexProperties.Length == 0)
+        {
+            Debug.LogError("MapGenerator requires at least one HexScriptableObject configuration.", this);
+            isValid = false;
+        }
+
+        isValid &= ValidateBiomeSetup(primary);
+        isValid &= ValidateBiomeSetup(secondary);
+        isValid &= ValidateBiomeSetup(tertiary);
+
+        return isValid;
+    }
+
+    private bool ValidateBiomeSetup(Biome biome)
+    {
+        GameObject[] biomePrefabs = GetBiomePrefabs(biome);
+        if (biomePrefabs == null || biomePrefabs.Length == 0)
+        {
+            Debug.LogError($"MapGenerator has no prefabs configured for biome '{biome}'.", this);
+            return false;
+        }
+
+        return true;
     }
 
     private void LoadScriptableObjects() {
-        hexProperties = Resources.LoadAll<HexScriptableObject>("Scriptable Object"); // Assumes your items are in a Resources/Items folder
+        HexScriptableObject[] loadedHexProperties = Resources.LoadAll<HexScriptableObject>("Scriptable Object"); // Assumes your items are in a Resources/Items folder
+        if (loadedHexProperties != null && loadedHexProperties.Length > 0)
+        {
+            hexProperties = loadedHexProperties;
+        }
+
         InitializeDictionary();
     }
 
     private void InitializeDictionary() {
 
-        hexsDictionary = new Dictionary<string, HexScriptableObject>();
+        hexsDictionary = new Dictionary<Biome, HexScriptableObject>();
+        if (hexProperties == null)
+        {
+            return;
+        }
 
         foreach (HexScriptableObject hex in hexProperties) {
 
             if (hex != null) {
-                if (!hexsDictionary.ContainsKey(hex.type.ToString())) {
-                    hexsDictionary.Add(hex.type.ToString().ToLower(), hex);
+                if (!hexsDictionary.ContainsKey(hex.type)) {
+                    hexsDictionary.Add(hex.type, hex);
                 } else {
                     Debug.LogWarning($"Duplicate hex '{hex.type}' found. Skipping item '{hex.type}'.");
                 }
@@ -187,14 +287,6 @@ public class MapGenerator : MonoBehaviour
                 Debug.LogWarning("Hex is null. Skipping item.");
             }
         }
-    }
-
-    private void AttachScriptableObjectToHex(Biome type) {
-
-        foreach (GameObject preFab in tilePrefabs) {
-            preFab.GetComponent<HexagonTile>().properties = hexsDictionary[type.ToString().ToLower()];            
-        }
-
     }
 
 }
