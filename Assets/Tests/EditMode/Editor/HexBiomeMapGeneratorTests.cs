@@ -38,6 +38,8 @@ public class HexBiomeMapGeneratorTests
         Assert.That(result.BiomeMap.GetLength(1), Is.EqualTo(columns));
         Assert.That(result.StartCoordinates.Column, Is.EqualTo(0));
         Assert.That(result.GoalCoordinates.Column, Is.EqualTo(columns - 1));
+        Assert.That(result.StartCoordinates.Row == 0 || result.StartCoordinates.Row == rows - 1, Is.True);
+        Assert.That(result.GoalCoordinates.Row, Is.EqualTo(rows - 1 - result.StartCoordinates.Row));
     }
 
     [Test]
@@ -120,6 +122,8 @@ public class HexBiomeMapGeneratorTests
 
         Assert.That(result.StartCoordinates.Column, Is.EqualTo(0));
         Assert.That(result.GoalCoordinates.Column, Is.EqualTo(19));
+        Assert.That(result.StartCoordinates.Row == 0 || result.StartCoordinates.Row == 19, Is.True);
+        Assert.That(result.GoalCoordinates.Row, Is.EqualTo(19 - result.StartCoordinates.Row));
         Assert.That(result.BiomeMap[result.StartCoordinates.Row, result.StartCoordinates.Column], Is.EqualTo(Biome.grass));
         Assert.That(result.BiomeMap[result.GoalCoordinates.Row, result.GoalCoordinates.Column], Is.EqualTo(Biome.forest));
     }

@@ -100,8 +100,7 @@ public sealed class HexBiomeMapGenerator
         ApplyMicroPatches(biomeMap, gridLayout, settings, random);
         ApplyIsolatedAnomalies(biomeMap, settings, random);
 
-        HexCoordinates startCoordinates = ChooseEdgeCoordinates(rows, 0, random);
-        HexCoordinates goalCoordinates = ChooseEdgeCoordinates(rows, columns - 1, random);
+        (HexCoordinates startCoordinates, HexCoordinates goalCoordinates) = ChooseOppositeCornerCoordinates(rows, columns, random);
 
         if (specialTileSettings.enforceStartBiome)
         {
@@ -289,9 +288,20 @@ public sealed class HexBiomeMapGenerator
         return shuffled;
     }
 
-    private static HexCoordinates ChooseEdgeCoordinates(int rows, int column, System.Random random)
+    private static (HexCoordinates startCoordinates, HexCoordinates goalCoordinates) ChooseOppositeCornerCoordinates(
+        int rows,
+        int columns,
+        System.Random random)
     {
-        return new HexCoordinates(random.Next(rows), column);
+        bool useTopLeftStart = random.Next(0, 2) == 0;
+        int topRow = 0;
+        int bottomRow = Mathf.Max(0, rows - 1);
+        int leftColumn = 0;
+        int rightColumn = Mathf.Max(0, columns - 1);
+
+        return useTopLeftStart
+            ? (new HexCoordinates(topRow, leftColumn), new HexCoordinates(bottomRow, rightColumn))
+            : (new HexCoordinates(bottomRow, leftColumn), new HexCoordinates(topRow, rightColumn));
     }
 
     private static Biome ResolveSpecialTileBiome(Biome preferredBiome)
