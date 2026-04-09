@@ -5,14 +5,20 @@ using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
+    public Text resourcesText;
     public Text travelTimeText;
     public Text selectionStatusText;
     public Text tileDetailsText;
     public Text hintText;
     public Transform caravanVisual;
+    public Transform goalVisual;
+    [Min(1)] public int startingResources = 30;
     [Min(0.1f)] public float caravanHeight = 0.65f;
     [Min(0.1f)] public float caravanScale = 0.45f;
+    [Min(0.1f)] public float goalHeight = 0.5f;
+    [Min(0.1f)] public float goalScale = 0.3f;
     public Color caravanColor = new(0.95f, 0.76f, 0.29f, 1f);
+    public Color goalColor = new(0.25f, 0.87f, 0.44f, 1f);
 
     private HexTileInputService inputService;
     private HexPathHighlighter pathHighlighter;
@@ -21,10 +27,13 @@ public class PlayerController : MonoBehaviour
     private MapGenerator mapGenerator;
 
     private HexagonTile currentTile;
+    private HexagonTile goalTile;
     private HexagonTile selectedTile;
     private IReadOnlyList<HexTileData> previewPath;
     private bool caravanSelectionActive;
     private bool isReady;
+    private bool isRunOver;
+    private int currentResources;
 
     private void Awake()
     {
@@ -42,8 +51,11 @@ public class PlayerController : MonoBehaviour
     private void OnValidate()
     {
         AutoAssignTextReferences();
+        startingResources = Mathf.Max(1, startingResources);
         caravanHeight = Mathf.Max(0.1f, caravanHeight);
         caravanScale = Mathf.Max(0.1f, caravanScale);
+        goalHeight = Mathf.Max(0.1f, goalHeight);
+        goalScale = Mathf.Max(0.1f, goalScale);
     }
 
     private IEnumerator Start()
@@ -59,13 +71,20 @@ public class PlayerController : MonoBehaviour
             yield break;
         }
 
+        if (!TryAssignGoal())
+        {
+            yield break;
+        }
+
+        currentResources = startingResources;
+        UpdateResourcesText();
         isReady = true;
         hudPresenter.ShowCaravanIdle(currentTile);
     }
 
     private void Update()
     {
-        if (!isReady)
+        if (!isReady || isRunOver)
         {
             return;
         }
@@ -121,7 +140,15 @@ public class PlayerController : MonoBehaviour
         else
         {
             travelTimePresenter.ShowPath(previewPath);
-            hudPresenter.ShowDestinationPreview(clickedTile, previewPath);
+            int moveCost = HexPathMetrics.GetTravelCost(previewPath);
+            if (moveCost > currentResources)
+            {
+                hudPresenter.ShowInsufficientResources(clickedTile, moveCost, currentResources);
+            }
+            else
+            {
+                hudPresenter.ShowDestinationPreview(clickedTile, previewPath);
+            }
         }
 
         RefreshHighlights();
@@ -141,17 +168,25 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        CommitMove(clickedTile);
+        int moveCost = HexPathMetrics.GetTravelCost(previewPath);
+        if (moveCost > currentResources)
+        {
+            hudPresenter.ShowInsufficientResources(clickedTile, moveCost, currentResources);
+            return;
+        }
+
+        CommitMove(clickedTile, moveCost);
     }
 
-    private void CommitMove(HexagonTile destinationTile)
+    private void CommitMove(HexagonTile destinationTile, int moveCost)
     {
-        int moveCost = HexPathMetrics.GetTravelCost(previewPath);
         ClearHighlights();
 
         currentTile.TileData?.SetOccupied(false);
         currentTile = destinationTile;
         currentTile.TileData?.SetOccupied(true);
+        currentResources -= moveCost;
+        UpdateResourcesText();
 
         AttachCaravanToTile(currentTile);
 
@@ -161,7 +196,19 @@ public class PlayerController : MonoBehaviour
 
         travelTimePresenter.Reset();
         hudPresenter.ShowTileDetails(currentTile);
-        hudPresenter.ShowMoveComplete(currentTile, moveCost);
+        if (currentResources <= 0)
+        {
+            EndRunAsDefeat();
+            return;
+        }
+
+        if (goalTile != null && currentTile == goalTile)
+        {
+            EndRunAsVictory();
+            return;
+        }
+
+        hudPresenter.ShowMoveComplete(currentTile, moveCost, currentResources);
         RefreshHighlights();
     }
 
@@ -209,7 +256,7 @@ public class PlayerController : MonoBehaviour
         List<HexTileData> spawnCandidates = new();
         foreach (HexTileData tileData in mapGenerator.GridData.Tiles)
         {
-            if (tileData.IsAvailable)
+            if (tileData.IsAvailable && tileData.Coordinates.Column == 0)
             {
                 spawnCandidates.Add(tileData);
             }
@@ -217,7 +264,7 @@ public class PlayerController : MonoBehaviour
 
         if (spawnCandidates.Count == 0)
         {
-            Debug.LogError("PlayerController could not find a passable tile to spawn the caravan.", this);
+            Debug.LogError("PlayerController could not find a passable tile on the left edge to spawn the caravan.", this);
             return false;
         }
 
@@ -232,6 +279,44 @@ public class PlayerController : MonoBehaviour
         EnsureCaravanVisual();
         AttachCaravanToTile(currentTile);
         hudPresenter.ShowTileDetails(currentTile);
+        return true;
+    }
+
+    private bool TryAssignGoal()
+    {
+        List<HexTileData> goalCandidates = new();
+        int rightEdgeColumn = mapGenerator.GridData.Columns - 1;
+
+        foreach (HexTileData tileData in mapGenerator.GridData.Tiles)
+        {
+            if (!tileData.IsPassable || tileData.Coordinates.Column != rightEdgeColumn)
+            {
+                continue;
+            }
+
+            if (currentTile != null && tileData.Coordinates.Equals(currentTile.Coordinates))
+            {
+                continue;
+            }
+
+            goalCandidates.Add(tileData);
+        }
+
+        if (goalCandidates.Count == 0)
+        {
+            Debug.LogError("PlayerController could not find a passable tile on the right edge for the goal.", this);
+            return false;
+        }
+
+        HexTileData goalTileData = goalCandidates[Random.Range(0, goalCandidates.Count)];
+        if (!mapGenerator.TryGetTileView(goalTileData.Coordinates, out goalTile))
+        {
+            Debug.LogError($"PlayerController could not resolve the tile view for the goal at {goalTileData.Coordinates}.", this);
+            return false;
+        }
+
+        EnsureGoalVisual();
+        AttachGoalToTile(goalTile);
         return true;
     }
 
@@ -266,6 +351,37 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void EnsureGoalVisual()
+    {
+        if (goalVisual == null)
+        {
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.name = "Goal Marker";
+            sphere.transform.localScale = Vector3.one * goalScale;
+
+            Collider sphereCollider = sphere.GetComponent<Collider>();
+            if (sphereCollider != null)
+            {
+                Destroy(sphereCollider);
+            }
+
+            Renderer sphereRenderer = sphere.GetComponent<Renderer>();
+            if (sphereRenderer != null)
+            {
+                sphereRenderer.material.color = goalColor;
+            }
+
+            goalVisual = sphere.transform;
+        }
+
+        goalVisual.localScale = Vector3.one * goalScale;
+
+        if (goalVisual.TryGetComponent<Collider>(out Collider collider))
+        {
+            collider.enabled = false;
+        }
+    }
+
     private void AttachCaravanToTile(HexagonTile tile)
     {
         if (caravanVisual == null || tile == null)
@@ -279,8 +395,54 @@ public class PlayerController : MonoBehaviour
         caravanVisual.localScale = Vector3.one * caravanScale;
     }
 
+    private void AttachGoalToTile(HexagonTile tile)
+    {
+        if (goalVisual == null || tile == null)
+        {
+            return;
+        }
+
+        goalVisual.SetParent(tile.transform, false);
+        goalVisual.localPosition = new Vector3(0f, goalHeight, 0f);
+        goalVisual.localRotation = Quaternion.identity;
+        goalVisual.localScale = Vector3.one * goalScale;
+    }
+
+    private void UpdateResourcesText()
+    {
+        if (resourcesText != null)
+        {
+            resourcesText.text = $"Supplies: {Mathf.Max(currentResources, 0)}";
+        }
+    }
+
+    private void EndRunAsVictory()
+    {
+        isRunOver = true;
+        ClearHighlights();
+        selectedTile = null;
+        previewPath = null;
+        caravanSelectionActive = false;
+        travelTimePresenter.Reset();
+        hudPresenter.ShowTileDetails(currentTile);
+        hudPresenter.ShowVictory(goalTile, currentResources);
+    }
+
+    private void EndRunAsDefeat()
+    {
+        isRunOver = true;
+        ClearHighlights();
+        selectedTile = null;
+        previewPath = null;
+        caravanSelectionActive = false;
+        travelTimePresenter.Reset();
+        hudPresenter.ShowTileDetails(currentTile);
+        hudPresenter.ShowDefeat(currentTile);
+    }
+
     private void AutoAssignTextReferences()
     {
+        resourcesText = FindTextReference(resourcesText, "Resources Text");
         travelTimeText = FindTextReference(travelTimeText, "Travel Time Text");
         selectionStatusText = FindTextReference(selectionStatusText, "Selection Status Text");
         tileDetailsText = FindTextReference(tileDetailsText, "Tile Details Text");

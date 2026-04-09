@@ -25,14 +25,14 @@ public sealed class HexHudPresenter
         if (caravanTile == null)
         {
             SetText(statusText, "Caravan ready.");
-            SetText(hintText, "Click a tile to inspect it, or click the caravan tile to plan a move.");
+            SetText(hintText, "Reach the goal marker on the right edge. Click a tile to inspect it, or click the caravan tile to plan a move.");
             return;
         }
 
         SetText(
             statusText,
             $"Caravan ready at {FormatCoordinates(caravanTile.Coordinates)}.");
-        SetText(hintText, "Click the caravan tile to plan a move. Click any other tile to inspect it.");
+        SetText(hintText, "Reach the goal marker on the right edge. Click the caravan tile to plan a move.");
     }
 
     public void ShowInspectingTile(HexagonTile tile)
@@ -46,7 +46,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Inspecting {FormatCoordinates(tile.Coordinates)} ({FormatBiome(tile.TileData?.Biome ?? Biome.grass)}).");
-        SetText(hintText, "Click the caravan tile to begin route planning.");
+        SetText(hintText, "Click the caravan tile to begin route planning toward the goal marker.");
     }
 
     public void ShowCaravanSelected(HexagonTile caravanTile)
@@ -87,12 +87,7 @@ public sealed class HexHudPresenter
 
         HexTileData destination = path[path.Count - 1];
         int stepCount = path.Count - 1;
-        int totalTravelCost = 0;
-
-        foreach (HexTileData tile in path)
-        {
-            totalTravelCost += tile.TravelCost;
-        }
+        int totalTravelCost = HexPathMetrics.GetTravelCost(path);
 
         SetText(
             statusText,
@@ -114,7 +109,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Previewing route to {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, $"Cost: {totalTravelCost} days over {stepCount} steps. Click the same tile again to move.");
+        SetText(hintText, $"Cost: {totalTravelCost} supplies over {stepCount} steps. Click the same tile again to move.");
     }
 
     public void ShowUnreachableDestination(HexagonTile destinationTile)
@@ -131,7 +126,21 @@ public sealed class HexHudPresenter
         SetText(hintText, "Click a different tile to preview another route, or click the caravan tile to cancel.");
     }
 
-    public void ShowMoveComplete(HexagonTile tile, int travelCost)
+    public void ShowInsufficientResources(HexagonTile destinationTile, int travelCost, int remainingResources)
+    {
+        if (destinationTile == null)
+        {
+            ShowNoPath();
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"Not enough supplies for {FormatCoordinates(destinationTile.Coordinates)}.");
+        SetText(hintText, $"Need {travelCost} supplies and only have {remainingResources}. Pick a cheaper route or cancel.");
+    }
+
+    public void ShowMoveComplete(HexagonTile tile, int travelCost, int remainingResources)
     {
         if (tile == null)
         {
@@ -142,7 +151,37 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Caravan moved to {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Last move cost {travelCost} days. Click the caravan tile to plan the next move.");
+        SetText(hintText, $"Spent {travelCost} supplies. {remainingResources} left. Click the caravan tile to plan the next move.");
+    }
+
+    public void ShowVictory(HexagonTile tile, int remainingResources)
+    {
+        if (tile == null)
+        {
+            SetText(statusText, "Goal reached.");
+            SetText(hintText, "Run complete. Press Play again to restart.");
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"Goal reached at {FormatCoordinates(tile.Coordinates)}.");
+        SetText(hintText, $"Run complete with {remainingResources} supplies left. Press Play again to restart.");
+    }
+
+    public void ShowDefeat(HexagonTile tile)
+    {
+        if (tile == null)
+        {
+            SetText(statusText, "Supplies depleted.");
+            SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"Supplies depleted at {FormatCoordinates(tile.Coordinates)}.");
+        SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
     }
 
     public void ShowNoPath()
