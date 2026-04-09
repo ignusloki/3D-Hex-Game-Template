@@ -49,6 +49,20 @@ public sealed class HexHudPresenter
         SetText(hintText, "Click the caravan tile to begin route planning toward the goal marker.");
     }
 
+    public void ShowInspectingUnknownTile(HexagonTile tile)
+    {
+        if (tile == null)
+        {
+            ShowCaravanIdle(null);
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"Inspecting {FormatCoordinates(tile.Coordinates)} (Unknown).");
+        SetText(hintText, "Move closer to reveal this terrain.");
+    }
+
     public void ShowCaravanSelected(HexagonTile caravanTile)
     {
         if (caravanTile == null)
@@ -124,6 +138,20 @@ public sealed class HexHudPresenter
             statusText,
             $"No route to {FormatCoordinates(destinationTile.Coordinates)}.");
         SetText(hintText, "Click a different tile to preview another route, or click the caravan tile to cancel.");
+    }
+
+    public void ShowOutOfRangeDestination(HexagonTile destinationTile)
+    {
+        if (destinationTile == null)
+        {
+            ShowNoPath();
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"Tile {FormatCoordinates(destinationTile.Coordinates)} is outside caravan range.");
+        SetText(hintText, "The caravan moves one hex at a time. Pick an adjacent hex to move.");
     }
 
     public void ShowInsufficientResources(HexagonTile destinationTile, int travelCost, int remainingResources)
@@ -204,16 +232,21 @@ public sealed class HexHudPresenter
         string passability = (tileData?.IsPassable ?? tile.canTravelThrough) ? "Passable" : "Blocked";
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}\n{passability}";
-        if (pitstopSite != null)
-        {
-            string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
-            string specialEventDescription = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
-                ? "placeholder"
-                : pitstopSite.SpecialEventDescription;
+        details = AppendPitstopDetails(details, pitstopSite);
 
-            details += $"\nRefuel Point: {refuelStatus}\nSpecial Event: {specialEventDescription}";
+        SetText(tileDetailsText, details);
+    }
+
+    public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null)
+    {
+        if (tile == null)
+        {
+            ResetTileDetails();
+            return;
         }
 
+        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: Unknown\nTravel Cost: Unknown\nVisibility: Unseen";
+        details = AppendPitstopDetails(details, pitstopSite);
         SetText(tileDetailsText, details);
     }
 
@@ -239,5 +272,20 @@ public sealed class HexHudPresenter
     {
         string raw = biome.ToString();
         return char.ToUpperInvariant(raw[0]) + raw[1..];
+    }
+
+    private static string AppendPitstopDetails(string details, PitstopSite pitstopSite)
+    {
+        if (pitstopSite == null)
+        {
+            return details;
+        }
+
+        string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
+        string specialEventDescription = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
+            ? "placeholder"
+            : pitstopSite.SpecialEventDescription;
+
+        return $"{details}\nRefuel Point: {refuelStatus}\nSpecial Event: {specialEventDescription}";
     }
 }

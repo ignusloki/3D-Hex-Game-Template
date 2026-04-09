@@ -19,6 +19,7 @@ public class PlayerController : MonoBehaviour
     [Min(0.1f)] public float goalScale = 0.3f;
     public Color caravanColor = new(0.95f, 0.76f, 0.29f, 1f);
     public Color goalColor = new(0.25f, 0.87f, 0.44f, 1f);
+    public Color outOfRangeSelectionColor = new(0.42f, 0.65f, 0.95f, 1f);
 
     private HexTileInputService inputService;
     private HexPathHighlighter pathHighlighter;
@@ -26,6 +27,7 @@ public class PlayerController : MonoBehaviour
     private HexHudPresenter hudPresenter;
     private MapGenerator mapGenerator;
     private PitstopSpawner pitstopSpawner;
+    private HexFogOfWarController fogOfWarController;
 
     private HexagonTile currentTile;
     private HexagonTile goalTile;
@@ -46,6 +48,7 @@ public class PlayerController : MonoBehaviour
         hudPresenter = new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
         mapGenerator = FindAnyObjectByType<MapGenerator>();
         pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
+        fogOfWarController = GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         travelTimePresenter.Reset();
         hudPresenter.ResetTileDetails();
     }
@@ -69,6 +72,10 @@ public class PlayerController : MonoBehaviour
         }
 
         pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
+        while (pitstopSpawner != null && !pitstopSpawner.IsSpawnComplete)
+        {
+            yield return null;
+        }
 
         if (!TrySpawnCaravan())
         {
@@ -80,9 +87,13 @@ public class PlayerController : MonoBehaviour
             yield break;
         }
 
+        InitializeFogOfWar();
+        RefreshFogOfWar();
+
         currentResources = startingResources;
         UpdateResourcesText();
         isReady = true;
+        RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
     }
 
@@ -113,11 +124,11 @@ public class PlayerController : MonoBehaviour
         }
 
         ClearHighlights();
-        selectedTile = clickedTile;
-        RefreshTileDetails(clickedTile);
 
         if (clickedTile == currentTile)
         {
+            selectedTile = clickedTile;
+            RefreshTileDetails(clickedTile);
             caravanSelectionActive = true;
             previewPath = null;
             travelTimePresenter.Reset();
@@ -126,11 +137,23 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        selectedTile = clickedTile;
+        RefreshTileDetails(clickedTile);
+
         if (!caravanSelectionActive)
         {
             previewPath = null;
             travelTimePresenter.Reset();
             hudPresenter.ShowInspectingTile(clickedTile);
+            RefreshHighlights();
+            return;
+        }
+
+        if (!IsWithinImmediateMovementRange(clickedTile))
+        {
+            previewPath = null;
+            travelTimePresenter.Reset();
+            hudPresenter.ShowOutOfRangeDestination(clickedTile);
             RefreshHighlights();
             return;
         }
@@ -166,6 +189,13 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (caravanSelectionActive && !IsWithinImmediateMovementRange(clickedTile))
+        {
+            travelTimePresenter.Reset();
+            hudPresenter.ShowOutOfRangeDestination(clickedTile);
+            return;
+        }
+
         if (!caravanSelectionActive || previewPath == null)
         {
             hudPresenter.ShowInspectingTile(clickedTile);
@@ -193,6 +223,7 @@ public class PlayerController : MonoBehaviour
         UpdateResourcesText();
 
         AttachCaravanToTile(currentTile);
+        RefreshFogOfWar();
 
         selectedTile = null;
         previewPath = null;
@@ -241,7 +272,7 @@ public class PlayerController : MonoBehaviour
 
         if (selectedTile != null && selectedTile != currentTile)
         {
-            pathHighlighter.HighlightEndpoint(selectedTile);
+            pathHighlighter.HighlightEndpoint(selectedTile, ResolveSelectionHighlightColor(selectedTile));
         }
 
         if (caravanSelectionActive && previewPath != null && currentTile != null && selectedTile != null)
@@ -431,6 +462,64 @@ public class PlayerController : MonoBehaviour
         }
 
         hudPresenter.ShowTileDetails(tile, pitstopSite);
+    }
+
+    private void InitializeFogOfWar()
+    {
+        fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
+        fogOfWarController.Initialize(mapGenerator, BuildAlwaysKnownCoordinates());
+    }
+
+    private void RefreshFogOfWar()
+    {
+        if (fogOfWarController == null || currentTile == null)
+        {
+            return;
+        }
+
+        fogOfWarController.RefreshVisibility(currentTile.Coordinates, BuildAlwaysKnownCoordinates());
+    }
+
+    private IEnumerable<HexCoordinates> BuildAlwaysKnownCoordinates()
+    {
+        HashSet<HexCoordinates> alwaysKnownCoordinates = new();
+
+        if (goalTile != null)
+        {
+            alwaysKnownCoordinates.Add(goalTile.Coordinates);
+        }
+        else if (mapGenerator != null)
+        {
+            alwaysKnownCoordinates.Add(mapGenerator.GoalCoordinates);
+        }
+
+        if (pitstopSpawner != null)
+        {
+            foreach (HexCoordinates coordinates in pitstopSpawner.SpawnedSites.Keys)
+            {
+                alwaysKnownCoordinates.Add(coordinates);
+            }
+        }
+
+        return alwaysKnownCoordinates;
+    }
+
+    private Color ResolveSelectionHighlightColor(HexagonTile tile)
+    {
+        if (tile == null || currentTile == null || tile == currentTile)
+        {
+            return new Color(0f, 1f, 0f, 1f);
+        }
+
+        bool isWithinImmediateMovementRange = IsWithinImmediateMovementRange(tile);
+        return isWithinImmediateMovementRange
+            ? new Color(0f, 1f, 0f, 1f)
+            : outOfRangeSelectionColor;
+    }
+
+    private bool IsWithinImmediateMovementRange(HexagonTile tile)
+    {
+        return tile != null && currentTile != null && currentTile.Coordinates.DistanceTo(tile.Coordinates) <= 1;
     }
 
     private void AutoAssignTextReferences()

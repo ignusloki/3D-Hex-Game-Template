@@ -24,6 +24,7 @@ public class PitstopSpawner : MonoBehaviour
     private MapGenerator mapGenerator;
 
     public IReadOnlyDictionary<HexCoordinates, PitstopSite> SpawnedSites => spawnedSites;
+    public bool IsSpawnComplete { get; private set; }
 
     private void Awake()
     {
@@ -42,6 +43,7 @@ public class PitstopSpawner : MonoBehaviour
     private IEnumerator Start()
     {
         AutoAssignPrefabs();
+        IsSpawnComplete = false;
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -50,6 +52,7 @@ public class PitstopSpawner : MonoBehaviour
         }
 
         SpawnPitstops();
+        IsSpawnComplete = true;
     }
 
     public bool TryGetPitstop(HexCoordinates coordinates, out PitstopSite site)
@@ -64,6 +67,7 @@ public class PitstopSpawner : MonoBehaviour
         if (mapGenerator == null || mapGenerator.GridData == null || mapGenerator.Pathfinder == null)
         {
             Debug.LogError("PitstopSpawner requires a generated map and pathfinder.", this);
+            IsSpawnComplete = true;
             return;
         }
 
@@ -79,6 +83,7 @@ public class PitstopSpawner : MonoBehaviour
         if (placements.Count == 0)
         {
             Debug.LogWarning("PitstopSpawner did not find any valid pitstop placements.", this);
+            IsSpawnComplete = true;
             return;
         }
 

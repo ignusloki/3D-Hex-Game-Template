@@ -1394,6 +1394,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1822504937}
   - component: {fileID: 1822504938}
+  - component: {fileID: 1822504939}
   m_Layer: 0
   m_Name: Player Controller
   m_TagString: Untagged
@@ -1442,6 +1443,25 @@ MonoBehaviour:
   goalScale: 0.3
   caravanColor: {r: 0.95, g: 0.76, b: 0.29, a: 1}
   goalColor: {r: 0.25, g: 0.87, b: 0.44, a: 1}
+--- !u!114 &1822504939
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1822504936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33093944ea9d24aa49743f0e029f4ad7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFogOfWarController
+  settings:
+    visionRadius: 1
+    fogColor: {r: 0.03, g: 0.04, b: 0.06, a: 1}
+    rememberedOverlayAlpha: 0.42
+    unseenOverlayAlpha: 0.92
+    overlayHeight: 0.03
+    overlayScale: 1.02
 --- !u!1 &1880823898
 GameObject:
   m_ObjectHideFlags: 0

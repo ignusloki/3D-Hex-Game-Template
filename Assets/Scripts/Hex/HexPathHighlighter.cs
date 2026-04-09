@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 public sealed class HexPathHighlighter
 {
@@ -24,6 +25,11 @@ public sealed class HexPathHighlighter
     public void HighlightEndpoint(HexagonTile tile)
     {
         tile?.SelectAsStartOrEnd();
+    }
+
+    public void HighlightEndpoint(HexagonTile tile, Color color)
+    {
+        tile?.HighlightSelection(color);
     }
 
     public void HighlightPath(IReadOnlyList<HexTileData> path, HexagonTile startTile, HexagonTile endTile, MapGenerator mapGenerator)
