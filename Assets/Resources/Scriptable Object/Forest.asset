@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Forest
   m_EditorClassIdentifier: 
   type: 0
-  travelCost: 3
+  travelCost: 2
   passable: 1

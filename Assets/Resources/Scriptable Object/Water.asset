@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Water
   m_EditorClassIdentifier: 
   type: 2
-  travelCost: 100
+  travelCost: 3
   passable: 1

@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Mountain
   m_EditorClassIdentifier: 
   type: 4
-  travelCost: 10
+  travelCost: 3
   passable: 1
