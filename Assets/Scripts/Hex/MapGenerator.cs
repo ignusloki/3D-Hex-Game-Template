@@ -1,6 +1,7 @@
 /// Author: Mohammed Marzouq
 /// Date: 19 Sep 2024
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 public class MapGenerator : MonoBehaviour
@@ -26,6 +27,7 @@ public class MapGenerator : MonoBehaviour
     private Dictionary<HexCoordinates, HexagonTile> tileViews = new();
     private HexGridData gridData;
     private HexPathfinder pathfinder;
+    private int runtimeGenerationVariant;
 
     public int Rows => (int)mapSize;
     public int Columns => (int)mapSize;
@@ -35,13 +37,10 @@ public class MapGenerator : MonoBehaviour
     public HexCoordinates GoalCoordinates { get; private set; }
 
     void Start() {
-        LoadScriptableObjects();
-        if (!ValidateConfiguration())
+        if (!GenerateMap())
         {
             return;
         }
-
-        GenerateTilesAndAssignNeighbors();
     }
 
     private void OnValidate()
@@ -87,13 +86,55 @@ public class MapGenerator : MonoBehaviour
         return null;
     }
 
+    public bool GenerateMap()
+    {
+        LoadScriptableObjects();
+        if (!ValidateConfiguration())
+        {
+            return false;
+        }
+
+        GenerateTilesAndAssignNeighbors();
+        return true;
+    }
+
+    public IEnumerator RegenerateMapCoroutine(bool advanceVariantSeed)
+    {
+        if (advanceVariantSeed)
+        {
+            runtimeGenerationVariant++;
+        }
+
+        ClearGeneratedMap();
+        if (Application.isPlaying)
+        {
+            yield return null;
+        }
+
+        if (!GenerateMap())
+        {
+            Debug.LogError("MapGenerator failed to regenerate the map.", this);
+        }
+    }
+
     // Generates hexagonal tiles and assigns their neighbors
     private void GenerateTilesAndAssignNeighbors()
     {
         tiles = new HexagonTile[Rows, Columns];
         tileViews = new Dictionary<HexCoordinates, HexagonTile>();
         gridData = new HexGridData(Rows, Columns);
+        int originalSeed = biomeGenerationSettings.seed;
+        bool shouldOffsetFixedSeed = !biomeGenerationSettings.useRandomSeed && runtimeGenerationVariant > 0;
+        if (shouldOffsetFixedSeed)
+        {
+            biomeGenerationSettings.seed = unchecked(originalSeed + (runtimeGenerationVariant * 7919));
+        }
+
         HexBiomeMapResult biomeMapResult = biomeMapGenerator.Generate(Rows, Columns, biomeGenerationSettings, specialTileSettings);
+        if (shouldOffsetFixedSeed)
+        {
+            biomeGenerationSettings.seed = originalSeed;
+        }
         Biome[,] biomeMap = biomeMapResult.BiomeMap;
         StartCoordinates = biomeMapResult.StartCoordinates;
         GoalCoordinates = biomeMapResult.GoalCoordinates;
@@ -134,6 +175,32 @@ public class MapGenerator : MonoBehaviour
                 $"Quality score: {biomeMapGenerator.LastQualityReport?.Score:F2}.",
                 this);
         }
+    }
+
+    private void ClearGeneratedMap()
+    {
+        List<GameObject> childObjects = new();
+        foreach (Transform child in transform)
+        {
+            childObjects.Add(child.gameObject);
+        }
+
+        for (int index = 0; index < childObjects.Count; index++)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(childObjects[index]);
+            }
+            else
+            {
+                DestroyImmediate(childObjects[index]);
+            }
+        }
+
+        tiles = null;
+        tileViews = new Dictionary<HexCoordinates, HexagonTile>();
+        gridData = null;
+        pathfinder = null;
     }
 
     // Calculates the position of a tile based on its row and column

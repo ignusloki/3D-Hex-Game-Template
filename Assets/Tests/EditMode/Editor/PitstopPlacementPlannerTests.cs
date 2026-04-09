@@ -10,7 +10,7 @@ public class PitstopPlacementPlannerTests
     {
         HexGridData gridData = CreateGrid(10, 10);
         HexPathfinder pathfinder = new(gridData);
-        PitstopPlacementSettings settings = CreateSettings();
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
         PitstopPlacementPlanner planner = new();
         HexCoordinates start = new(5, startColumn);
         HexCoordinates goal = new(5, goalColumn);
@@ -40,12 +40,47 @@ public class PitstopPlacementPlannerTests
         Assert.That(GetUniqueLaneCount(result.Coordinates, 10, settings), Is.GreaterThanOrEqualTo(3));
     }
 
+    [TestCase(0, 9)]
+    [TestCase(9, 0)]
+    public void GeneratePitstops_BuildsSevenAnchorLargeMapLayoutsAcrossBothDirections(int startColumn, int goalColumn)
+    {
+        HexGridData gridData = CreateGrid(10, 10);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.SevenStrategicAnchors);
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(5, startColumn);
+        HexCoordinates goal = new(5, goalColumn);
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(12345));
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(7));
+        Assert.That(new HashSet<HexCoordinates>(result.Coordinates).Count, Is.EqualTo(7));
+        AssertPairwiseSpacing(result.Coordinates, 2);
+        AssertSafeDistanceFromEndpoints(result.Coordinates, start, goal, 1);
+
+        List<HexCoordinates> earlyBand = FilterByProgress(result.Coordinates, start, goal, settings.earlyBandOnTenByTen);
+        List<HexCoordinates> midBand = FilterByProgress(result.Coordinates, start, goal, settings.midBandOnTenByTenSeven);
+        List<HexCoordinates> lateBand = FilterByProgress(result.Coordinates, start, goal, settings.lateBandOnTenByTenSeven);
+
+        Assert.That(earlyBand.Count, Is.EqualTo(2));
+        Assert.That(midBand.Count, Is.EqualTo(3));
+        Assert.That(lateBand.Count, Is.EqualTo(2));
+        Assert.That(GetUniqueLaneCount(result.Coordinates, 10, settings), Is.GreaterThanOrEqualTo(3));
+    }
+
     [Test]
     public void GeneratePitstops_BuildsEarlyAndLateAnchorsOnSmallMaps()
     {
         HexGridData gridData = CreateGrid(5, 5);
         HexPathfinder pathfinder = new(gridData);
-        PitstopPlacementSettings settings = CreateSettings();
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
         PitstopPlacementPlanner planner = new();
         HexCoordinates start = new(2, 0);
         HexCoordinates goal = new(2, 4);
@@ -71,14 +106,15 @@ public class PitstopPlacementPlannerTests
         Assert.That(lateBand.Count, Is.EqualTo(1));
     }
 
-    private static PitstopPlacementSettings CreateSettings()
+    private static PitstopPlacementSettings CreateSettings(TenByTenPitstopLayoutMode tenByTenLayoutMode)
     {
         PitstopPlacementSettings settings = new()
         {
             pitstopsOnFiveByFive = 2,
-            pitstopsOnTenByTen = 4,
+            tenByTenLayoutMode = tenByTenLayoutMode,
             minimumSpacingOnFiveByFive = 2,
             minimumSpacingOnTenByTen = 4,
+            minimumSpacingOnTenByTenSeven = 2,
             spawnGoalAdjacencyBuffer = 1,
             minimumOpenNeighbors = 3,
             maxGenerationAttempts = 32,
@@ -94,6 +130,8 @@ public class PitstopPlacementPlannerTests
             earlyBandOnTenByTen = new PitstopFloatRange(0.2f, 0.3f),
             midBandOnTenByTen = new PitstopFloatRange(0.45f, 0.6f),
             lateBandOnTenByTen = new PitstopFloatRange(0.75f, 0.85f),
+            midBandOnTenByTenSeven = new PitstopFloatRange(0.4f, 0.65f),
+            lateBandOnTenByTenSeven = new PitstopFloatRange(0.65f, 0.85f),
             earlyBandOnFiveByFive = new PitstopFloatRange(0.2f, 0.35f),
             lateBandOnFiveByFive = new PitstopFloatRange(0.65f, 0.8f),
             topLaneCenter = 0.25f,
@@ -105,6 +143,7 @@ public class PitstopPlacementPlannerTests
             minimumRowSpanOnTenByTen = 3,
             minimumAverageCorridorOffsetOnFiveByFive = 0.75f,
             minimumAverageCorridorOffsetOnTenByTen = 1f,
+            minimumAverageCorridorOffsetOnTenByTenSeven = 0.75f,
             preferredCorridorOffset = 1f,
             lanePreferenceWeight = 0.8f,
             laneDiversityWeight = 0.7f,

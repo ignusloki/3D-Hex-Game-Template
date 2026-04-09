@@ -42,7 +42,12 @@ public sealed class PitstopPlacementPlanner
         EarlyBottom,
         EarlyFlexible,
         Mid,
-        Late
+        MidTop,
+        MidMiddle,
+        MidBottom,
+        Late,
+        LateTop,
+        LateBottom
     }
 
     private sealed class CandidateInfo
@@ -267,6 +272,60 @@ public sealed class PitstopPlacementPlanner
             return slots;
         }
 
+        if (settings.UseSevenPitstopLayout(rows, columns))
+        {
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.EarlyTop,
+                ProgressRange = settings.GetEarlyBand(rows, columns),
+                RelaxEdgeAvoidance = true
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.EarlyBottom,
+                ProgressRange = settings.GetEarlyBand(rows, columns),
+                RelaxEdgeAvoidance = true
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.MidTop,
+                ProgressRange = settings.GetMidBand(rows, columns),
+                RelaxEdgeAvoidance = false
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.MidMiddle,
+                ProgressRange = settings.GetMidBand(rows, columns),
+                RelaxEdgeAvoidance = false
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.MidBottom,
+                ProgressRange = settings.GetMidBand(rows, columns),
+                RelaxEdgeAvoidance = false
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.LateTop,
+                ProgressRange = settings.GetLateBand(rows, columns),
+                RelaxEdgeAvoidance = true
+            });
+
+            slots.Add(new SlotRequest
+            {
+                Type = SlotType.LateBottom,
+                ProgressRange = settings.GetLateBand(rows, columns),
+                RelaxEdgeAvoidance = true
+            });
+
+            return slots;
+        }
+
         if (desiredCount >= 1)
         {
             slots.Add(new SlotRequest
@@ -409,7 +468,12 @@ public sealed class PitstopPlacementPlanner
             SlotType.EarlyBottom => candidate.Lane == PitstopLane.Bottom,
             SlotType.EarlyFlexible => true,
             SlotType.Mid => true,
+            SlotType.MidTop => candidate.Lane == PitstopLane.Top,
+            SlotType.MidMiddle => candidate.Lane == PitstopLane.Middle,
+            SlotType.MidBottom => candidate.Lane == PitstopLane.Bottom,
             SlotType.Late => true,
+            SlotType.LateTop => candidate.Lane == PitstopLane.Top,
+            SlotType.LateBottom => candidate.Lane == PitstopLane.Bottom,
             _ => false
         };
     }
@@ -489,6 +553,8 @@ public sealed class PitstopPlacementPlanner
             SlotType.EarlyBottom => ScoreIntRangeCloseness(candidate.DistanceToStart, settings.earlyDistanceFromSpawn),
             SlotType.EarlyFlexible => ScoreIntRangeCloseness(candidate.DistanceToStart, settings.earlyDistanceFromSpawn),
             SlotType.Late => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
+            SlotType.LateTop => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
+            SlotType.LateBottom => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
             _ => 0.5f
         };
     }
@@ -505,9 +571,30 @@ public sealed class PitstopPlacementPlanner
             SlotType.EarlyBottom => ScoreLaneCloseness(candidate.RowProgress, settings.bottomLaneCenter),
             SlotType.EarlyFlexible => candidate.Lane == PitstopLane.Middle ? 0.2f : 1f,
             SlotType.Mid => ScoreMidLane(candidate, placed, settings),
+            SlotType.MidTop => ScoreExplicitMidLane(candidate, placed, settings.topLaneCenter),
+            SlotType.MidMiddle => ScoreExplicitMidLane(candidate, placed, settings.middleLaneCenter),
+            SlotType.MidBottom => ScoreExplicitMidLane(candidate, placed, settings.bottomLaneCenter),
             SlotType.Late => ScoreLateLane(candidate, placed, settings),
+            SlotType.LateTop => ScoreExplicitLateLane(candidate, placed, settings.topLaneCenter),
+            SlotType.LateBottom => ScoreExplicitLateLane(candidate, placed, settings.bottomLaneCenter),
             _ => 0f
         };
+    }
+
+    private static float ScoreExplicitMidLane(CandidateInfo candidate, List<PlacedCandidate> placed, float laneCenter)
+    {
+        float score = ScoreLaneCloseness(candidate.RowProgress, laneCenter);
+        if (candidate.Lane == candidate.CorridorLane)
+        {
+            score -= 0.3f;
+        }
+
+        if (CountLaneMatches(candidate.Lane, placed) >= 2)
+        {
+            score -= 0.25f;
+        }
+
+        return score;
     }
 
     private static float ScoreMidLane(CandidateInfo candidate, List<PlacedCandidate> placed, PitstopPlacementSettings settings)
@@ -540,6 +627,22 @@ public sealed class PitstopPlacementPlanner
         }
 
         score += ScoreLaneCloseness(candidate.RowProgress, settings.middleLaneCenter) * 0.2f;
+        return score;
+    }
+
+    private static float ScoreExplicitLateLane(CandidateInfo candidate, List<PlacedCandidate> placed, float laneCenter)
+    {
+        float score = ScoreLaneCloseness(candidate.RowProgress, laneCenter);
+        if (candidate.Lane == candidate.CorridorLane)
+        {
+            score -= 0.25f;
+        }
+
+        if (placed.Count > 0 && placed[placed.Count - 1].Candidate.Lane == candidate.Lane)
+        {
+            score -= 0.2f;
+        }
+
         return score;
     }
 
@@ -690,6 +793,11 @@ public sealed class PitstopPlacementPlanner
     {
         bool hasEarlyTop = false;
         bool hasEarlyBottom = false;
+        bool hasMidTop = false;
+        bool hasMidMiddle = false;
+        bool hasMidBottom = false;
+        bool hasLateTop = false;
+        bool hasLateBottom = false;
         bool hasSpawnSupport = false;
         bool hasGoalSupport = false;
 
@@ -714,6 +822,42 @@ public sealed class PitstopPlacementPlanner
             {
                 hasGoalSupport |= settings.lateDistanceFromGoal.Contains(layout[index].Candidate.DistanceToGoal);
             }
+            else if (type == SlotType.MidTop)
+            {
+                hasMidTop = layout[index].Candidate.Lane == PitstopLane.Top;
+            }
+            else if (type == SlotType.MidMiddle)
+            {
+                hasMidMiddle = layout[index].Candidate.Lane == PitstopLane.Middle;
+            }
+            else if (type == SlotType.MidBottom)
+            {
+                hasMidBottom = layout[index].Candidate.Lane == PitstopLane.Bottom;
+            }
+            else if (type == SlotType.LateTop)
+            {
+                hasLateTop = layout[index].Candidate.Lane == PitstopLane.Top;
+                hasGoalSupport |= settings.lateDistanceFromGoal.Contains(layout[index].Candidate.DistanceToGoal);
+            }
+            else if (type == SlotType.LateBottom)
+            {
+                hasLateBottom = layout[index].Candidate.Lane == PitstopLane.Bottom;
+                hasGoalSupport |= settings.lateDistanceFromGoal.Contains(layout[index].Candidate.DistanceToGoal);
+            }
+        }
+
+        bool sevenAnchorLayout = layout.Length >= 7;
+        if (sevenAnchorLayout)
+        {
+            return hasEarlyTop
+                && hasEarlyBottom
+                && hasMidTop
+                && hasMidMiddle
+                && hasMidBottom
+                && hasLateTop
+                && hasLateBottom
+                && hasSpawnSupport
+                && hasGoalSupport;
         }
 
         bool largeMapLayout = layout.Length >= 4;

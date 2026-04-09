@@ -21,6 +21,7 @@ public class PitstopSpawner : MonoBehaviour
 
     private readonly PitstopPlacementPlanner placementPlanner = new();
     private readonly Dictionary<HexCoordinates, PitstopSite> spawnedSites = new();
+    private const int DetailedRetryLogInterval = 10;
     private MapGenerator mapGenerator;
 
     public IReadOnlyDictionary<HexCoordinates, PitstopSite> SpawnedSites => spawnedSites;
@@ -51,7 +52,7 @@ public class PitstopSpawner : MonoBehaviour
             yield return null;
         }
 
-        SpawnPitstops();
+        yield return SpawnPitstopsUntilValidLayout();
         IsSpawnComplete = true;
     }
 
@@ -60,33 +61,86 @@ public class PitstopSpawner : MonoBehaviour
         return spawnedSites.TryGetValue(coordinates, out site);
     }
 
-    private void SpawnPitstops()
+    private IEnumerator SpawnPitstopsUntilValidLayout()
     {
-        spawnedSites.Clear();
-
         if (mapGenerator == null || mapGenerator.GridData == null || mapGenerator.Pathfinder == null)
         {
             Debug.LogError("PitstopSpawner requires a generated map and pathfinder.", this);
             IsSpawnComplete = true;
-            return;
+            yield break;
         }
 
-        PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
-            mapGenerator.GridData,
-            mapGenerator.Pathfinder,
-            mapGenerator.StartCoordinates,
-            mapGenerator.GoalCoordinates,
-            placementSettings,
-            new System.Random());
-
-        IReadOnlyList<HexCoordinates> placements = layoutResult.Coordinates;
-        if (placements.Count == 0)
+        PitstopLayoutResult bestFallbackLayout = PitstopLayoutResult.Empty;
+        int mapAttempt = 0;
+        while (true)
         {
-            Debug.LogWarning("PitstopSpawner did not find any valid pitstop placements.", this);
-            IsSpawnComplete = true;
-            return;
+            spawnedSites.Clear();
+
+            PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
+                mapGenerator.GridData,
+                mapGenerator.Pathfinder,
+                mapGenerator.StartCoordinates,
+                mapGenerator.GoalCoordinates,
+                placementSettings,
+                new System.Random());
+
+            if (layoutResult.Score > bestFallbackLayout.Score)
+            {
+                bestFallbackLayout = layoutResult;
+            }
+
+            if (layoutResult.IsValid && layoutResult.Coordinates.Count > 0)
+            {
+                SpawnPitstopLayout(layoutResult);
+                Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}. Map rerolls: {mapAttempt}.", this);
+                yield break;
+            }
+
+            bool canRegenerateMap = placementSettings.CanRetryMap(mapAttempt);
+            if (!canRegenerateMap)
+            {
+                break;
+            }
+
+            mapAttempt++;
+            if (mapAttempt == 1 || mapAttempt % DetailedRetryLogInterval == 0)
+            {
+                string retryMode = placementSettings.retryMapUntilValidLayoutWithoutLimit
+                    ? "Retry mode: unlimited."
+                    : $"Retry mode: capped at {placementSettings.maxMapRegenerationAttempts} rerolls.";
+
+                Debug.LogWarning(
+                    $"Pitstop layout attempt failed on map variant {mapAttempt}. Regenerating map and retrying pitstop placement. " +
+                    $"Planner summary: {layoutResult.Summary} {retryMode}",
+                    this);
+            }
+
+            yield return mapGenerator.RegenerateMapCoroutine(true);
+            while (mapGenerator.GridData == null || mapGenerator.Pathfinder == null)
+            {
+                yield return null;
+            }
         }
 
+        if (bestFallbackLayout.Coordinates.Count > 0 && placementSettings.keepBestLayoutIfAllAttemptsFail)
+        {
+            SpawnPitstopLayout(bestFallbackLayout);
+            Debug.LogWarning(
+                $"Spawned {spawnedSites.Count} pitstops using the best available layout after {mapAttempt} map rerolls. " +
+                $"{bestFallbackLayout.Summary} Attempts: {bestFallbackLayout.AttemptsUsed}.",
+                this);
+            yield break;
+        }
+
+        Debug.LogError(
+            $"PitstopSpawner could not generate a valid layout after {mapAttempt} map rerolls and {placementSettings.maxGenerationAttempts} planner attempts per map. " +
+            $"Relax the rules or increase the reroll limit.",
+            this);
+    }
+
+    private void SpawnPitstopLayout(PitstopLayoutResult layoutResult)
+    {
+        IReadOnlyList<HexCoordinates> placements = layoutResult.Coordinates;
         List<PitstopKind> kindSequence = BuildKindSequence(placements.Count);
         for (int index = 0; index < placements.Count; index++)
         {
@@ -119,15 +173,6 @@ public class PitstopSpawner : MonoBehaviour
 
             site.Initialize(kind, coordinates);
             spawnedSites[coordinates] = site;
-        }
-
-        if (layoutResult.IsValid)
-        {
-            Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}.", this);
-        }
-        else
-        {
-            Debug.LogWarning($"Spawned {spawnedSites.Count} pitstops using the best available layout. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}.", this);
         }
     }
 

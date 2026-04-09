@@ -40,17 +40,14 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        AutoAssignTextReferences();
-
-        inputService = new HexTileInputService();
-        pathHighlighter = new HexPathHighlighter();
-        travelTimePresenter = new HexTravelTimePresenter(travelTimeText);
-        hudPresenter = new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
-        mapGenerator = FindAnyObjectByType<MapGenerator>();
-        pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
-        fogOfWarController = GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
+        EnsureRuntimeReferences();
         travelTimePresenter.Reset();
         hudPresenter.ResetTileDetails();
+    }
+
+    private void OnEnable()
+    {
+        EnsureRuntimeReferences();
     }
 
     private void OnValidate()
@@ -65,8 +62,11 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator Start()
     {
+        EnsureRuntimeReferences();
+
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
+            EnsureRuntimeReferences();
             mapGenerator = FindAnyObjectByType<MapGenerator>();
             yield return null;
         }
@@ -74,6 +74,7 @@ public class PlayerController : MonoBehaviour
         pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
         while (pitstopSpawner != null && !pitstopSpawner.IsSpawnComplete)
         {
+            EnsureRuntimeReferences();
             yield return null;
         }
 
@@ -99,6 +100,8 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        EnsureRuntimeReferences();
+
         if (!isReady || isRunOver)
         {
             return;
@@ -540,5 +543,18 @@ public class PlayerController : MonoBehaviour
 
         GameObject textObject = GameObject.Find(objectName);
         return textObject != null ? textObject.GetComponent<Text>() : null;
+    }
+
+    private void EnsureRuntimeReferences()
+    {
+        AutoAssignTextReferences();
+
+        inputService ??= new HexTileInputService();
+        pathHighlighter ??= new HexPathHighlighter();
+        travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText);
+        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
+        mapGenerator ??= FindAnyObjectByType<MapGenerator>();
+        pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
+        fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
     }
 }

@@ -1443,6 +1443,7 @@ MonoBehaviour:
   goalScale: 0.3
   caravanColor: {r: 0.95, g: 0.76, b: 0.29, a: 1}
   goalColor: {r: 0.25, g: 0.87, b: 0.44, a: 1}
+  outOfRangeSelectionColor: {r: 0.42, g: 0.65, b: 0.95, a: 1}
 --- !u!114 &1822504939
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1632,26 +1633,31 @@ MonoBehaviour:
   mansionPrefab: {fileID: 919132149155446097, guid: d63effb01b88a47a885c1ef65d30e7e6,
     type: 3}
   placementSettings:
-    pitstopsOnFiveByFive: 4
+    pitstopsOnFiveByFive: 2
     pitstopsOnTenByTen: 7
+    tenByTenLayoutMode: 1
     maxGenerationAttempts: 32
     keepBestLayoutIfAllAttemptsFail: 1
     candidatePoolSize: 10
     randomJitter: 0.05
+    regenerateMapUntilValidLayout: 1
+    retryMapUntilValidLayoutWithoutLimit: 1
+    maxMapRegenerationAttempts: 25
     allowGrass: 1
     allowForest: 1
     allowMountain: 0
     allowDesert: 0
-    minimumSpacingOnFiveByFive: 1
-    minimumSpacingOnTenByTen: 3
-    spawnGoalAdjacencyBuffer: 2
+    minimumSpacingOnFiveByFive: 2
+    minimumSpacingOnTenByTen: 4
+    minimumSpacingOnTenByTenSeven: 3
+    spawnGoalAdjacencyBuffer: 1
     minimumOpenNeighbors: 3
     earlyDistanceFromSpawn:
-      min: 2
-      max: 3
+      min: 3
+      max: 4
     lateDistanceFromGoal:
-      min: 2
-      max: 3
+      min: 3
+      max: 4
     earlyBandOnTenByTen:
       min: 0.2
       max: 0.3
@@ -1660,6 +1666,12 @@ MonoBehaviour:
       max: 0.6
     lateBandOnTenByTen:
       min: 0.75
+      max: 0.85
+    midBandOnTenByTenSeven:
+      min: 0.4
+      max: 0.65
+    lateBandOnTenByTenSeven:
+      min: 0.65
       max: 0.85
     earlyBandOnFiveByFive:
       min: 0.2
@@ -1676,6 +1688,7 @@ MonoBehaviour:
     minimumRowSpanOnTenByTen: 3
     minimumAverageCorridorOffsetOnFiveByFive: 0.75
     minimumAverageCorridorOffsetOnTenByTen: 1
+    minimumAverageCorridorOffsetOnTenByTenSeven: 0.75
     preferredCorridorOffset: 1
     lanePreferenceWeight: 0.8
     laneDiversityWeight: 0.7
