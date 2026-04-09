@@ -1201,10 +1201,10 @@ MonoBehaviour:
   XTileSpacing: 0.9997
   YTileSpacing: 0.87
   rotation: 60
-  primary: 2
-  secondary: 3
+  primary: 3
+  secondary: 0
   tertiary: 4
-  chancePrimary: 55
+  chancePrimary: 74.1
   chanceSecondary: 30
   chanceTertiary: 10
 --- !u!4 &1722897117
@@ -1233,6 +1233,7 @@ GameObject:
   - component: {fileID: 1742937326}
   - component: {fileID: 1742937325}
   - component: {fileID: 1742937324}
+  - component: {fileID: 1742937327}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1314,6 +1315,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 959898466}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1742937327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1742937323}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d311f3f1ed0bd4804afb3f21deec3b81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexCameraController
+  moveSpeed: 12
+  rotationSpeed: 90
+  moveRange: 15
 --- !u!1 &1822504936
 GameObject:
   m_ObjectHideFlags: 0
