@@ -616,7 +616,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
-    m_Type: 2
+    m_Type: 0
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -1169,13 +1169,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   forestTiles:
   - {fileID: 6522165577605890704, guid: e790cb340ccbf45bfbdfe583260c17a1, type: 3}
-  - {fileID: 5727056277706654318, guid: 2f457c2e61458444291d676b9e3723c5, type: 3}
   grassTiles:
   - {fileID: 5187999822806453262, guid: 77352326543e04e5cbae1beff77c1a8a, type: 3}
   mountainTiles:
   - {fileID: 6146226879205311681, guid: 5a1d974af670f40e48a3b835a3383baf, type: 3}
   - {fileID: 2917034906780847595, guid: f0a152b596452402eba4a0afedb53bb6, type: 3}
   - {fileID: 1201986437003346671, guid: 38aeea9adec0a4962a39003d231fdd64, type: 3}
+  - {fileID: 5727056277706654318, guid: 2f457c2e61458444291d676b9e3723c5, type: 3}
   waterTiles:
   - {fileID: 8121725614092930942, guid: 6863edbe3de504fbcb926dc979b15972, type: 3}
   - {fileID: 6397276504147930215, guid: df7fcc56c055e49ef95ee97412c0aa42, type: 3}
@@ -1613,18 +1613,56 @@ MonoBehaviour:
     type: 3}
   placementSettings:
     pitstopsOnFiveByFive: 4
-    pitstopsOnTenByTen: 8
-    minimumSpacingOnFiveByFive: 1
-    minimumSpacingOnTenByTen: 2
+    pitstopsOnTenByTen: 7
+    maxGenerationAttempts: 32
+    keepBestLayoutIfAllAttemptsFail: 1
+    candidatePoolSize: 10
+    randomJitter: 0.05
     allowGrass: 1
     allowForest: 1
     allowMountain: 0
     allowDesert: 0
-    pathBias: 0.65
-    lowCostBias: 0.25
-    grassPreferenceBias: 0.2
-    preferredPathDistance: 2
-    randomJitter: 0.05
+    minimumSpacingOnFiveByFive: 1
+    minimumSpacingOnTenByTen: 3
+    spawnGoalAdjacencyBuffer: 2
+    minimumOpenNeighbors: 3
+    earlyDistanceFromSpawn:
+      min: 2
+      max: 3
+    lateDistanceFromGoal:
+      min: 2
+      max: 3
+    earlyBandOnTenByTen:
+      min: 0.2
+      max: 0.3
+    midBandOnTenByTen:
+      min: 0.45
+      max: 0.6
+    lateBandOnTenByTen:
+      min: 0.75
+      max: 0.85
+    earlyBandOnFiveByFive:
+      min: 0.2
+      max: 0.35
+    lateBandOnFiveByFive:
+      min: 0.65
+      max: 0.8
+    topLaneCenter: 0.25
+    middleLaneCenter: 0.5
+    bottomLaneCenter: 0.75
+    minimumUniqueLanesOnFiveByFive: 2
+    minimumUniqueLanesOnTenByTen: 3
+    minimumRowSpanOnFiveByFive: 1
+    minimumRowSpanOnTenByTen: 3
+    minimumAverageCorridorOffsetOnFiveByFive: 0.75
+    minimumAverageCorridorOffsetOnTenByTen: 1
+    preferredCorridorOffset: 1
+    lanePreferenceWeight: 0.8
+    laneDiversityWeight: 0.7
+    corridorOffsetWeight: 0.65
+    edgeAvoidanceWeight: 0.35
+    openNeighborWeight: 0.3
+    distanceTargetWeight: 0.85
   visualHeight: 0.08
   visualScale: 1.2
   randomizeRotation: 1

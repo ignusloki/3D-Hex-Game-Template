@@ -67,7 +67,7 @@ public class PitstopSpawner : MonoBehaviour
             return;
         }
 
-        IReadOnlyList<HexCoordinates> placements = placementPlanner.Plan(
+        PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
             mapGenerator.GridData,
             mapGenerator.Pathfinder,
             mapGenerator.StartCoordinates,
@@ -75,6 +75,7 @@ public class PitstopSpawner : MonoBehaviour
             placementSettings,
             new System.Random());
 
+        IReadOnlyList<HexCoordinates> placements = layoutResult.Coordinates;
         if (placements.Count == 0)
         {
             Debug.LogWarning("PitstopSpawner did not find any valid pitstop placements.", this);
@@ -115,7 +116,14 @@ public class PitstopSpawner : MonoBehaviour
             spawnedSites[coordinates] = site;
         }
 
-        Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map.", this);
+        if (layoutResult.IsValid)
+        {
+            Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}.", this);
+        }
+        else
+        {
+            Debug.LogWarning($"Spawned {spawnedSites.Count} pitstops using the best available layout. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}.", this);
+        }
     }
 
     private List<PitstopKind> BuildKindSequence(int count)

@@ -1,42 +1,21 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEngine;
 
 public class PitstopPlacementPlannerTests
 {
-    [TestCase(5, 5, 4, 1, 3)]
-    [TestCase(10, 10, 8, 2, 6)]
-    public void Plan_ReturnsDistributedPitstopsAcrossTheMap(
-        int rows,
-        int columns,
-        int expectedCount,
-        int minimumSpacing,
-        int minimumDistinctColumns)
+    [TestCase(0, 9)]
+    [TestCase(9, 0)]
+    public void GeneratePitstops_BuildsStructuredLargeMapLayoutsAcrossBothDirections(int startColumn, int goalColumn)
     {
-        HexGridData gridData = CreateGrid(rows, columns);
+        HexGridData gridData = CreateGrid(10, 10);
         HexPathfinder pathfinder = new(gridData);
-        PitstopPlacementSettings settings = new()
-        {
-            pitstopsOnFiveByFive = 4,
-            pitstopsOnTenByTen = 8,
-            minimumSpacingOnFiveByFive = 1,
-            minimumSpacingOnTenByTen = 2,
-            allowGrass = true,
-            allowForest = true,
-            allowMountain = false,
-            allowDesert = false,
-            pathBias = 0.65f,
-            lowCostBias = 0.25f,
-            grassPreferenceBias = 0.2f,
-            preferredPathDistance = 2,
-            randomJitter = 0f
-        };
-        settings.Validate();
-
+        PitstopPlacementSettings settings = CreateSettings();
         PitstopPlacementPlanner planner = new();
-        HexCoordinates start = new(rows / 2, 0);
-        HexCoordinates goal = new(rows / 2, columns - 1);
+        HexCoordinates start = new(5, startColumn);
+        HexCoordinates goal = new(5, goalColumn);
 
-        IReadOnlyList<HexCoordinates> placements = planner.Plan(
+        PitstopLayoutResult result = planner.GeneratePitstops(
             gridData,
             pathfinder,
             start,
@@ -44,19 +23,98 @@ public class PitstopPlacementPlannerTests
             settings,
             new System.Random(12345));
 
-        Assert.That(placements.Count, Is.EqualTo(expectedCount));
-        Assert.That(new HashSet<HexCoordinates>(placements).Count, Is.EqualTo(expectedCount));
-        Assert.That(placements, Has.None.EqualTo(start));
-        Assert.That(placements, Has.None.EqualTo(goal));
-        Assert.That(GetDistinctColumnCount(placements), Is.GreaterThanOrEqualTo(minimumDistinctColumns));
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(4));
+        Assert.That(new HashSet<HexCoordinates>(result.Coordinates).Count, Is.EqualTo(4));
+        AssertPairwiseSpacing(result.Coordinates, 4);
+        AssertSafeDistanceFromEndpoints(result.Coordinates, start, goal, 1);
 
-        for (int i = 0; i < placements.Count; i++)
+        List<HexCoordinates> earlyBand = FilterByProgress(result.Coordinates, start, goal, settings.earlyBandOnTenByTen);
+        List<HexCoordinates> midBand = FilterByProgress(result.Coordinates, start, goal, settings.midBandOnTenByTen);
+        List<HexCoordinates> lateBand = FilterByProgress(result.Coordinates, start, goal, settings.lateBandOnTenByTen);
+
+        Assert.That(earlyBand.Count, Is.EqualTo(2));
+        Assert.That(midBand.Count, Is.EqualTo(1));
+        Assert.That(lateBand.Count, Is.EqualTo(1));
+        Assert.That(GetLane(earlyBand[0], 10, settings), Is.Not.EqualTo(GetLane(earlyBand[1], 10, settings)));
+        Assert.That(GetUniqueLaneCount(result.Coordinates, 10, settings), Is.GreaterThanOrEqualTo(3));
+    }
+
+    [Test]
+    public void GeneratePitstops_BuildsEarlyAndLateAnchorsOnSmallMaps()
+    {
+        HexGridData gridData = CreateGrid(5, 5);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings();
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(2, 0);
+        HexCoordinates goal = new(2, 4);
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(9876));
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(2));
+        AssertPairwiseSpacing(result.Coordinates, 2);
+        AssertSafeDistanceFromEndpoints(result.Coordinates, start, goal, 1);
+        Assert.That(GetUniqueLaneCount(result.Coordinates, 5, settings), Is.GreaterThanOrEqualTo(2));
+
+        List<HexCoordinates> earlyBand = FilterByProgress(result.Coordinates, start, goal, settings.earlyBandOnFiveByFive);
+        List<HexCoordinates> lateBand = FilterByProgress(result.Coordinates, start, goal, settings.lateBandOnFiveByFive);
+
+        Assert.That(earlyBand.Count, Is.EqualTo(1));
+        Assert.That(lateBand.Count, Is.EqualTo(1));
+    }
+
+    private static PitstopPlacementSettings CreateSettings()
+    {
+        PitstopPlacementSettings settings = new()
         {
-            for (int j = i + 1; j < placements.Count; j++)
-            {
-                Assert.That(placements[i].DistanceTo(placements[j]), Is.GreaterThanOrEqualTo(minimumSpacing));
-            }
-        }
+            pitstopsOnFiveByFive = 2,
+            pitstopsOnTenByTen = 4,
+            minimumSpacingOnFiveByFive = 2,
+            minimumSpacingOnTenByTen = 4,
+            spawnGoalAdjacencyBuffer = 1,
+            minimumOpenNeighbors = 3,
+            maxGenerationAttempts = 32,
+            keepBestLayoutIfAllAttemptsFail = true,
+            candidatePoolSize = 4,
+            randomJitter = 0f,
+            allowGrass = true,
+            allowForest = true,
+            allowMountain = false,
+            allowDesert = false,
+            earlyDistanceFromSpawn = new PitstopIntRange(2, 3),
+            lateDistanceFromGoal = new PitstopIntRange(2, 3),
+            earlyBandOnTenByTen = new PitstopFloatRange(0.2f, 0.3f),
+            midBandOnTenByTen = new PitstopFloatRange(0.45f, 0.6f),
+            lateBandOnTenByTen = new PitstopFloatRange(0.75f, 0.85f),
+            earlyBandOnFiveByFive = new PitstopFloatRange(0.2f, 0.35f),
+            lateBandOnFiveByFive = new PitstopFloatRange(0.65f, 0.8f),
+            topLaneCenter = 0.25f,
+            middleLaneCenter = 0.5f,
+            bottomLaneCenter = 0.75f,
+            minimumUniqueLanesOnFiveByFive = 2,
+            minimumUniqueLanesOnTenByTen = 3,
+            minimumRowSpanOnFiveByFive = 1,
+            minimumRowSpanOnTenByTen = 3,
+            minimumAverageCorridorOffsetOnFiveByFive = 0.75f,
+            minimumAverageCorridorOffsetOnTenByTen = 1f,
+            preferredCorridorOffset = 1f,
+            lanePreferenceWeight = 0.8f,
+            laneDiversityWeight = 0.7f,
+            corridorOffsetWeight = 0.65f,
+            edgeAvoidanceWeight = 0.35f,
+            openNeighborWeight = 0.3f,
+            distanceTargetWeight = 0.85f
+        };
+        settings.Validate();
+        return settings;
     }
 
     private static HexGridData CreateGrid(int rows, int columns)
@@ -66,7 +124,7 @@ public class PitstopPlacementPlannerTests
         {
             for (int column = 0; column < columns; column++)
             {
-                Biome biome = column % 4 == 0 ? Biome.forest : Biome.grass;
+                Biome biome = row % 3 == 0 ? Biome.forest : Biome.grass;
                 grid.SetTile(new HexTileData(new HexCoordinates(row, column), biome, null));
             }
         }
@@ -74,14 +132,79 @@ public class PitstopPlacementPlannerTests
         return grid;
     }
 
-    private static int GetDistinctColumnCount(IReadOnlyList<HexCoordinates> placements)
+    private static void AssertPairwiseSpacing(IReadOnlyList<HexCoordinates> coordinates, int minimumSpacing)
     {
-        HashSet<int> distinctColumns = new();
-        for (int index = 0; index < placements.Count; index++)
+        for (int leftIndex = 0; leftIndex < coordinates.Count; leftIndex++)
         {
-            distinctColumns.Add(placements[index].Column);
+            for (int rightIndex = leftIndex + 1; rightIndex < coordinates.Count; rightIndex++)
+            {
+                Assert.That(coordinates[leftIndex].DistanceTo(coordinates[rightIndex]), Is.GreaterThanOrEqualTo(minimumSpacing));
+            }
+        }
+    }
+
+    private static void AssertSafeDistanceFromEndpoints(IReadOnlyList<HexCoordinates> coordinates, HexCoordinates start, HexCoordinates goal, int adjacencyBuffer)
+    {
+        for (int index = 0; index < coordinates.Count; index++)
+        {
+            Assert.That(coordinates[index].DistanceTo(start), Is.GreaterThan(adjacencyBuffer));
+            Assert.That(coordinates[index].DistanceTo(goal), Is.GreaterThan(adjacencyBuffer));
+        }
+    }
+
+    private static List<HexCoordinates> FilterByProgress(
+        IReadOnlyList<HexCoordinates> coordinates,
+        HexCoordinates start,
+        HexCoordinates goal,
+        PitstopFloatRange range)
+    {
+        List<HexCoordinates> filtered = new();
+        for (int index = 0; index < coordinates.Count; index++)
+        {
+            float progress = Mathf.Clamp01(Mathf.InverseLerp(start.Column, goal.Column, coordinates[index].Column));
+            if (range.Contains(progress))
+            {
+                filtered.Add(coordinates[index]);
+            }
         }
 
-        return distinctColumns.Count;
+        return filtered;
+    }
+
+    private static int GetUniqueLaneCount(IReadOnlyList<HexCoordinates> coordinates, int rows, PitstopPlacementSettings settings)
+    {
+        HashSet<int> lanes = new();
+        for (int index = 0; index < coordinates.Count; index++)
+        {
+            lanes.Add((int)GetLane(coordinates[index], rows, settings));
+        }
+
+        return lanes.Count;
+    }
+
+    private static PitstopTestLane GetLane(HexCoordinates coordinates, int rows, PitstopPlacementSettings settings)
+    {
+        float rowProgress = rows <= 1 ? 0.5f : coordinates.Row / (float)(rows - 1);
+        float topBoundary = (settings.topLaneCenter + settings.middleLaneCenter) * 0.5f;
+        float bottomBoundary = (settings.middleLaneCenter + settings.bottomLaneCenter) * 0.5f;
+
+        if (rowProgress <= topBoundary)
+        {
+            return PitstopTestLane.Top;
+        }
+
+        if (rowProgress >= bottomBoundary)
+        {
+            return PitstopTestLane.Bottom;
+        }
+
+        return PitstopTestLane.Middle;
+    }
+
+    private enum PitstopTestLane
+    {
+        Top,
+        Middle,
+        Bottom
     }
 }
