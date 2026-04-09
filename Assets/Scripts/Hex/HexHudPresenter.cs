@@ -190,7 +190,7 @@ public sealed class HexHudPresenter
         SetText(hintText, "Pick a different destination or start a new route.");
     }
 
-    public void ShowTileDetails(HexagonTile tile)
+    public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null)
     {
         if (tile == null)
         {
@@ -203,9 +203,18 @@ public sealed class HexHudPresenter
         string travelCost = (tileData?.TravelCost ?? tile.travelCost).ToString();
         string passability = (tileData?.IsPassable ?? tile.canTravelThrough) ? "Passable" : "Blocked";
 
-        SetText(
-            tileDetailsText,
-            $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}\n{passability}");
+        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}\n{passability}";
+        if (pitstopSite != null)
+        {
+            string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
+            string specialEventDescription = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
+                ? "placeholder"
+                : pitstopSite.SpecialEventDescription;
+
+            details += $"\nRefuel Point: {refuelStatus}\nSpecial Event: {specialEventDescription}";
+        }
+
+        SetText(tileDetailsText, details);
     }
 
     public void ResetTileDetails()

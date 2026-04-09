@@ -246,6 +246,7 @@ Transform:
   - {fileID: 1722897117}
   - {fileID: 187423992}
   - {fileID: 1822504937}
+  - {fileID: 1900944117}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &91462347
@@ -1188,6 +1189,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1c09c5774c6924731b8d69905ae17163, type: 2}
   - {fileID: 11400000, guid: d30c6058203d54caa83d57e208296416, type: 2}
   - {fileID: 11400000, guid: 615213cb8ca2c410e8eeb6227250993a, type: 2}
+  mapSize: 10
   biomeGenerationSettings:
     enableGrass: 1
     enableForest: 1
@@ -1196,28 +1198,62 @@ MonoBehaviour:
     enableDesert: 0
     useRandomSeed: 1
     seed: 12345
-    elevationFrequency: 0.12
-    moistureFrequency: 0.1
+    elevationFrequency: 0.09
+    moistureFrequency: 0.06
     heatFrequency: 0.08
     noiseOctaves: 3
     noisePersistence: 0.5
     noiseLacunarity: 2
-    waterThreshold: 0.309
-    mountainThreshold: 0.784
-    forestMoistureThreshold: 0.523
-    desertMoistureThreshold: 0.101
+    waterThreshold: 0.224
+    mountainThreshold: 0.896
+    forestMoistureThreshold: 0.475
+    desertMoistureThreshold: 0.005
     desertHeatThreshold: 0.955
-    isolatedAnomalyChance: 0.025
-    microPatchChance: 0.03
+    isolatedAnomalyChance: 0.008
+    microPatchChance: 0.015
     microPatchMinSize: 2
     microPatchMaxSize: 3
+    regionSettings:
+      enableMacroRegions: 1
+      restrictBaseToLandBiomes: 1
+      fiveByFiveMinRegions: 3
+      fiveByFiveMaxRegions: 4
+      tenByTenMinRegions: 6
+      tenByTenMaxRegions: 9
+      boundaryNoiseStrength: 0.55
+      localVariationChance: 0.08
+      seedSpacingBias: 0.75
+    featureSettings:
+      enableFeatureOverlays: 1
+      minForestFeatureCount: 1
+      maxForestFeatureCount: 2
+      forestFeatureMinRatio: 0.12
+      forestFeatureMaxRatio: 0.22
+      minWaterFeatureCount: 0
+      maxWaterFeatureCount: 1
+      waterFeatureMinRatio: 0.03
+      waterFeatureMaxRatio: 0.08
+      minMountainFeatureCount: 0
+      maxMountainFeatureCount: 1
+      mountainFeatureMinRatio: 0.02
+      mountainFeatureMaxRatio: 0.05
+      featureEdgePadding: 1
+      compactnessBias: 0.8
+      ridgeTurnChance: 0.35
+      ridgeBranchChance: 0.2
+    qualitySettings:
+      enableQualityRerolls: 1
+      maxGenerationAttempts: 10
+      maxDominantBiomeRatio: 0.68
+      minDistinctBiomeCount: 3
+      minSecondaryRegionRatio: 0.12
+      minMeaningfulRegionSize: 3
+      maxSmallSecondaryRegionRatio: 0.08
   specialTileSettings:
     enforceStartBiome: 1
     startBiome: 3
     enforceGoalBiome: 1
     goalBiome: 1
-  Rows: 10
-  Columns: 10
   X1stTileSpacing: 1
   XTileSpacing: 0.9997
   YTileSpacing: 0.87
@@ -1441,6 +1477,7 @@ MonoBehaviour:
   waterTiles: []
   desertTiles: []
   hexProperties: []
+  mapSize: 10
   biomeGenerationSettings:
     enableGrass: 1
     enableForest: 1
@@ -1464,13 +1501,47 @@ MonoBehaviour:
     microPatchChance: 0.04
     microPatchMinSize: 2
     microPatchMaxSize: 4
+    regionSettings:
+      enableMacroRegions: 1
+      restrictBaseToLandBiomes: 1
+      fiveByFiveMinRegions: 3
+      fiveByFiveMaxRegions: 4
+      tenByTenMinRegions: 6
+      tenByTenMaxRegions: 9
+      boundaryNoiseStrength: 0.55
+      localVariationChance: 0.08
+      seedSpacingBias: 0.75
+    featureSettings:
+      enableFeatureOverlays: 1
+      minForestFeatureCount: 1
+      maxForestFeatureCount: 2
+      forestFeatureMinRatio: 0.12
+      forestFeatureMaxRatio: 0.22
+      minWaterFeatureCount: 0
+      maxWaterFeatureCount: 1
+      waterFeatureMinRatio: 0.03
+      waterFeatureMaxRatio: 0.08
+      minMountainFeatureCount: 0
+      maxMountainFeatureCount: 1
+      mountainFeatureMinRatio: 0.02
+      mountainFeatureMaxRatio: 0.05
+      featureEdgePadding: 1
+      compactnessBias: 0.8
+      ridgeTurnChance: 0.35
+      ridgeBranchChance: 0.2
+    qualitySettings:
+      enableQualityRerolls: 1
+      maxGenerationAttempts: 10
+      maxDominantBiomeRatio: 0.68
+      minDistinctBiomeCount: 3
+      minSecondaryRegionRatio: 0.12
+      minMeaningfulRegionSize: 3
+      maxSmallSecondaryRegionRatio: 0.08
   specialTileSettings:
     enforceStartBiome: 1
     startBiome: 3
     enforceGoalBiome: 1
     goalBiome: 3
-  Rows: 2
-  Columns: 10
   X1stTileSpacing: 1
   XTileSpacing: 1
   YTileSpacing: 0.75
@@ -1490,6 +1561,73 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1452999514}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1900944116
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900944117}
+  - component: {fileID: 1900944118}
+  m_Layer: 0
+  m_Name: Pitstop Spawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1900944117
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900944116}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1900944118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900944116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf3f71754493243e693fc9b2cbf137e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PitstopSpawner
+  millPrefab: {fileID: 919132149155446097, guid: 6033bb5194e794ec8b4551e9164bb93b,
+    type: 3}
+  wallTowerPrefab: {fileID: 919132149155446097, guid: 58d21f1b256854d88a1988544f5c29fc,
+    type: 3}
+  mansionPrefab: {fileID: 919132149155446097, guid: d63effb01b88a47a885c1ef65d30e7e6,
+    type: 3}
+  placementSettings:
+    pitstopsOnFiveByFive: 4
+    pitstopsOnTenByTen: 8
+    minimumSpacingOnFiveByFive: 1
+    minimumSpacingOnTenByTen: 2
+    allowGrass: 1
+    allowForest: 1
+    allowMountain: 0
+    allowDesert: 0
+    pathBias: 0.65
+    lowCostBias: 0.25
+    grassPreferenceBias: 0.2
+    preferredPathDistance: 2
+    randomJitter: 0.05
+  visualHeight: 0.08
+  visualScale: 1.2
+  randomizeRotation: 1
 --- !u!1 &2010617531
 GameObject:
   m_ObjectHideFlags: 0

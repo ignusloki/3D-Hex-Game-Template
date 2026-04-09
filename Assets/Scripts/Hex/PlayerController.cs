@@ -25,6 +25,7 @@ public class PlayerController : MonoBehaviour
     private HexTravelTimePresenter travelTimePresenter;
     private HexHudPresenter hudPresenter;
     private MapGenerator mapGenerator;
+    private PitstopSpawner pitstopSpawner;
 
     private HexagonTile currentTile;
     private HexagonTile goalTile;
@@ -44,6 +45,7 @@ public class PlayerController : MonoBehaviour
         travelTimePresenter = new HexTravelTimePresenter(travelTimeText);
         hudPresenter = new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
         mapGenerator = FindAnyObjectByType<MapGenerator>();
+        pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
         travelTimePresenter.Reset();
         hudPresenter.ResetTileDetails();
     }
@@ -65,6 +67,8 @@ public class PlayerController : MonoBehaviour
             mapGenerator = FindAnyObjectByType<MapGenerator>();
             yield return null;
         }
+
+        pitstopSpawner = FindAnyObjectByType<PitstopSpawner>();
 
         if (!TrySpawnCaravan())
         {
@@ -110,7 +114,7 @@ public class PlayerController : MonoBehaviour
 
         ClearHighlights();
         selectedTile = clickedTile;
-        hudPresenter.ShowTileDetails(clickedTile);
+        RefreshTileDetails(clickedTile);
 
         if (clickedTile == currentTile)
         {
@@ -195,7 +199,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
-        hudPresenter.ShowTileDetails(currentTile);
+        RefreshTileDetails(currentTile);
         if (currentResources <= 0)
         {
             EndRunAsDefeat();
@@ -268,7 +272,7 @@ public class PlayerController : MonoBehaviour
         currentTile.TileData?.SetOccupied(true);
         EnsureCaravanVisual();
         AttachCaravanToTile(currentTile);
-        hudPresenter.ShowTileDetails(currentTile);
+        RefreshTileDetails(currentTile);
         return true;
     }
 
@@ -395,7 +399,7 @@ public class PlayerController : MonoBehaviour
         previewPath = null;
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
-        hudPresenter.ShowTileDetails(currentTile);
+        RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, currentResources);
     }
 
@@ -407,8 +411,26 @@ public class PlayerController : MonoBehaviour
         previewPath = null;
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
-        hudPresenter.ShowTileDetails(currentTile);
+        RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile);
+    }
+
+    private void RefreshTileDetails(HexagonTile tile)
+    {
+        if (tile == null)
+        {
+            hudPresenter.ResetTileDetails();
+            return;
+        }
+
+        pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
+        PitstopSite pitstopSite = null;
+        if (pitstopSpawner != null)
+        {
+            pitstopSpawner.TryGetPitstop(tile.Coordinates, out pitstopSite);
+        }
+
+        hudPresenter.ShowTileDetails(tile, pitstopSite);
     }
 
     private void AutoAssignTextReferences()
