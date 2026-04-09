@@ -5,32 +5,34 @@ using System.Collections.Generic;
 
 public class MapGenerator : MonoBehaviour
 {
-    public GameObject[] tilePrefabs; // Array of tile prefabs to instantiate
     public GameObject[] forestTiles;
     public GameObject[] grassTiles;
     public GameObject[] mountainTiles;
     public GameObject[] waterTiles;
     public GameObject[] desertTiles;
     public HexScriptableObject[] hexProperties;
+    [SerializeField] private HexMapSizePreset mapSize = HexMapSizePreset.TenByTen;
+    [SerializeField] private HexBiomeGenerationSettings biomeGenerationSettings = new();
+    [SerializeField] private HexSpecialTileSettings specialTileSettings = new();
+
+    private readonly HexBiomeMapGenerator biomeMapGenerator = new();
     private Dictionary<Biome, HexScriptableObject> hexsDictionary;
-    [Min(1)] public int Rows = 5; // Number of rows in the grid
-    [Min(1)] public int Columns = 5; // Number of columns in the grid
     [Min(0.01f)] public float X1stTileSpacing = 1f; // Horizontal space for first tile
     [Min(0.01f)] public float XTileSpacing = 1f; // Horizontal space between tiles
     [Min(0.01f)] public float YTileSpacing = .8870f; // Vertical space between tiles
     public float rotation = 30f;
-    public Biome primary, secondary, tertiary;
-    [Range(0f, 100f)] public float chancePrimary;
-    [Range(0f, 100f)] public float chanceSecondary;
-    [Range(0f, 100f)] public float chanceTertiary;
 
     private HexagonTile[,] tiles; // 2D array to hold the instantiated tiles
     private Dictionary<HexCoordinates, HexagonTile> tileViews = new();
     private HexGridData gridData;
     private HexPathfinder pathfinder;
 
+    public int Rows => (int)mapSize;
+    public int Columns => (int)mapSize;
     public HexGridData GridData => gridData;
     public HexPathfinder Pathfinder => pathfinder;
+    public HexCoordinates StartCoordinates { get; private set; }
+    public HexCoordinates GoalCoordinates { get; private set; }
 
     void Start() {
         LoadScriptableObjects();
@@ -44,29 +46,12 @@ public class MapGenerator : MonoBehaviour
 
     private void OnValidate()
     {
-        Rows = Mathf.Max(1, Rows);
-        Columns = Mathf.Max(1, Columns);
         X1stTileSpacing = Mathf.Max(0.01f, X1stTileSpacing);
         XTileSpacing = Mathf.Max(0.01f, XTileSpacing);
         YTileSpacing = Mathf.Max(0.01f, YTileSpacing);
-        chancePrimary = Mathf.Clamp(chancePrimary, 0f, 100f);
-        chanceSecondary = Mathf.Clamp(chanceSecondary, 0f, 100f);
-        chanceTertiary = Mathf.Clamp(chanceTertiary, 0f, 100f);
-    }
-
-    private Biome ChooseBiome() {
-
-        float chance = Random.Range(0,100);
-
-        if (chancePrimary > chance) {
-            return primary;
-        } else if (chanceSecondary + chancePrimary > chance){
-            return secondary;
-        } else if (chanceTertiary + chanceSecondary + chancePrimary > chance){
-            return tertiary;
-        } else {
-            return primary;
-        }
+        biomeGenerationSettings ??= new HexBiomeGenerationSettings();
+        biomeGenerationSettings.Validate();
+        specialTileSettings ??= new HexSpecialTileSettings();
     }
 
     private GameObject[] GetBiomePrefabs(Biome chosen) {
@@ -108,13 +93,17 @@ public class MapGenerator : MonoBehaviour
         tiles = new HexagonTile[Rows, Columns];
         tileViews = new Dictionary<HexCoordinates, HexagonTile>();
         gridData = new HexGridData(Rows, Columns);
+        HexBiomeMapResult biomeMapResult = biomeMapGenerator.Generate(Rows, Columns, biomeGenerationSettings, specialTileSettings);
+        Biome[,] biomeMap = biomeMapResult.BiomeMap;
+        StartCoordinates = biomeMapResult.StartCoordinates;
+        GoalCoordinates = biomeMapResult.GoalCoordinates;
 
         for (int row = 0; row < Rows; row++)
         {
             for (int col = 0; col < Columns; col++)
             {
                 HexCoordinates coordinates = new(row, col);
-                Biome chosenBiome = ChooseBiome();
+                Biome chosenBiome = biomeMap[row, col];
                 HexTileData tileData = new(coordinates, chosenBiome, GetHexProperties(chosenBiome));
                 gridData.SetTile(tileData);
 
@@ -131,6 +120,20 @@ public class MapGenerator : MonoBehaviour
 
         pathfinder = new HexPathfinder(gridData);
         AssignNeighbors();
+        if (biomeMapGenerator.LastGenerationMetQualityThreshold)
+        {
+            Debug.Log(
+                $"Generated biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
+                $"Dominant biome: {biomeMapGenerator.LastQualityReport?.DominantBiome} ({biomeMapGenerator.LastQualityReport?.DominantBiomeRatio:P0}).",
+                this);
+        }
+        else
+        {
+            Debug.LogWarning(
+                $"Generated best-effort biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
+                $"Quality score: {biomeMapGenerator.LastQualityReport?.Score:F2}.",
+                this);
+        }
     }
 
     // Calculates the position of a tile based on its row and column
@@ -213,6 +216,16 @@ public class MapGenerator : MonoBehaviour
         return tileViews.TryGetValue(coordinates, out tile);
     }
 
+    public bool TryGetStartTileView(out HexagonTile tile)
+    {
+        return TryGetTileView(StartCoordinates, out tile);
+    }
+
+    public bool TryGetGoalTileView(out HexagonTile tile)
+    {
+        return TryGetTileView(GoalCoordinates, out tile);
+    }
+
     public IReadOnlyList<HexTileData> FindPath(HexCoordinates start, HexCoordinates goal)
     {
         return pathfinder?.FindPath(start, goal);
@@ -238,9 +251,11 @@ public class MapGenerator : MonoBehaviour
             isValid = false;
         }
 
-        isValid &= ValidateBiomeSetup(primary);
-        isValid &= ValidateBiomeSetup(secondary);
-        isValid &= ValidateBiomeSetup(tertiary);
+        foreach (Biome biome in System.Enum.GetValues(typeof(Biome)))
+        {
+            isValid &= ValidateBiomeSetup(biome);
+            isValid &= ValidateBiomeProperties(biome);
+        }
 
         return isValid;
     }
@@ -251,6 +266,17 @@ public class MapGenerator : MonoBehaviour
         if (biomePrefabs == null || biomePrefabs.Length == 0)
         {
             Debug.LogError($"MapGenerator has no prefabs configured for biome '{biome}'.", this);
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool ValidateBiomeProperties(Biome biome)
+    {
+        if (GetHexProperties(biome) == null)
+        {
+            Debug.LogError($"MapGenerator has no HexScriptableObject configured for biome '{biome}'.", this);
             return false;
         }
 

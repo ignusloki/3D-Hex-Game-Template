@@ -253,25 +253,15 @@ public class PlayerController : MonoBehaviour
 
     private bool TrySpawnCaravan()
     {
-        List<HexTileData> spawnCandidates = new();
-        foreach (HexTileData tileData in mapGenerator.GridData.Tiles)
+        if (!mapGenerator.TryGetStartTileView(out currentTile) || currentTile == null)
         {
-            if (tileData.IsAvailable && tileData.Coordinates.Column == 0)
-            {
-                spawnCandidates.Add(tileData);
-            }
-        }
-
-        if (spawnCandidates.Count == 0)
-        {
-            Debug.LogError("PlayerController could not find a passable tile on the left edge to spawn the caravan.", this);
+            Debug.LogError("PlayerController could not resolve the configured start tile.", this);
             return false;
         }
 
-        HexTileData spawnTileData = spawnCandidates[Random.Range(0, spawnCandidates.Count)];
-        if (!mapGenerator.TryGetTileView(spawnTileData.Coordinates, out currentTile))
+        if (!(currentTile.TileData?.IsAvailable ?? false))
         {
-            Debug.LogError($"PlayerController could not resolve the tile view for caravan spawn at {spawnTileData.Coordinates}.", this);
+            Debug.LogError($"PlayerController start tile {currentTile.Coordinates} is not available for caravan spawn.", this);
             return false;
         }
 
@@ -284,34 +274,15 @@ public class PlayerController : MonoBehaviour
 
     private bool TryAssignGoal()
     {
-        List<HexTileData> goalCandidates = new();
-        int rightEdgeColumn = mapGenerator.GridData.Columns - 1;
-
-        foreach (HexTileData tileData in mapGenerator.GridData.Tiles)
+        if (!mapGenerator.TryGetGoalTileView(out goalTile) || goalTile == null)
         {
-            if (!tileData.IsPassable || tileData.Coordinates.Column != rightEdgeColumn)
-            {
-                continue;
-            }
-
-            if (currentTile != null && tileData.Coordinates.Equals(currentTile.Coordinates))
-            {
-                continue;
-            }
-
-            goalCandidates.Add(tileData);
-        }
-
-        if (goalCandidates.Count == 0)
-        {
-            Debug.LogError("PlayerController could not find a passable tile on the right edge for the goal.", this);
+            Debug.LogError("PlayerController could not resolve the configured goal tile.", this);
             return false;
         }
 
-        HexTileData goalTileData = goalCandidates[Random.Range(0, goalCandidates.Count)];
-        if (!mapGenerator.TryGetTileView(goalTileData.Coordinates, out goalTile))
+        if (!(goalTile.TileData?.IsPassable ?? false))
         {
-            Debug.LogError($"PlayerController could not resolve the tile view for the goal at {goalTileData.Coordinates}.", this);
+            Debug.LogError($"PlayerController goal tile {goalTile.Coordinates} is not passable.", this);
             return false;
         }
 

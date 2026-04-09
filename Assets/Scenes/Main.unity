@@ -1166,12 +1166,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 306c406b288e45045a7b94cc8c8edf41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tilePrefabs:
-  - {fileID: 6522165577605890704, guid: e790cb340ccbf45bfbdfe583260c17a1, type: 3}
-  - {fileID: 5187999822806453262, guid: 77352326543e04e5cbae1beff77c1a8a, type: 3}
-  - {fileID: 5447067978454001291, guid: f1251d98786494946a8f4c5f8578e2b8, type: 3}
-  - {fileID: 2917034906780847595, guid: f0a152b596452402eba4a0afedb53bb6, type: 3}
-  - {fileID: 8121725614092930942, guid: 6863edbe3de504fbcb926dc979b15972, type: 3}
   forestTiles:
   - {fileID: 6522165577605890704, guid: e790cb340ccbf45bfbdfe583260c17a1, type: 3}
   - {fileID: 5727056277706654318, guid: 2f457c2e61458444291d676b9e3723c5, type: 3}
@@ -1184,7 +1178,6 @@ MonoBehaviour:
   waterTiles:
   - {fileID: 8121725614092930942, guid: 6863edbe3de504fbcb926dc979b15972, type: 3}
   - {fileID: 6397276504147930215, guid: df7fcc56c055e49ef95ee97412c0aa42, type: 3}
-  - {fileID: 8121725614092930942, guid: 6863edbe3de504fbcb926dc979b15972, type: 3}
   desertTiles:
   - {fileID: 5447067978454001291, guid: f1251d98786494946a8f4c5f8578e2b8, type: 3}
   - {fileID: 8832521932469350605, guid: 830f199f462ce4c96bdd851fd450cac7, type: 3}
@@ -1195,18 +1188,40 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1c09c5774c6924731b8d69905ae17163, type: 2}
   - {fileID: 11400000, guid: d30c6058203d54caa83d57e208296416, type: 2}
   - {fileID: 11400000, guid: 615213cb8ca2c410e8eeb6227250993a, type: 2}
+  biomeGenerationSettings:
+    enableGrass: 1
+    enableForest: 1
+    enableMountain: 1
+    enableWater: 1
+    enableDesert: 0
+    useRandomSeed: 1
+    seed: 12345
+    elevationFrequency: 0.12
+    moistureFrequency: 0.1
+    heatFrequency: 0.08
+    noiseOctaves: 3
+    noisePersistence: 0.5
+    noiseLacunarity: 2
+    waterThreshold: 0.309
+    mountainThreshold: 0.784
+    forestMoistureThreshold: 0.523
+    desertMoistureThreshold: 0.101
+    desertHeatThreshold: 0.955
+    isolatedAnomalyChance: 0.025
+    microPatchChance: 0.03
+    microPatchMinSize: 2
+    microPatchMaxSize: 3
+  specialTileSettings:
+    enforceStartBiome: 1
+    startBiome: 3
+    enforceGoalBiome: 1
+    goalBiome: 1
   Rows: 10
   Columns: 10
   X1stTileSpacing: 1
   XTileSpacing: 0.9997
   YTileSpacing: 0.87
   rotation: 60
-  primary: 3
-  secondary: 0
-  tertiary: 4
-  chancePrimary: 74.1
-  chanceSecondary: 30
-  chanceTertiary: 10
 --- !u!4 &1722897117
 Transform:
   m_ObjectHideFlags: 0
@@ -1330,6 +1345,9 @@ MonoBehaviour:
   moveSpeed: 12
   rotationSpeed: 90
   moveRange: 15
+  zoomStep: 0.1
+  minZoomMultiplier: 0.5
+  maxZoomMultiplier: 1.5
 --- !u!1 &1822504936
 GameObject:
   m_ObjectHideFlags: 0
@@ -1417,30 +1435,46 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 306c406b288e45045a7b94cc8c8edf41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tilePrefabs:
-  - {fileID: 1797662959298801907, guid: e61372c31e23ece458622e552b33e3c0, type: 3}
-  - {fileID: 4101783930499229283, guid: b5d9524572ed9894baf3d5e1c0af78ba, type: 3}
-  - {fileID: 7890297732405158875, guid: a1b616ffcadc3044b90d1d2c9eb68d01, type: 3}
-  - {fileID: 6880197897842611278, guid: 1a9a153a28fcaa849b380f0efc973a2d, type: 3}
-  - {fileID: 9063097090207899727, guid: 15e54fc184363e648b9473aa2a4ea46d, type: 3}
   forestTiles: []
   grassTiles: []
   mountainTiles: []
   waterTiles: []
   desertTiles: []
   hexProperties: []
+  biomeGenerationSettings:
+    enableGrass: 1
+    enableForest: 1
+    enableMountain: 1
+    enableWater: 1
+    enableDesert: 0
+    useRandomSeed: 1
+    seed: 12345
+    elevationFrequency: 0.12
+    moistureFrequency: 0.1
+    heatFrequency: 0.08
+    noiseOctaves: 3
+    noisePersistence: 0.5
+    noiseLacunarity: 2
+    waterThreshold: 0.28
+    mountainThreshold: 0.72
+    forestMoistureThreshold: 0.6
+    desertMoistureThreshold: 0.35
+    desertHeatThreshold: 0.58
+    isolatedAnomalyChance: 0.025
+    microPatchChance: 0.04
+    microPatchMinSize: 2
+    microPatchMaxSize: 4
+  specialTileSettings:
+    enforceStartBiome: 1
+    startBiome: 3
+    enforceGoalBiome: 1
+    goalBiome: 3
   Rows: 2
   Columns: 10
   X1stTileSpacing: 1
   XTileSpacing: 1
   YTileSpacing: 0.75
   rotation: 30
-  primary: 0
-  secondary: 0
-  tertiary: 0
-  chancePrimary: 0
-  chanceSecondary: 0
-  chanceTertiary: 0
 --- !u!4 &1880823900
 Transform:
   m_ObjectHideFlags: 0
