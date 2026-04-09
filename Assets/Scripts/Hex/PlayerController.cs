@@ -12,7 +12,9 @@ public class PlayerController : MonoBehaviour
     public Text hintText;
     public Transform caravanVisual;
     public Transform goalVisual;
-    [Min(1)] public int startingResources = 30;
+    [Min(1)] public int startingFood = 30;
+    [Min(1)] public int startingMorale = 3;
+    [Min(0)] public int startingGold = 3;
     [Min(0.1f)] public float caravanHeight = 0.65f;
     [Min(0.1f)] public float caravanScale = 0.45f;
     [Min(0.1f)] public float goalHeight = 0.5f;
@@ -28,6 +30,8 @@ public class PlayerController : MonoBehaviour
     private MapGenerator mapGenerator;
     private PitstopSpawner pitstopSpawner;
     private HexFogOfWarController fogOfWarController;
+    private HexObstacleController obstacleController;
+    private readonly CaravanResourceState caravanResources = new();
 
     private HexagonTile currentTile;
     private HexagonTile goalTile;
@@ -36,7 +40,6 @@ public class PlayerController : MonoBehaviour
     private bool caravanSelectionActive;
     private bool isReady;
     private bool isRunOver;
-    private int currentResources;
 
     private void Awake()
     {
@@ -53,7 +56,9 @@ public class PlayerController : MonoBehaviour
     private void OnValidate()
     {
         AutoAssignTextReferences();
-        startingResources = Mathf.Max(1, startingResources);
+        startingFood = Mathf.Max(1, startingFood);
+        startingMorale = Mathf.Max(1, startingMorale);
+        startingGold = Mathf.Max(0, startingGold);
         caravanHeight = Mathf.Max(0.1f, caravanHeight);
         caravanScale = Mathf.Max(0.1f, caravanScale);
         goalHeight = Mathf.Max(0.1f, goalHeight);
@@ -89,9 +94,10 @@ public class PlayerController : MonoBehaviour
         }
 
         InitializeFogOfWar();
-        RefreshFogOfWar();
+        HexFogUpdateResult initialFogUpdate = RefreshFogOfWar();
+        InitializeObstacleSystem(initialFogUpdate);
 
-        currentResources = startingResources;
+        caravanResources.Initialize(startingFood, startingMorale, startingGold);
         UpdateResourcesText();
         isReady = true;
         RefreshTileDetails(currentTile);
@@ -171,9 +177,9 @@ public class PlayerController : MonoBehaviour
         {
             travelTimePresenter.ShowPath(previewPath);
             int moveCost = HexPathMetrics.GetTravelCost(previewPath);
-            if (moveCost > currentResources)
+            if (moveCost > caravanResources.Food)
             {
-                hudPresenter.ShowInsufficientResources(clickedTile, moveCost, currentResources);
+                hudPresenter.ShowInsufficientResources(clickedTile, moveCost, caravanResources.Food);
             }
             else
             {
@@ -206,9 +212,9 @@ public class PlayerController : MonoBehaviour
         }
 
         int moveCost = HexPathMetrics.GetTravelCost(previewPath);
-        if (moveCost > currentResources)
+        if (moveCost > caravanResources.Food)
         {
-            hudPresenter.ShowInsufficientResources(clickedTile, moveCost, currentResources);
+            hudPresenter.ShowInsufficientResources(clickedTile, moveCost, caravanResources.Food);
             return;
         }
 
@@ -222,21 +228,29 @@ public class PlayerController : MonoBehaviour
         currentTile.TileData?.SetOccupied(false);
         currentTile = destinationTile;
         currentTile.TileData?.SetOccupied(true);
-        currentResources -= moveCost;
+        caravanResources.Spend(CaravanResourceType.Food, moveCost);
         UpdateResourcesText();
 
         AttachCaravanToTile(currentTile);
-        RefreshFogOfWar();
+        HexFogUpdateResult fogUpdate = RefreshFogOfWar();
 
         selectedTile = null;
         previewPath = null;
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
-        RefreshTileDetails(currentTile);
-        if (currentResources <= 0)
+        if (caravanResources.IsDefeated)
         {
-            EndRunAsDefeat();
+            RefreshTileDetails(currentTile);
+            EndRunAsDefeat(caravanResources.GetDefeatReason());
+            return;
+        }
+
+        HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
+        RefreshTileDetails(currentTile);
+        if (caravanResources.IsDefeated)
+        {
+            EndRunAsDefeat(caravanResources.GetDefeatReason());
             return;
         }
 
@@ -246,7 +260,14 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        hudPresenter.ShowMoveComplete(currentTile, moveCost, currentResources);
+        if (obstacleTurnResult.ContactResult.HasContact)
+        {
+            hudPresenter.ShowObstacleEncounter(currentTile, obstacleTurnResult.ContactResult, caravanResources.ToSnapshot());
+        }
+        else
+        {
+            hudPresenter.ShowMoveComplete(currentTile, moveCost, caravanResources.ToSnapshot());
+        }
         RefreshHighlights();
     }
 
@@ -421,7 +442,8 @@ public class PlayerController : MonoBehaviour
     {
         if (resourcesText != null)
         {
-            resourcesText.text = $"Supplies: {Mathf.Max(currentResources, 0)}";
+            resourcesText.text =
+                $"Food: {Mathf.Max(caravanResources.Food, 0)}  Morale: {Mathf.Max(caravanResources.Morale, 0)}  Gold: {Mathf.Max(caravanResources.Gold, 0)}";
         }
     }
 
@@ -434,10 +456,10 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         RefreshTileDetails(currentTile);
-        hudPresenter.ShowVictory(goalTile, currentResources);
+        hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
     }
 
-    private void EndRunAsDefeat()
+    private void EndRunAsDefeat(string defeatReason)
     {
         isRunOver = true;
         ClearHighlights();
@@ -446,7 +468,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         RefreshTileDetails(currentTile);
-        hudPresenter.ShowDefeat(currentTile);
+        hudPresenter.ShowDefeat(currentTile, defeatReason);
     }
 
     private void RefreshTileDetails(HexagonTile tile)
@@ -464,7 +486,14 @@ public class PlayerController : MonoBehaviour
             pitstopSpawner.TryGetPitstop(tile.Coordinates, out pitstopSite);
         }
 
-        hudPresenter.ShowTileDetails(tile, pitstopSite);
+        obstacleController ??= FindAnyObjectByType<HexObstacleController>();
+        HexObstacleInstance visibleObstacle = null;
+        if (obstacleController != null)
+        {
+            obstacleController.TryGetVisibleObstacle(tile.Coordinates, out visibleObstacle);
+        }
+
+        hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle);
     }
 
     private void InitializeFogOfWar()
@@ -473,14 +502,14 @@ public class PlayerController : MonoBehaviour
         fogOfWarController.Initialize(mapGenerator, BuildAlwaysKnownCoordinates());
     }
 
-    private void RefreshFogOfWar()
+    private HexFogUpdateResult RefreshFogOfWar()
     {
         if (fogOfWarController == null || currentTile == null)
         {
-            return;
+            return HexFogUpdateResult.Empty;
         }
 
-        fogOfWarController.RefreshVisibility(currentTile.Coordinates, BuildAlwaysKnownCoordinates());
+        return fogOfWarController.RefreshVisibility(currentTile.Coordinates, BuildAlwaysKnownCoordinates());
     }
 
     private IEnumerable<HexCoordinates> BuildAlwaysKnownCoordinates()
@@ -556,5 +585,35 @@ public class PlayerController : MonoBehaviour
         mapGenerator ??= FindAnyObjectByType<MapGenerator>();
         pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
+        obstacleController ??= FindAnyObjectByType<HexObstacleController>();
+    }
+
+    private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
+    {
+        if (obstacleController == null)
+        {
+            return;
+        }
+
+        obstacleController.Initialize(mapGenerator, pitstopSpawner, fogOfWarController);
+        obstacleController.SyncVisibility(initialFogUpdate);
+    }
+
+    private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
+    {
+        if (obstacleController == null)
+        {
+            return HexObstacleTurnResult.Empty;
+        }
+
+        HexObstacleTurnResult turnResult = obstacleController.ProcessTurn(fogUpdate, currentTile.Coordinates, caravanResources.ToSnapshot());
+        if (!turnResult.ContactResult.HasContact)
+        {
+            return turnResult;
+        }
+
+        caravanResources.Spend(turnResult.ContactResult.AffectedResource, turnResult.ContactResult.AmountDrained);
+        UpdateResourcesText();
+        return turnResult;
     }
 }

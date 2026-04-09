@@ -123,7 +123,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Previewing route to {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, $"Cost: {totalTravelCost} supplies over {stepCount} steps. Click the same tile again to move.");
+        SetText(hintText, $"Cost: {totalTravelCost} food over {stepCount} steps. Click the same tile again to move.");
     }
 
     public void ShowUnreachableDestination(HexagonTile destinationTile)
@@ -164,11 +164,11 @@ public sealed class HexHudPresenter
 
         SetText(
             statusText,
-            $"Not enough supplies for {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, $"Need {travelCost} supplies and only have {remainingResources}. Pick a cheaper route or cancel.");
+            $"Not enough food for {FormatCoordinates(destinationTile.Coordinates)}.");
+        SetText(hintText, $"Need {travelCost} food and only have {remainingResources}. Pick a cheaper route or cancel.");
     }
 
-    public void ShowMoveComplete(HexagonTile tile, int travelCost, int remainingResources)
+    public void ShowMoveComplete(HexagonTile tile, int travelCost, CaravanResourceSnapshot resources)
     {
         if (tile == null)
         {
@@ -179,10 +179,27 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Caravan moved to {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Spent {travelCost} supplies. {remainingResources} left. Click the caravan tile to plan the next move.");
+        SetText(hintText, $"Spent {travelCost} food. {FormatResourceSummary(resources)}. Click the caravan tile to plan the next move.");
     }
 
-    public void ShowVictory(HexagonTile tile, int remainingResources)
+    public void ShowObstacleEncounter(HexagonTile tile, HexObstacleContactResult contactResult, CaravanResourceSnapshot resources)
+    {
+        if (tile == null || !contactResult.HasContact || contactResult.Obstacle == null)
+        {
+            ShowCaravanIdle(tile);
+            return;
+        }
+
+        string resourceLabel = FormatResourceType(contactResult.AffectedResource);
+        string fallbackText = contactResult.UsedFallbackResource ? " Fallback penalty applied." : string.Empty;
+
+        SetText(
+            statusText,
+            $"{contactResult.Obstacle.Definition.displayName} struck at {FormatCoordinates(tile.Coordinates)}.");
+        SetText(hintText, $"Lost {contactResult.AmountDrained} {resourceLabel}.{fallbackText} {FormatResourceSummary(resources)}.");
+    }
+
+    public void ShowVictory(HexagonTile tile, CaravanResourceSnapshot resources)
     {
         if (tile == null)
         {
@@ -194,21 +211,21 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Goal reached at {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Run complete with {remainingResources} supplies left. Press Play again to restart.");
+        SetText(hintText, $"Run complete. {FormatResourceSummary(resources)}. Press Play again to restart.");
     }
 
-    public void ShowDefeat(HexagonTile tile)
+    public void ShowDefeat(HexagonTile tile, string defeatReason)
     {
         if (tile == null)
         {
-            SetText(statusText, "Supplies depleted.");
+            SetText(statusText, defeatReason);
             SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
             return;
         }
 
         SetText(
             statusText,
-            $"Supplies depleted at {FormatCoordinates(tile.Coordinates)}.");
+            $"{defeatReason} at {FormatCoordinates(tile.Coordinates)}.");
         SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
     }
 
@@ -218,7 +235,7 @@ public sealed class HexHudPresenter
         SetText(hintText, "Pick a different destination or start a new route.");
     }
 
-    public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null)
+    public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, HexObstacleInstance visibleObstacle = null)
     {
         if (tile == null)
         {
@@ -233,6 +250,7 @@ public sealed class HexHudPresenter
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}\n{passability}";
         details = AppendPitstopDetails(details, pitstopSite);
+        details = AppendObstacleDetails(details, visibleObstacle);
 
         SetText(tileDetailsText, details);
     }
@@ -287,5 +305,39 @@ public sealed class HexHudPresenter
             : pitstopSite.SpecialEventDescription;
 
         return $"{details}\nRefuel Point: {refuelStatus}\nSpecial Event: {specialEventDescription}";
+    }
+
+    private static string AppendObstacleDetails(string details, HexObstacleInstance visibleObstacle)
+    {
+        if (visibleObstacle == null || visibleObstacle.Definition == null)
+        {
+            return details;
+        }
+
+        HexObstacleDefinition definition = visibleObstacle.Definition;
+        string resourceLabel = FormatResourceType(definition.primaryResource);
+        string obstacleLine = $"{definition.displayName} ({resourceLabel} -{definition.primaryDrainAmount})";
+        if (definition.penaltyMode == HexObstaclePenaltyMode.FallbackDrainIfPrimaryUnavailable)
+        {
+            obstacleLine += $" / fallback {FormatResourceType(definition.fallbackResource)} -{definition.fallbackDrainAmount}";
+        }
+
+        return $"{details}\nObstacle: {obstacleLine}";
+    }
+
+    private static string FormatResourceType(CaravanResourceType resourceType)
+    {
+        return resourceType switch
+        {
+            CaravanResourceType.Food => "Food",
+            CaravanResourceType.Morale => "Morale",
+            CaravanResourceType.Gold => "Gold",
+            _ => resourceType.ToString()
+        };
+    }
+
+    private static string FormatResourceSummary(CaravanResourceSnapshot resources)
+    {
+        return $"Food {resources.Food}, Morale {resources.Morale}, Gold {resources.Gold}";
     }
 }

@@ -246,6 +246,7 @@ Transform:
   - {fileID: 1722897117}
   - {fileID: 187423992}
   - {fileID: 1822504937}
+  - {fileID: 1822504942}
   - {fileID: 1900944117}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -478,7 +479,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1.1
-  m_Text: 'Supplies: --'
+  m_Text: 'Food: --  Morale: --  Gold: --'
 --- !u!222 &272321121
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1436,7 +1437,9 @@ MonoBehaviour:
   hintText: {fileID: 1369353608}
   caravanVisual: {fileID: 0}
   goalVisual: {fileID: 0}
-  startingResources: 30
+  startingFood: 30
+  startingMorale: 3
+  startingGold: 3
   caravanHeight: 0.65
   caravanScale: 0.45
   goalHeight: 0.5
@@ -1463,6 +1466,115 @@ MonoBehaviour:
     unseenOverlayAlpha: 0.92
     overlayHeight: 0.03
     overlayScale: 1.02
+--- !u!114 &1822504940
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1822504941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a1e6c1e38cc4b2d90f2a11661d7c008, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexObstacleController
+  spawnSettings:
+    maxActiveObstacles: 2
+    enableSpawnPity: 1
+    failedRollsBeforeGuaranteedSpawn: 2
+    enableSpawnDebugLogging: 0
+    baseSpawnChance: 0.5
+    bonusChancePerEnteredHex: 0.15
+    maxSpawnChance: 0.95
+    visibleNeighborWeight: 0.75
+    enteredNeighborWeight: 1.4
+    edgePenaltyWeight: 0.15
+    randomJitter: 0.08
+    minimumCandidateWeight: 0.05
+  obstacleDefinitions:
+  - id: wolves
+    displayName: Wolves
+    penaltyMode: 0
+    primaryResource: 0
+    primaryDrainAmount: 1
+    fallbackResource: 1
+    fallbackDrainAmount: 1
+    spawnWeight: 1.2
+    biomePreferences:
+      grassWeight: 1
+      forestWeight: 1.35
+      mountainWeight: 0.8
+      waterWeight: 0
+      desertWeight: 0.5
+    visualColor: {r: 0.72, g: 0.2, b: 0.2, a: 1}
+    visualScale: 0.22
+  - id: bandits
+    displayName: Bandits
+    penaltyMode: 1
+    primaryResource: 2
+    primaryDrainAmount: 1
+    fallbackResource: 1
+    fallbackDrainAmount: 1
+    spawnWeight: 1
+    biomePreferences:
+      grassWeight: 1.1
+      forestWeight: 0.9
+      mountainWeight: 1.1
+      waterWeight: 0
+      desertWeight: 1
+    visualColor: {r: 0.88, g: 0.68, b: 0.12, a: 1}
+    visualScale: 0.24
+  - id: ruined-caravan
+    displayName: Ruined Caravan
+    penaltyMode: 0
+    primaryResource: 1
+    primaryDrainAmount: 1
+    fallbackResource: 1
+    fallbackDrainAmount: 1
+    spawnWeight: 0.9
+    biomePreferences:
+      grassWeight: 0.9
+      forestWeight: 1.05
+      mountainWeight: 1.15
+      waterWeight: 0
+      desertWeight: 0.95
+    visualColor: {r: 0.42, g: 0.45, b: 0.5, a: 1}
+    visualScale: 0.2
+  obstacleVisualPrefab: {fileID: 919132149155446097, guid: 2f7cfa76cf90547139db81a3b3657e82,
+    type: 3}
+  visualHeight: 0.45
+--- !u!1 &1822504941
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1822504942}
+  - component: {fileID: 1822504940}
+  m_Layer: 0
+  m_Name: Obstacle System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1822504942
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1822504941}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1880823898
 GameObject:
   m_ObjectHideFlags: 0
