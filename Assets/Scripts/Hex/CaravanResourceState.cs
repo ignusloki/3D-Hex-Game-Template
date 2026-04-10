@@ -75,6 +75,24 @@ public sealed class CaravanResourceState
         }
     }
 
+    public void ApplyDelta(CaravanResourceType resourceType, int amount)
+    {
+        switch (resourceType)
+        {
+            case CaravanResourceType.Food:
+                Food = Mathf.Max(0, Food + amount);
+                break;
+
+            case CaravanResourceType.Morale:
+                Morale = Mathf.Max(0, Morale + amount);
+                break;
+
+            case CaravanResourceType.Gold:
+                Gold = Mathf.Max(0, Gold + amount);
+                break;
+        }
+    }
+
     public string GetDefeatReason()
     {
         if (Food <= 0)

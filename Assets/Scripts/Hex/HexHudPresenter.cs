@@ -6,18 +6,20 @@ public sealed class HexHudPresenter
     private readonly Text statusText;
     private readonly Text tileDetailsText;
     private readonly Text hintText;
+    private readonly Text pitstopInfoText;
 
-    public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText)
+    public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText, Text pitstopInfoText = null)
     {
         this.statusText = statusText;
         this.tileDetailsText = tileDetailsText;
         this.hintText = hintText;
+        this.pitstopInfoText = pitstopInfoText;
     }
 
     public void ShowAwaitingStart()
     {
         SetText(statusText, "Select a departure tile.");
-        SetText(hintText, "First click picks your origin. Second click previews the cheapest route.");
+        ClearHintText();
     }
 
     public void ShowCaravanIdle(HexagonTile caravanTile)
@@ -25,14 +27,14 @@ public sealed class HexHudPresenter
         if (caravanTile == null)
         {
             SetText(statusText, "Caravan ready.");
-            SetText(hintText, "Reach the goal marker on the right edge. Click a tile to inspect it, or click the caravan tile to plan a move.");
+            ClearHintText();
             return;
         }
 
         SetText(
             statusText,
             $"Caravan ready at {FormatCoordinates(caravanTile.Coordinates)}.");
-        SetText(hintText, "Reach the goal marker on the right edge. Click the caravan tile to plan a move.");
+        ClearHintText();
     }
 
     public void ShowInspectingTile(HexagonTile tile)
@@ -46,7 +48,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Inspecting {FormatCoordinates(tile.Coordinates)} ({FormatBiome(tile.TileData?.Biome ?? Biome.grass)}).");
-        SetText(hintText, "Click the caravan tile to begin route planning toward the goal marker.");
+        ClearHintText();
     }
 
     public void ShowInspectingUnknownTile(HexagonTile tile)
@@ -60,7 +62,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Inspecting {FormatCoordinates(tile.Coordinates)} (Unknown).");
-        SetText(hintText, "Move closer to reveal this terrain.");
+        ClearHintText();
     }
 
     public void ShowCaravanSelected(HexagonTile caravanTile)
@@ -74,7 +76,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Caravan selected at {FormatCoordinates(caravanTile.Coordinates)}.");
-        SetText(hintText, "Click a destination tile to preview the route. Click the caravan tile again to cancel.");
+        ClearHintText();
     }
 
     public void ShowAwaitingDestination(HexagonTile startTile)
@@ -88,7 +90,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Origin: {FormatCoordinates(startTile.Coordinates)} ({FormatBiome(startTile.TileData?.Biome ?? Biome.grass)})");
-        SetText(hintText, "Choose a destination tile to preview route time.");
+        ClearHintText();
     }
 
     public void ShowPathPreview(IReadOnlyList<HexTileData> path)
@@ -106,7 +108,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Route ready: {stepCount} steps to {FormatCoordinates(destination.Coordinates)}.");
-        SetText(hintText, $"Preview cost: {totalTravelCost} days. Click a new origin to plan another route.");
+        ClearHintText();
     }
 
     public void ShowDestinationPreview(HexagonTile destinationTile, IReadOnlyList<HexTileData> path)
@@ -123,7 +125,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Previewing route to {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, $"Cost: {totalTravelCost} food over {stepCount} steps. Click the same tile again to move.");
+        ClearHintText();
     }
 
     public void ShowUnreachableDestination(HexagonTile destinationTile)
@@ -137,7 +139,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"No route to {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, "Click a different tile to preview another route, or click the caravan tile to cancel.");
+        ClearHintText();
     }
 
     public void ShowOutOfRangeDestination(HexagonTile destinationTile)
@@ -151,7 +153,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Tile {FormatCoordinates(destinationTile.Coordinates)} is outside caravan range.");
-        SetText(hintText, "The caravan moves one hex at a time. Pick an adjacent hex to move.");
+        ClearHintText();
     }
 
     public void ShowInsufficientResources(HexagonTile destinationTile, int travelCost, int remainingResources)
@@ -165,7 +167,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Not enough food for {FormatCoordinates(destinationTile.Coordinates)}.");
-        SetText(hintText, $"Need {travelCost} food and only have {remainingResources}. Pick a cheaper route or cancel.");
+        ClearHintText();
     }
 
     public void ShowMoveComplete(HexagonTile tile, int travelCost, CaravanResourceSnapshot resources)
@@ -179,7 +181,43 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"Caravan moved to {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Spent {travelCost} food. {FormatResourceSummary(resources)}. Click the caravan tile to plan the next move.");
+        ClearHintText();
+    }
+
+    public void ShowPitstopEvent(HexagonTile tile, PitstopEventResult eventResult, CaravanResourceSnapshot resources)
+    {
+        if (tile == null || eventResult == null || eventResult.Site == null)
+        {
+            ShowCaravanIdle(tile);
+            return;
+        }
+
+        if (!eventResult.Triggered)
+        {
+            ShowPitstopRevisit(tile, eventResult.Site, resources);
+            return;
+        }
+
+        SetText(pitstopInfoText, FormatPitstopPanel(eventResult.Site, eventResult));
+        SetText(
+            statusText,
+            $"{eventResult.Title} at {FormatCoordinates(tile.Coordinates)}.");
+        ClearHintText();
+    }
+
+    public void ShowPitstopRevisit(HexagonTile tile, PitstopSite site, CaravanResourceSnapshot resources)
+    {
+        if (tile == null || site == null)
+        {
+            ShowCaravanIdle(tile);
+            return;
+        }
+
+        SetText(pitstopInfoText, FormatPitstopPanel(site));
+        SetText(
+            statusText,
+            $"Returned to {site.EventTitle} at {FormatCoordinates(tile.Coordinates)}.");
+        ClearHintText();
     }
 
     public void ShowObstacleEncounter(HexagonTile tile, HexObstacleContactResult contactResult, CaravanResourceSnapshot resources)
@@ -196,7 +234,7 @@ public sealed class HexHudPresenter
         SetText(
             statusText,
             $"{contactResult.Obstacle.Definition.displayName} struck at {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Lost {contactResult.AmountDrained} {resourceLabel}.{fallbackText} {FormatResourceSummary(resources)}.");
+        ClearHintText();
     }
 
     public void ShowVictory(HexagonTile tile, CaravanResourceSnapshot resources)
@@ -204,14 +242,14 @@ public sealed class HexHudPresenter
         if (tile == null)
         {
             SetText(statusText, "Goal reached.");
-            SetText(hintText, "Run complete. Press Play again to restart.");
+            ClearHintText();
             return;
         }
 
         SetText(
             statusText,
             $"Goal reached at {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, $"Run complete. {FormatResourceSummary(resources)}. Press Play again to restart.");
+        ClearHintText();
     }
 
     public void ShowDefeat(HexagonTile tile, string defeatReason)
@@ -219,20 +257,20 @@ public sealed class HexHudPresenter
         if (tile == null)
         {
             SetText(statusText, defeatReason);
-            SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
+            ClearHintText();
             return;
         }
 
         SetText(
             statusText,
             $"{defeatReason} at {FormatCoordinates(tile.Coordinates)}.");
-        SetText(hintText, "The caravan cannot continue. Press Play again to restart.");
+        ClearHintText();
     }
 
     public void ShowNoPath()
     {
         SetText(statusText, "No route found for that pair of tiles.");
-        SetText(hintText, "Pick a different destination or start a new route.");
+        ClearHintText();
     }
 
     public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, HexObstacleInstance visibleObstacle = null)
@@ -246,13 +284,12 @@ public sealed class HexHudPresenter
         HexTileData tileData = tile.TileData;
         string biome = FormatBiome(tileData?.Biome ?? Biome.grass);
         string travelCost = (tileData?.TravelCost ?? tile.travelCost).ToString();
-        string passability = (tileData?.IsPassable ?? tile.canTravelThrough) ? "Passable" : "Blocked";
 
-        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}\n{passability}";
-        details = AppendPitstopDetails(details, pitstopSite);
+        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}";
         details = AppendObstacleDetails(details, visibleObstacle);
 
         SetText(tileDetailsText, details);
+        SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
     }
 
     public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null)
@@ -264,14 +301,17 @@ public sealed class HexHudPresenter
         }
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: Unknown\nTravel Cost: Unknown\nVisibility: Unseen";
-        details = AppendPitstopDetails(details, pitstopSite);
         SetText(tileDetailsText, details);
+        SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
     }
 
     public void ResetTileDetails()
     {
         SetText(tileDetailsText, "Click a tile to inspect terrain cost.");
+        SetText(pitstopInfoText, DefaultPitstopPanelText);
     }
+
+    private const string DefaultPitstopPanelText = "Pitstop Info\nSelect a pitstop to inspect its stop effect.";
 
     private static void SetText(Text target, string value)
     {
@@ -279,6 +319,11 @@ public sealed class HexHudPresenter
         {
             target.text = value;
         }
+    }
+
+    private void ClearHintText()
+    {
+        SetText(hintText, string.Empty);
     }
 
     private static string FormatCoordinates(HexCoordinates coordinates)
@@ -290,21 +335,6 @@ public sealed class HexHudPresenter
     {
         string raw = biome.ToString();
         return char.ToUpperInvariant(raw[0]) + raw[1..];
-    }
-
-    private static string AppendPitstopDetails(string details, PitstopSite pitstopSite)
-    {
-        if (pitstopSite == null)
-        {
-            return details;
-        }
-
-        string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
-        string specialEventDescription = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
-            ? "placeholder"
-            : pitstopSite.SpecialEventDescription;
-
-        return $"{details}\nRefuel Point: {refuelStatus}\nSpecial Event: {specialEventDescription}";
     }
 
     private static string AppendObstacleDetails(string details, HexObstacleInstance visibleObstacle)
@@ -339,5 +369,72 @@ public sealed class HexHudPresenter
     private static string FormatResourceSummary(CaravanResourceSnapshot resources)
     {
         return $"Food {resources.Food}, Morale {resources.Morale}, Gold {resources.Gold}";
+    }
+
+    private static string FormatPitstopEffectSummary(PitstopEventResult eventResult)
+    {
+        if (eventResult == null)
+        {
+            return "The caravan pauses at a roadside stop.";
+        }
+
+        if (eventResult.AppliedEffects.Count == 0)
+        {
+            return string.IsNullOrWhiteSpace(eventResult.Description)
+                ? "The caravan pauses at a roadside stop."
+                : eventResult.Description;
+        }
+
+        List<string> effectParts = new(eventResult.AppliedEffects.Count);
+        for (int index = 0; index < eventResult.AppliedEffects.Count; index++)
+        {
+            PitstopResourceEffectResult effect = eventResult.AppliedEffects[index];
+            string sign = effect.Amount >= 0 ? "+" : string.Empty;
+            effectParts.Add($"{sign}{effect.Amount} {FormatResourceType(effect.ResourceType)}");
+        }
+
+        return $"{eventResult.Description} Gained {string.Join(", ", effectParts)}.";
+    }
+
+    private static string FormatPitstopPanel(PitstopSite pitstopSite, PitstopEventResult eventResult = null)
+    {
+        if (pitstopSite == null)
+        {
+            return DefaultPitstopPanelText;
+        }
+
+        string title = string.IsNullOrWhiteSpace(pitstopSite.EventTitle) ? pitstopSite.Kind.ToString() : pitstopSite.EventTitle;
+        string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
+        string repeatableStatus = pitstopSite.Repeatable ? "Yes" : "No";
+        string visitedStatus = pitstopSite.Visited ? $"Yes ({pitstopSite.VisitCount})" : "No";
+        string description = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
+            ? "placeholder"
+            : pitstopSite.SpecialEventDescription;
+
+        string panel = $"Pitstop Info\n{title}\nRefuel: {refuelStatus}\nRepeatable: {repeatableStatus}\nVisited: {visitedStatus}\n{description}";
+        if (eventResult == null || !eventResult.Triggered || !eventResult.EffectsApplied)
+        {
+            return panel;
+        }
+
+        return $"{panel}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
+    }
+
+    private static string FormatEffectList(IReadOnlyList<PitstopResourceEffectResult> effects)
+    {
+        if (effects == null || effects.Count == 0)
+        {
+            return "None";
+        }
+
+        List<string> parts = new(effects.Count);
+        for (int index = 0; index < effects.Count; index++)
+        {
+            PitstopResourceEffectResult effect = effects[index];
+            string sign = effect.Amount >= 0 ? "+" : string.Empty;
+            parts.Add($"{sign}{effect.Amount} {FormatResourceType(effect.ResourceType)}");
+        }
+
+        return string.Join(", ", parts);
     }
 }

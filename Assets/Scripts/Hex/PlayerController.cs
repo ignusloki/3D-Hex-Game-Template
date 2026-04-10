@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public Text selectionStatusText;
     public Text tileDetailsText;
     public Text hintText;
+    public Text pitstopInfoText;
     public Transform caravanVisual;
     public Transform goalVisual;
     [Min(1)] public int startingFood = 30;
@@ -29,6 +30,7 @@ public class PlayerController : MonoBehaviour
     private HexHudPresenter hudPresenter;
     private MapGenerator mapGenerator;
     private PitstopSpawner pitstopSpawner;
+    private PitstopEventController pitstopEventController;
     private HexFogOfWarController fogOfWarController;
     private HexObstacleController obstacleController;
     private readonly CaravanResourceState caravanResources = new();
@@ -82,6 +84,8 @@ public class PlayerController : MonoBehaviour
             EnsureRuntimeReferences();
             yield return null;
         }
+
+        InitializePitstopEvents();
 
         if (!TrySpawnCaravan())
         {
@@ -239,15 +243,10 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
-        if (caravanResources.IsDefeated)
-        {
-            RefreshTileDetails(currentTile);
-            EndRunAsDefeat(caravanResources.GetDefeatReason());
-            return;
-        }
-
         HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
+        PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
         RefreshTileDetails(currentTile);
+
         if (caravanResources.IsDefeated)
         {
             EndRunAsDefeat(caravanResources.GetDefeatReason());
@@ -260,7 +259,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        if (obstacleTurnResult.ContactResult.HasContact)
+        if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
+        {
+            hudPresenter.ShowPitstopEvent(currentTile, pitstopEventResult, caravanResources.ToSnapshot());
+        }
+        else if (obstacleTurnResult.ContactResult.HasContact)
         {
             hudPresenter.ShowObstacleEncounter(currentTile, obstacleTurnResult.ContactResult, caravanResources.ToSnapshot());
         }
@@ -561,6 +564,7 @@ public class PlayerController : MonoBehaviour
         selectionStatusText = FindTextReference(selectionStatusText, "Selection Status Text");
         tileDetailsText = FindTextReference(tileDetailsText, "Tile Details Text");
         hintText = FindTextReference(hintText, "Hint Text");
+        pitstopInfoText = FindTextReference(pitstopInfoText, "Pitstop Info Text");
     }
 
     private static Text FindTextReference(Text currentValue, string objectName)
@@ -581,11 +585,12 @@ public class PlayerController : MonoBehaviour
         inputService ??= new HexTileInputService();
         pathHighlighter ??= new HexPathHighlighter();
         travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText);
-        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
+        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText, pitstopInfoText);
         mapGenerator ??= FindAnyObjectByType<MapGenerator>();
         pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         obstacleController ??= FindAnyObjectByType<HexObstacleController>();
+        pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -597,6 +602,16 @@ public class PlayerController : MonoBehaviour
 
         obstacleController.Initialize(mapGenerator, pitstopSpawner, fogOfWarController);
         obstacleController.SyncVisibility(initialFogUpdate);
+    }
+
+    private void InitializePitstopEvents()
+    {
+        if (pitstopEventController == null || pitstopSpawner == null)
+        {
+            return;
+        }
+
+        pitstopEventController.Initialize(pitstopSpawner);
     }
 
     private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
@@ -615,5 +630,22 @@ public class PlayerController : MonoBehaviour
         caravanResources.Spend(turnResult.ContactResult.AffectedResource, turnResult.ContactResult.AmountDrained);
         UpdateResourcesText();
         return turnResult;
+    }
+
+    private PitstopEventResult ProcessPitstopArrival()
+    {
+        if (pitstopEventController == null || currentTile == null)
+        {
+            return PitstopEventResult.Empty;
+        }
+
+        PitstopEventResult result = pitstopEventController.ProcessArrival(currentTile.Coordinates, caravanResources);
+        if (result == null || !result.Triggered || !result.EffectsApplied)
+        {
+            return result ?? PitstopEventResult.Empty;
+        }
+
+        UpdateResourcesText();
+        return result;
     }
 }
