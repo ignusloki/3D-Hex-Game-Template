@@ -29,6 +29,7 @@ public class PlayerController : MonoBehaviour
     private HexTravelTimePresenter travelTimePresenter;
     private HexHudPresenter hudPresenter;
     private MapGenerator mapGenerator;
+    private CaravanMetricsController caravanMetricsController;
     private PitstopSpawner pitstopSpawner;
     private PitstopEventController pitstopEventController;
     private HexFogOfWarController fogOfWarController;
@@ -42,6 +43,7 @@ public class PlayerController : MonoBehaviour
     private bool caravanSelectionActive;
     private bool isReady;
     private bool isRunOver;
+    private bool resourcesInitialized;
 
     private void Awake()
     {
@@ -101,8 +103,14 @@ public class PlayerController : MonoBehaviour
         HexFogUpdateResult initialFogUpdate = RefreshFogOfWar();
         InitializeObstacleSystem(initialFogUpdate);
 
-        caravanResources.Initialize(startingFood, startingMorale, startingGold);
+        CaravanResourceSnapshot startingResources = caravanMetricsController != null
+            ? caravanMetricsController.GetConfiguredSnapshot()
+            : new CaravanResourceSnapshot(startingFood, startingMorale, startingGold);
+
+        caravanResources.Initialize(startingResources.Food, startingResources.Morale, startingResources.Gold);
+        resourcesInitialized = true;
         UpdateResourcesText();
+        caravanMetricsController?.InitializeRuntimeSnapshot(caravanResources.ToSnapshot());
         isReady = true;
         RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
@@ -612,6 +620,7 @@ public class PlayerController : MonoBehaviour
         travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText);
         hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText, pitstopInfoText);
         mapGenerator ??= FindAnyObjectByType<MapGenerator>();
+        caravanMetricsController ??= GetComponentInChildren<CaravanMetricsController>(true);
         pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         obstacleController ??= FindAnyObjectByType<HexObstacleController>();
@@ -672,5 +681,29 @@ public class PlayerController : MonoBehaviour
 
         UpdateResourcesText();
         return result;
+    }
+
+    public bool HasInitializedCaravanResources => resourcesInitialized;
+
+    public CaravanResourceSnapshot GetCurrentResources()
+    {
+        return caravanResources.ToSnapshot();
+    }
+
+    public void OverrideCaravanResources(int food, int morale, int gold)
+    {
+        caravanResources.Initialize(food, morale, gold);
+        resourcesInitialized = true;
+        UpdateResourcesText();
+
+        if (currentTile != null)
+        {
+            RefreshTileDetails(currentTile);
+        }
+
+        if (!isRunOver && caravanResources.IsDefeated)
+        {
+            EndRunAsDefeat(caravanResources.GetDefeatReason());
+        }
     }
 }

@@ -14,17 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   eventId: walltower-signal-fire
   pitstopKind: 1
+  rarity: 1
+  tags:
+  - morale
+  - scouts
+  authoringNotes: Use this when the caravan needs steadier nerves late in a run.
   selectionWeight: 1
+  selectionRules:
+    requireFirstVisit: 1
+    allowRepeatSelectionInRun: 0
+    minimumVisitedPitstops: 0
+    maximumVisitedPitstops: -1
+    minimumFood: -1
+    maximumFood: -1
+    minimumMorale: -1
+    maximumMorale: 4
+    minimumGold: -1
+    maximumGold: -1
   title: Signal on the Ridge
   description: A lookout spots movement on a far ridge and asks whether the caravan can spare supplies for a faster warning run.
   options:
-  - label: Send food with the runners
-    outcomeText: The warning reaches the next post quickly, but your stores grow thinner.
+  - label: Share the warning route
+    outcomeText: The lookout points out a safer line of travel and the caravan regains some confidence.
     resourceEffects:
-    - resourceType: 0
-      amount: -1
     - resourceType: 1
-      amount: 2
+      amount: 1
   - label: Tip the tower captain in coin
     outcomeText: The captain promises a stronger escort on the next stretch.
     resourceEffects:

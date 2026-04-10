@@ -14,7 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   eventId: mansion-auction-hall
   pitstopKind: 2
+  rarity: 2
+  tags:
+  - gold
+  - trade
+  authoringNotes: Keep this in the pool only when the caravan can actually spend coin.
   selectionWeight: 1
+  selectionRules:
+    requireFirstVisit: 1
+    allowRepeatSelectionInRun: 0
+    minimumVisitedPitstops: 0
+    maximumVisitedPitstops: -1
+    minimumFood: -1
+    maximumFood: -1
+    minimumMorale: -1
+    maximumMorale: -1
+    minimumGold: 1
+    maximumGold: -1
   title: Auction Hall
   description: Servants prepare a late auction and quietly offer the caravan a chance to trade before the hall opens.
   options:

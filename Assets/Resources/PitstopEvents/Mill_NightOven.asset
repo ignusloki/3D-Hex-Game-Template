@@ -14,7 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   eventId: mill-night-oven
   pitstopKind: 0
+  rarity: 1
+  tags:
+  - food
+  - recovery
+  authoringNotes: Favor this when supplies are already running low.
   selectionWeight: 1
+  selectionRules:
+    requireFirstVisit: 1
+    allowRepeatSelectionInRun: 0
+    minimumVisitedPitstops: 0
+    maximumVisitedPitstops: -1
+    minimumFood: -1
+    maximumFood: 6
+    minimumMorale: -1
+    maximumMorale: -1
+    minimumGold: -1
+    maximumGold: -1
   title: Night Oven
   description: Bakers keep the last oven hot and wave the caravan toward a table of coarse bread and gossip.
   options:

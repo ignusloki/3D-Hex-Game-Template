@@ -10,6 +10,7 @@ public sealed class PitstopEventController : MonoBehaviour
 
     private readonly Dictionary<PitstopKind, PitstopEventDefinition> definitionsByKind = new();
     private readonly Dictionary<PitstopKind, List<PitstopEncounterAsset>> encountersByKind = new();
+    private readonly HashSet<string> seenEncounterIds = new();
     private PitstopSpawner pitstopSpawner;
     private PitstopEventModalPresenter modalPresenter;
 
@@ -25,6 +26,7 @@ public sealed class PitstopEventController : MonoBehaviour
     public void Initialize(PitstopSpawner pitstopSpawner)
     {
         this.pitstopSpawner = pitstopSpawner;
+        seenEncounterIds.Clear();
         EnsureDefinitions();
         EnsureEncounters();
         EnsureModalPresenter();
@@ -44,10 +46,11 @@ public sealed class PitstopEventController : MonoBehaviour
         }
 
         PitstopEventResult result = PitstopEventResolver.ResolveArrival(site, definition, resources);
-        if (result.Triggered && TryChooseEncounter(site.Kind, out PitstopEncounterAsset encounter))
+        if (result.Triggered && TryChooseEncounter(site, result, resources.ToSnapshot(), out PitstopEncounterAsset encounter))
         {
             result.Encounter = encounter;
             result.RequiresChoice = encounter.options != null && encounter.options.Count > 0;
+            seenEncounterIds.Add(encounter.eventId);
         }
 
         ApplyMetadata(site, definition);
@@ -69,8 +72,14 @@ public sealed class PitstopEventController : MonoBehaviour
             return;
         }
 
-        modalPresenter.ShowChoice(eventResult, optionIndex =>
+        CaravanResourceSnapshot resourceSnapshot = resources.ToSnapshot();
+        modalPresenter.ShowChoice(eventResult, resourceSnapshot, optionIndex =>
         {
+            if (!eventResult.Encounter.options[optionIndex].CanAfford(resources.ToSnapshot()))
+            {
+                return;
+            }
+
             PitstopEventResult resolvedResult = ResolveChoice(eventResult, optionIndex, resources);
             onResolved?.Invoke(resolvedResult);
             modalPresenter.ShowResolution(resolvedResult, null);
@@ -156,34 +165,28 @@ public sealed class PitstopEventController : MonoBehaviour
         }
     }
 
-    private bool TryChooseEncounter(PitstopKind kind, out PitstopEncounterAsset chosenEncounter)
+    private bool TryChooseEncounter(PitstopSite site, PitstopEventResult eventResult, CaravanResourceSnapshot resources, out PitstopEncounterAsset chosenEncounter)
     {
         chosenEncounter = null;
+        if (site == null || eventResult == null)
+        {
+            return false;
+        }
+
+        PitstopKind kind = site.Kind;
         if (!encountersByKind.TryGetValue(kind, out List<PitstopEncounterAsset> encounters) || encounters == null || encounters.Count == 0)
         {
             return false;
         }
 
-        float totalWeight = 0f;
-        for (int index = 0; index < encounters.Count; index++)
-        {
-            totalWeight += Mathf.Max(0.1f, encounters[index].selectionWeight);
-        }
+        PitstopEncounterSelectionContext context = new(
+            site,
+            eventResult.IsFirstVisit,
+            GetVisitedPitstopCount(),
+            resources,
+            seenEncounterIds);
 
-        float roll = Random.Range(0f, totalWeight);
-        for (int index = 0; index < encounters.Count; index++)
-        {
-            PitstopEncounterAsset encounter = encounters[index];
-            roll -= Mathf.Max(0.1f, encounter.selectionWeight);
-            if (roll <= 0f)
-            {
-                chosenEncounter = encounter;
-                return true;
-            }
-        }
-
-        chosenEncounter = encounters[encounters.Count - 1];
-        return true;
+        return PitstopEncounterSelector.TryChooseEncounter(encounters, context, out chosenEncounter);
     }
 
     private PitstopEventResult ResolveChoice(PitstopEventResult eventResult, int optionIndex, CaravanResourceState resources)
@@ -199,5 +202,24 @@ public sealed class PitstopEventController : MonoBehaviour
     private void EnsureModalPresenter()
     {
         modalPresenter ??= GetComponent<PitstopEventModalPresenter>() ?? gameObject.AddComponent<PitstopEventModalPresenter>();
+    }
+
+    private int GetVisitedPitstopCount()
+    {
+        if (pitstopSpawner?.SpawnedSites == null)
+        {
+            return 0;
+        }
+
+        int visitedCount = 0;
+        foreach (PitstopSite site in pitstopSpawner.SpawnedSites.Values)
+        {
+            if (site != null && site.Visited)
+            {
+                visitedCount++;
+            }
+        }
+
+        return visitedCount;
     }
 }

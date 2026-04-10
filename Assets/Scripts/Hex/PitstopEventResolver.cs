@@ -46,6 +46,11 @@ public static class PitstopEventResolver
             return PitstopEventResult.Empty;
         }
 
+        if (!option.CanAfford(resources.ToSnapshot()))
+        {
+            return result;
+        }
+
         result.RequiresChoice = false;
         result.SelectedOption = option;
         option.Validate();

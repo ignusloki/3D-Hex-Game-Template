@@ -22,7 +22,9 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
     [SerializeField] private Color optionHighlightedColor = new(0.19f, 0.24f, 0.31f, 0.98f);
     [SerializeField] private Color optionPressedColor = new(0.28f, 0.34f, 0.42f, 1f);
     [SerializeField] private Color optionTextColor = new(0.96f, 0.96f, 0.96f, 1f);
+    [SerializeField] private Color disabledOptionTextColor = new(0.62f, 0.62f, 0.62f, 1f);
     [SerializeField] private Color optionEffectColor = new(0.94f, 0.84f, 0.62f, 1f);
+    [SerializeField] private Color disabledOptionEffectColor = new(0.68f, 0.62f, 0.54f, 1f);
     [SerializeField] private Color resultColor = new(0.93f, 0.86f, 0.64f, 1f);
 
     private Canvas targetCanvas;
@@ -41,7 +43,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
 
     public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
 
-    public void ShowChoice(PitstopEventResult eventResult, Action<int> onOptionSelected)
+    public void ShowChoice(PitstopEventResult eventResult, CaravanResourceSnapshot resources, Action<int> onOptionSelected)
     {
         if (eventResult?.Encounter == null)
         {
@@ -65,7 +67,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         resultText.text = string.Empty;
         mapButton.gameObject.SetActive(false);
         optionsRoot.gameObject.SetActive(true);
-        RebuildOptions(eventResult.Encounter.options);
+        RebuildOptions(eventResult.Encounter.options, resources);
     }
 
     public void ShowResolution(PitstopEventResult eventResult, Action onCloseRequested)
@@ -208,7 +210,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         mapButton.gameObject.SetActive(false);
     }
 
-    private void RebuildOptions(IReadOnlyList<PitstopEncounterOption> options)
+    private void RebuildOptions(IReadOnlyList<PitstopEncounterOption> options, CaravanResourceSnapshot resources)
     {
         ClearOptions();
         if (options == null)
@@ -224,7 +226,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
                 continue;
             }
 
-            CreateOptionButton(option, index);
+            CreateOptionButton(option, index, resources);
         }
     }
 
@@ -241,7 +243,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         spawnedOptionObjects.Clear();
     }
 
-    private void CreateOptionButton(PitstopEncounterOption option, int index)
+    private void CreateOptionButton(PitstopEncounterOption option, int index, CaravanResourceSnapshot resources)
     {
         RectTransform rowRect = CreateRectTransform($"Option {index + 1}", optionsRoot);
         GameObject rowObject = rowRect.gameObject;
@@ -271,6 +273,8 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         colors.selectedColor = optionHighlightedColor;
         colors.disabledColor = optionBackgroundColor * 0.6f;
         button.colors = colors;
+        bool canAfford = option.CanAfford(resources);
+        button.interactable = canAfford;
         int optionIndex = index;
         button.onClick.AddListener(() => HandleOptionSelected(optionIndex));
 
@@ -279,6 +283,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         StretchToParent(textRect, 18f, 10f);
         optionText.text = option.label;
         optionText.alignment = TextAnchor.MiddleLeft;
+        optionText.color = canAfford ? optionTextColor : disabledOptionTextColor;
 
         Text optionEffectText = CreateText("Effect Summary", rowRect, 18, FontStyle.Italic, optionEffectColor);
         RectTransform effectRect = optionEffectText.rectTransform;
@@ -288,7 +293,8 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         effectRect.anchoredPosition = Vector2.zero;
         effectRect.sizeDelta = new Vector2(optionSummaryWidth, optionHeight);
         optionEffectText.alignment = TextAnchor.MiddleLeft;
-        optionEffectText.text = FormatOptionSummary(option);
+        optionEffectText.color = canAfford ? optionEffectColor : disabledOptionEffectColor;
+        optionEffectText.text = FormatOptionSummary(option, resources);
     }
 
     private void HandleOptionSelected(int optionIndex)
@@ -397,7 +403,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
             : $"Arrival bonus: {summary}";
     }
 
-    private static string FormatOptionSummary(PitstopEncounterOption option)
+    private static string FormatOptionSummary(PitstopEncounterOption option, CaravanResourceSnapshot resources)
     {
         if (option == null)
         {
@@ -405,6 +411,13 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         }
 
         string summary = FormatEffectSummary(option.resourceEffects);
+        if (option.TryGetUnavailableSummary(resources, out string unavailableSummary))
+        {
+            summary = string.IsNullOrWhiteSpace(summary)
+                ? unavailableSummary
+                : $"{summary}\n{unavailableSummary}";
+        }
+
         return string.IsNullOrWhiteSpace(summary) ? "No resource change" : summary;
     }
 
