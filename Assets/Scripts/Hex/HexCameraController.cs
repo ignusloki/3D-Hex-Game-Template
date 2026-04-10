@@ -21,6 +21,7 @@ public class HexCameraController : MonoBehaviour
     private Vector3 panOffset;
     private float yawOffset;
     private float zoomMultiplier = 1f;
+    private PitstopEventController pitstopEventController;
 
     private void Awake()
     {
@@ -53,6 +54,11 @@ public class HexCameraController : MonoBehaviour
 
     private void Update()
     {
+        if (IsModalBlockingCamera())
+        {
+            return;
+        }
+
         if (HandleReset())
         {
             return;
@@ -61,6 +67,12 @@ public class HexCameraController : MonoBehaviour
         HandleMovement();
         HandleRotation();
         HandleZoom();
+    }
+
+    private bool IsModalBlockingCamera()
+    {
+        pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
+        return pitstopEventController != null && pitstopEventController.IsChoiceModalOpen;
     }
 
     private void HandleMovement()

@@ -112,7 +112,7 @@ public class PlayerController : MonoBehaviour
     {
         EnsureRuntimeReferences();
 
-        if (!isReady || isRunOver)
+        if (!isReady || isRunOver || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen))
         {
             return;
         }
@@ -259,7 +259,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
+        if (pitstopEventResult.RequiresChoice)
+        {
+            pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
+        }
+        else if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
         {
             hudPresenter.ShowPitstopEvent(currentTile, pitstopEventResult, caravanResources.ToSnapshot());
         }
@@ -272,6 +276,27 @@ public class PlayerController : MonoBehaviour
             hudPresenter.ShowMoveComplete(currentTile, moveCost, caravanResources.ToSnapshot());
         }
         RefreshHighlights();
+    }
+
+    private void HandlePitstopChoiceResolved(PitstopEventResult eventResult)
+    {
+        UpdateResourcesText();
+        RefreshTileDetails(currentTile);
+
+        if (caravanResources.IsDefeated)
+        {
+            EndRunAsDefeat(caravanResources.GetDefeatReason());
+            return;
+        }
+
+        if (eventResult != null && eventResult.Site != null)
+        {
+            hudPresenter.ShowPitstopChoiceResolved(currentTile, eventResult, caravanResources.ToSnapshot());
+        }
+        else
+        {
+            hudPresenter.ShowCaravanIdle(currentTile);
+        }
     }
 
     private void ClearSelection()

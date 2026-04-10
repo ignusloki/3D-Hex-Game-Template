@@ -30,10 +30,39 @@ public static class PitstopEventResolver
             }
 
             resources.ApplyDelta(effect.resourceType, effect.amount);
-            result.AppliedEffects.Add(new PitstopResourceEffectResult(effect.resourceType, effect.amount));
+            PitstopResourceEffectResult effectResult = new(effect.resourceType, effect.amount);
+            result.EntryEffects.Add(effectResult);
+            result.AppliedEffects.Add(effectResult);
         }
 
         site.RegisterVisit();
+        return result;
+    }
+
+    public static PitstopEventResult ResolveChoice(PitstopEventResult result, PitstopEncounterOption option, CaravanResourceState resources)
+    {
+        if (result == null || option == null || resources == null)
+        {
+            return PitstopEventResult.Empty;
+        }
+
+        result.RequiresChoice = false;
+        result.SelectedOption = option;
+        option.Validate();
+
+        foreach (PitstopResourceEffect effect in option.resourceEffects)
+        {
+            if (effect == null || effect.amount == 0)
+            {
+                continue;
+            }
+
+            resources.ApplyDelta(effect.resourceType, effect.amount);
+            PitstopResourceEffectResult effectResult = new(effect.resourceType, effect.amount);
+            result.ChoiceEffects.Add(effectResult);
+            result.AppliedEffects.Add(effectResult);
+        }
+
         return result;
     }
 }

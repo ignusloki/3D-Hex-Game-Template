@@ -205,6 +205,25 @@ public sealed class HexHudPresenter
         ClearHintText();
     }
 
+    public void ShowPitstopChoiceResolved(HexagonTile tile, PitstopEventResult eventResult, CaravanResourceSnapshot resources)
+    {
+        if (tile == null || eventResult == null || eventResult.Site == null)
+        {
+            ShowCaravanIdle(tile);
+            return;
+        }
+
+        SetText(pitstopInfoText, FormatPitstopPanel(eventResult.Site, eventResult));
+        string title = eventResult.Title;
+        if (eventResult.SelectedOption != null)
+        {
+            title = $"{title}: {eventResult.SelectedOption.label}";
+        }
+
+        SetText(statusText, title);
+        ClearHintText();
+    }
+
     public void ShowPitstopRevisit(HexagonTile tile, PitstopSite site, CaravanResourceSnapshot resources)
     {
         if (tile == null || site == null)
@@ -417,7 +436,13 @@ public sealed class HexHudPresenter
             return panel;
         }
 
-        return $"{panel}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
+        if (eventResult.SelectedOption != null)
+        {
+            string outcomeText = string.IsNullOrWhiteSpace(eventResult.OutcomeText) ? eventResult.SelectedOption.label : eventResult.OutcomeText;
+            return $"{panel}\nEvent: {eventResult.Title}\nChoice: {eventResult.SelectedOption.label}\nOutcome: {outcomeText}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
+        }
+
+        return $"{panel}\nEvent: {eventResult.Title}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
     }
 
     private static string FormatEffectList(IReadOnlyList<PitstopResourceEffectResult> effects)

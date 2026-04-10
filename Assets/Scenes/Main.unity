@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cfabb0440166ab443bba8876756fdfa9, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Shadow
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.35}
   m_EffectDistance: {x: 1, y: -1}
@@ -182,7 +182,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.86, g: 0.92, b: 0.97, a: 1}
@@ -299,7 +299,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cfabb0440166ab443bba8876756fdfa9, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Shadow
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.35}
   m_EffectDistance: {x: 1, y: -1}
@@ -314,7 +314,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -373,7 +373,7 @@ MonoBehaviour:
   m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: faf4503fe1a2df84c94e8953824497df, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: 
   travelTimeText: {fileID: 307379327}
   selectionStatusText: {fileID: 91462350}
@@ -442,7 +442,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cfabb0440166ab443bba8876756fdfa9, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Shadow
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.35}
   m_EffectDistance: {x: 1, y: -1}
@@ -457,7 +457,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.97, g: 0.9, b: 0.66, a: 1}
@@ -1440,7 +1440,7 @@ MonoBehaviour:
   pitstopInfoText: {fileID: 2048106474}
   caravanVisual: {fileID: 0}
   goalVisual: {fileID: 0}
-  startingFood: 30
+  startingFood: 10
   startingMorale: 3
   startingGold: 3
   caravanHeight: 0.65
@@ -1620,9 +1620,45 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3f94733c8f1044aeb1454da0e81f245b, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PitstopEventController
-  eventDefinitions: []
+  eventDefinitions:
+  - kind: 0
+    title: Working Mill
+    description: The millers trade flour and dried grain for the road ahead.
+    hasRefuelPoint: 1
+    repeatable: 0
+    firstVisitEffects:
+    - resourceType: 0
+      amount: 3
+    repeatVisitEffects: []
+  - kind: 1
+    title: Guard Tower
+    description: The watch hands share news of safer routes and steady the caravan's
+      nerves.
+    hasRefuelPoint: 0
+    repeatable: 0
+    firstVisitEffects:
+    - resourceType: 1
+      amount: 1
+    repeatVisitEffects: []
+  - kind: 2
+    title: Roadside Estate
+    description: A wealthy patron pays for fresh scouts and provisions.
+    hasRefuelPoint: 0
+    repeatable: 0
+    firstVisitEffects:
+    - resourceType: 2
+      amount: 2
+    repeatVisitEffects: []
+  encounterPool:
+  - {fileID: 11400000, guid: c2b8a09d908740a7b8c5bd83bcd3854d, type: 2}
+  - {fileID: 11400000, guid: 8797d8148a3b46888973dde2fd1338f7, type: 2}
+  - {fileID: 11400000, guid: 4eb451223d2749af80c7a4e966f67f32, type: 2}
+  - {fileID: 11400000, guid: e825d29b663342908e4276d6c6925f05, type: 2}
+  - {fileID: 11400000, guid: 85f616af6de246a7ad1c34f3fa76a061, type: 2}
+  - {fileID: 11400000, guid: ed6fbf77a16a4372aa2e8bb171fcca11, type: 2}
+  encounterResourcesPath: PitstopEvents
 --- !u!1 &1880823898
 GameObject:
   m_ObjectHideFlags: 0
@@ -1912,7 +1948,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.07, g: 0.11, b: 0.16, a: 0.88}
@@ -1988,7 +2024,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.07, g: 0.11, b: 0.16, a: 0.82}
@@ -2064,7 +2100,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cfabb0440166ab443bba8876756fdfa9, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Shadow
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.35}
   m_EffectDistance: {x: 1, y: -1}
@@ -2079,7 +2115,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.86, g: 0.92, b: 0.97, a: 1}

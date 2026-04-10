@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e48e35431f544e1b67aeaa4ddf5f12c, type: 3}
+  m_Name: WallTower_SignalFire
+  m_EditorClassIdentifier: 
+  eventId: walltower-signal-fire
+  pitstopKind: 1
+  selectionWeight: 1
+  title: Signal on the Ridge
+  description: A lookout spots movement on a far ridge and asks whether the caravan can spare supplies for a faster warning run.
+  options:
+  - label: Send food with the runners
+    outcomeText: The warning reaches the next post quickly, but your stores grow thinner.
+    resourceEffects:
+    - resourceType: 0
+      amount: -1
+    - resourceType: 1
+      amount: 2
+  - label: Tip the tower captain in coin
+    outcomeText: The captain promises a stronger escort on the next stretch.
+    resourceEffects:
+    - resourceType: 2
+      amount: -1
+    - resourceType: 1
+      amount: 1

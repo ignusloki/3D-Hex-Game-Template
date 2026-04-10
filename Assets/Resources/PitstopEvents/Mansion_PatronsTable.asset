@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e48e35431f544e1b67aeaa4ddf5f12c, type: 3}
+  m_Name: Mansion_PatronsTable
+  m_EditorClassIdentifier: 
+  eventId: mansion-patrons-table
+  pitstopKind: 2
+  selectionWeight: 1
+  title: Patron's Table
+  description: A wealthy host invites the caravan leaders inside, eager for stories and quick deals before supper.
+  options:
+  - label: Entertain the host
+    outcomeText: The room warms to your tales and the host pays for one more.
+    resourceEffects:
+    - resourceType: 2
+      amount: 1
+    - resourceType: 1
+      amount: 1
+  - label: Slip food from the kitchen
+    outcomeText: The cooks look away long enough for a few extra bundles to disappear.
+    resourceEffects:
+    - resourceType: 0
+      amount: 2
+    - resourceType: 1
+      amount: -1

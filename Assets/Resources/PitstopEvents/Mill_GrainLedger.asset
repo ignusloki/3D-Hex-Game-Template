@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e48e35431f544e1b67aeaa4ddf5f12c, type: 3}
+  m_Name: Mill_GrainLedger
+  m_EditorClassIdentifier: 
+  eventId: mill-grain-ledger
+  pitstopKind: 0
+  selectionWeight: 1
+  title: The Miller's Ledger
+  description: The miller counts sacks by lantern light and offers a quiet bargain before the road calls the caravan onward.
+  options:
+  - label: Buy two fresh sacks
+    outcomeText: You pay for flour before the roads empty the mill.
+    resourceEffects:
+    - resourceType: 2
+      amount: -1
+    - resourceType: 0
+      amount: 2
+  - label: Share labor at the grindstone
+    outcomeText: The crew appreciates the help and sends you on with steadier spirits.
+    resourceEffects:
+    - resourceType: 1
+      amount: 1
