@@ -82,8 +82,19 @@ public sealed class PitstopEventController : MonoBehaviour
 
             PitstopEventResult resolvedResult = ResolveChoice(eventResult, optionIndex, resources);
             onResolved?.Invoke(resolvedResult);
+
+            if (modalPresenter == null || !modalPresenter.IsOpen)
+            {
+                return;
+            }
+
             modalPresenter.ShowResolution(resolvedResult, null);
         });
+    }
+
+    public void HideActiveModal()
+    {
+        modalPresenter?.Hide();
     }
 
     private void SyncSiteMetadata()

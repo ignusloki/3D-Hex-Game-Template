@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
@@ -34,6 +35,7 @@ public class PlayerController : MonoBehaviour
     private PitstopEventController pitstopEventController;
     private HexFogOfWarController fogOfWarController;
     private HexObstacleController obstacleController;
+    private HexRunStateModalPresenter runStateModalPresenter;
     private readonly CaravanResourceState caravanResources = new();
 
     private HexagonTile currentTile;
@@ -188,7 +190,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             travelTimePresenter.ShowPath(previewPath);
-            int moveCost = HexPathMetrics.GetTravelCost(previewPath);
+            int moveCost = GetMoveCostForSelection(clickedTile, previewPath);
             if (moveCost > caravanResources.Food)
             {
                 hudPresenter.ShowInsufficientResources(clickedTile, moveCost, caravanResources.Food);
@@ -223,7 +225,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        int moveCost = HexPathMetrics.GetTravelCost(previewPath);
+        int moveCost = GetMoveCostForSelection(clickedTile, previewPath);
         if (moveCost > caravanResources.Food)
         {
             hudPresenter.ShowInsufficientResources(clickedTile, moveCost, caravanResources.Food);
@@ -255,15 +257,15 @@ public class PlayerController : MonoBehaviour
         PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
         RefreshTileDetails(currentTile);
 
-        if (caravanResources.IsDefeated)
-        {
-            EndRunAsDefeat(caravanResources.GetDefeatReason());
-            return;
-        }
-
         if (goalTile != null && currentTile == goalTile)
         {
             EndRunAsVictory();
+            return;
+        }
+
+        if (caravanResources.IsDefeated)
+        {
+            EndRunAsDefeat(caravanResources.GetDefeatReason());
             return;
         }
 
@@ -485,26 +487,40 @@ public class PlayerController : MonoBehaviour
 
     private void EndRunAsVictory()
     {
+        if (isRunOver)
+        {
+            return;
+        }
+
         isRunOver = true;
         ClearHighlights();
         selectedTile = null;
         previewPath = null;
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
+        pitstopEventController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
+        runStateModalPresenter?.ShowVictory(RetryCurrentScene);
     }
 
     private void EndRunAsDefeat(string defeatReason)
     {
+        if (isRunOver)
+        {
+            return;
+        }
+
         isRunOver = true;
         ClearHighlights();
         selectedTile = null;
         previewPath = null;
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
+        pitstopEventController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile, defeatReason);
+        runStateModalPresenter?.ShowDefeat(RetryCurrentScene);
     }
 
     private void RefreshTileDetails(HexagonTile tile)
@@ -590,6 +606,22 @@ public class PlayerController : MonoBehaviour
         return tile != null && currentTile != null && currentTile.Coordinates.DistanceTo(tile.Coordinates) <= 1;
     }
 
+    private int GetMoveCostForSelection(HexagonTile destinationTile, IReadOnlyList<HexTileData> path)
+    {
+        if (destinationTile == null)
+        {
+            return 0;
+        }
+
+        // Reaching the exit is treated as a special end-of-map move rather than a normal terrain-cost tile.
+        if (goalTile != null && destinationTile == goalTile)
+        {
+            return 1;
+        }
+
+        return HexPathMetrics.GetTravelCost(path);
+    }
+
     private void AutoAssignTextReferences()
     {
         resourcesText = FindTextReference(resourcesText, "Resources Text");
@@ -625,6 +657,7 @@ public class PlayerController : MonoBehaviour
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         obstacleController ??= FindAnyObjectByType<HexObstacleController>();
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
+        runStateModalPresenter ??= GetComponent<HexRunStateModalPresenter>() ?? gameObject.AddComponent<HexRunStateModalPresenter>();
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -705,5 +738,10 @@ public class PlayerController : MonoBehaviour
         {
             EndRunAsDefeat(caravanResources.GetDefeatReason());
         }
+    }
+
+    private void RetryCurrentScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
