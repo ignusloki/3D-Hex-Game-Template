@@ -75,6 +75,7 @@ public class PitstopSpawner : MonoBehaviour
         while (true)
         {
             spawnedSites.Clear();
+            HexActMapModifiers actMapModifiers = HexBoonSelectionService.GetActMapModifiers();
 
             PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
                 mapGenerator.GridData,
@@ -82,7 +83,8 @@ public class PitstopSpawner : MonoBehaviour
                 mapGenerator.StartCoordinates,
                 mapGenerator.GoalCoordinates,
                 placementSettings,
-                new System.Random());
+                new System.Random(),
+                actMapModifiers);
 
             if (layoutResult.Score > bestFallbackLayout.Score)
             {

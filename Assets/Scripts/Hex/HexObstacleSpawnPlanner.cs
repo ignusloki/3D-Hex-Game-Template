@@ -196,11 +196,10 @@ public sealed class HexObstacleSpawnPlanner
         System.Random random)
     {
         List<CandidateInfo> candidates = new();
-        foreach (HexCoordinates enteredCoordinates in enteredSet)
+        foreach (HexCoordinates visibleCoordinates in visibleSet)
         {
-            if (!visibleSet.Contains(enteredCoordinates)
-                || caravanCoordinates.DistanceTo(enteredCoordinates) != 1
-                || !gridData.TryGetTile(enteredCoordinates, out HexTileData tile))
+            if (caravanCoordinates.DistanceTo(visibleCoordinates) != 1
+                || !gridData.TryGetTile(visibleCoordinates, out HexTileData tile))
             {
                 continue;
             }
@@ -218,6 +217,12 @@ public sealed class HexObstacleSpawnPlanner
             }
 
             CountFrontierAdjacency(tile.Coordinates, gridData, visibleSet, enteredSet, out int adjacentVisible, out int adjacentEntered);
+            bool isFrontierCandidate = enteredSet.Contains(tile.Coordinates) || adjacentEntered > 0;
+            if (!isFrontierCandidate)
+            {
+                continue;
+            }
+
             float weight = ScoreCandidate(tile, gridData, settings, pressureContext, adjacentVisible, adjacentEntered, random);
             if (weight < settings.minimumCandidateWeight)
             {

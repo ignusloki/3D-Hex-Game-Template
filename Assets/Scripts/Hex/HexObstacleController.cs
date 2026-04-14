@@ -243,7 +243,7 @@ public sealed class HexObstacleController : MonoBehaviour
             LogSpawnDebug(
                 $"Obstacle roll failed. Reason: {spawnPlan.FailureReason}. " +
                 $"Candidates: {spawnPlan.CandidateCount}. " +
-                $"Rule set: visible + revealed this move + adjacent to caravan + non-water. " +
+                $"Rule set: visible + adjacent to caravan + on the move frontier + non-water. " +
                 $"Failure streak is now {consecutiveFailedEligibleSpawnRolls}.");
             return;
         }

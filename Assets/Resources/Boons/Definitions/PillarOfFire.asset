@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728726f6547df40f09315fc392fae122, type: 3}
+  m_Name: PillarOfFire
+  m_EditorClassIdentifier: Assembly-CSharp::HexBoonDefinition
+  id: pillar-of-fire
+  displayName: Pillar of Fire
+  description: The caravan sees one hex farther into the road ahead.
+  flavorText: A divine fire rises ahead of the march and reveals the next stretch
+    of the path.
+  icon: {fileID: 0}
+  archetypeFamily: 1
+  category: 0
+  isEnabled: 1
+  passive:
+    effectType: 1
+    magnitude: 1
+  rechargeable:
+    effectType: 0
+    maxCharges: 0
+    startingCharges: 0
+    rechargeTrigger: 0
+  mapModifier:
+    effectType: 0
+    magnitude: 0
+    placementBand: 0

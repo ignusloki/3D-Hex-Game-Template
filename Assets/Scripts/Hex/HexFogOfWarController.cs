@@ -29,11 +29,13 @@ public sealed class HexFogOfWarController : MonoBehaviour
     private readonly HexFogOfWarState fogState = new();
     private readonly HexFogOfWarPresenter presenter = new();
     private MapGenerator mapGenerator;
+    private int visionRadiusBonus;
 
     public event Action<HexFogUpdateResult> VisibilityUpdated;
 
     public HexFogUpdateResult LastUpdate { get; private set; } = HexFogUpdateResult.Empty;
     public HexFogOfWarSettings Settings => settings;
+    public int EffectiveVisionRadius => Mathf.Max(0, settings.visionRadius + visionRadiusBonus);
     public bool IsInitialized => fogState.IsInitialized && mapGenerator != null;
 
     private void OnValidate()
@@ -58,10 +60,15 @@ public sealed class HexFogOfWarController : MonoBehaviour
         }
 
         fogState.SetAlwaysKnownTiles(alwaysKnownCoordinates);
-        LastUpdate = fogState.UpdateVisibility(caravanCoordinates, settings.visionRadius);
+        LastUpdate = fogState.UpdateVisibility(caravanCoordinates, EffectiveVisionRadius);
         presenter.Apply(mapGenerator, fogState, settings);
         VisibilityUpdated?.Invoke(LastUpdate);
         return LastUpdate;
+    }
+
+    public void SetVisionRadiusBonus(int bonus)
+    {
+        visionRadiusBonus = Mathf.Max(0, bonus);
     }
 
     public bool IsCurrentlyVisible(HexCoordinates coordinates)

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728726f6547df40f09315fc392fae122, type: 3}
+  m_Name: StaffOfTheGuide
+  m_EditorClassIdentifier: Assembly-CSharp::HexBoonDefinition
+  id: staff-of-the-guide
+  displayName: Staff of the Guide
+  description: Ignore the penalty from one obstacle tile, then recharge at the next
+    pitstop.
+  flavorText: The road bends for one decisive step before the blessing rests again.
+  icon: {fileID: 0}
+  archetypeFamily: 1
+  category: 1
+  isEnabled: 1
+  passive:
+    effectType: 0
+    magnitude: 0
+  rechargeable:
+    effectType: 1
+    maxCharges: 1
+    startingCharges: 1
+    rechargeTrigger: 1
+  mapModifier:
+    effectType: 0
+    magnitude: 0
+    placementBand: 0

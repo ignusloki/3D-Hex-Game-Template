@@ -65,6 +65,8 @@ public sealed class HexObstacleTurnResult
     public List<HexObstacleInstance> VisibleObstacles { get; } = new();
     public List<HexObstacleInstance> ActiveObstacles { get; } = new();
     public HexObstacleContactResult ContactResult { get; set; } = HexObstacleContactResult.None;
+    public bool ContactPenaltyIgnored { get; set; }
+    public string ContactPenaltyIgnoreNote { get; set; } = string.Empty;
     public bool SpawnRollPerformed { get; set; }
     public bool SpawnRollSucceeded { get; set; }
     public float SpawnChance { get; set; }

@@ -135,4 +135,75 @@ public class HexObstacleSystemTests
         Assert.That(plan.Definition, Is.Not.Null);
         Assert.That(plan.Coordinates, Is.EqualTo(new HexCoordinates(2, 1)));
     }
+
+    [Test]
+    public void TryPlanSpawn_AllowsAdjacentFrontierTilesWhenVisibilityRadiusIsLargerThanOne()
+    {
+        HexGridData gridData = new(7, 7);
+        for (int row = 0; row < 7; row++)
+        {
+            for (int column = 0; column < 7; column++)
+            {
+                gridData.SetTile(new HexTileData(new HexCoordinates(row, column), Biome.grass, null));
+            }
+        }
+
+        HexObstacleSpawnSettings settings = new()
+        {
+            baseSpawnChance = 1f,
+            bonusChancePerEnteredHex = 0f,
+            maxSpawnChance = 1f,
+            visibleNeighborWeight = 1f,
+            enteredNeighborWeight = 1f,
+            edgePenaltyWeight = 0f,
+            randomJitter = 0f
+        };
+        settings.Validate();
+
+        List<HexObstacleDefinition> definitions = HexObstacleDefinition.CreateDefaultSet();
+        HexObstacleSpawnPlanner planner = new();
+        HexCoordinates caravanCoordinates = new(3, 3);
+        HashSet<HexCoordinates> visible = new();
+        HashSet<HexCoordinates> entered = new();
+
+        // Simulate a vision-radius-2 reveal where only the outer ring entered this turn.
+        for (int row = 1; row <= 5; row++)
+        {
+            for (int column = 1; column <= 5; column++)
+            {
+                HexCoordinates coordinates = new(row, column);
+                if (caravanCoordinates.DistanceTo(coordinates) <= 2)
+                {
+                    visible.Add(coordinates);
+                }
+            }
+        }
+
+        foreach (HexCoordinates coordinates in visible)
+        {
+            if (caravanCoordinates.DistanceTo(coordinates) == 2)
+            {
+                entered.Add(coordinates);
+            }
+        }
+
+        HexObstacleSpawnPlan plan = planner.TryPlanSpawn(
+            gridData,
+            settings,
+            HexObstaclePressureContext.Empty,
+            new Dictionary<HexCoordinates, HexObstacleInstance>(),
+            visible,
+            entered,
+            new HashSet<HexCoordinates>(),
+            new HashSet<HexCoordinates>(),
+            caravanCoordinates,
+            new HexCoordinates(0, 0),
+            new HexCoordinates(6, 6),
+            definitions,
+            new System.Random(1234));
+
+        Assert.That(plan.ShouldSpawn, Is.True);
+        Assert.That(caravanCoordinates.DistanceTo(plan.Coordinates), Is.EqualTo(1));
+        Assert.That(entered.Contains(plan.Coordinates), Is.False);
+    }
 }

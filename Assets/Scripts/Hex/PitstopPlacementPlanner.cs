@@ -86,11 +86,13 @@ public sealed class PitstopPlacementPlanner
         HexCoordinates start,
         HexCoordinates goal,
         PitstopPlacementSettings settings,
-        System.Random random)
+        System.Random random,
+        HexActMapModifiers? actModifiers = null)
     {
         settings ??= new PitstopPlacementSettings();
         settings.Validate();
         random ??= new System.Random();
+        HexActMapModifiers resolvedActModifiers = actModifiers ?? HexActMapModifiers.None;
 
         if (gridData == null)
         {
@@ -103,7 +105,7 @@ public sealed class PitstopPlacementPlanner
             return PitstopLayoutResult.Empty;
         }
 
-        List<SlotRequest> slots = BuildSlotRequests(gridData.Rows, gridData.Columns, settings);
+        List<SlotRequest> slots = BuildSlotRequests(gridData.Rows, gridData.Columns, settings, resolvedActModifiers);
         if (slots.Count == 0)
         {
             return PitstopLayoutResult.Empty;
@@ -158,9 +160,10 @@ public sealed class PitstopPlacementPlanner
         HexCoordinates start,
         HexCoordinates goal,
         PitstopPlacementSettings settings,
-        System.Random random)
+        System.Random random,
+        HexActMapModifiers? actModifiers = null)
     {
-        return GeneratePitstops(gridData, pathfinder, start, goal, settings, random).Coordinates;
+        return GeneratePitstops(gridData, pathfinder, start, goal, settings, random, actModifiers).Coordinates;
     }
 
     private static List<CandidateInfo> BuildCandidates(
@@ -231,9 +234,13 @@ public sealed class PitstopPlacementPlanner
         };
     }
 
-    private static List<SlotRequest> BuildSlotRequests(int rows, int columns, PitstopPlacementSettings settings)
+    private static List<SlotRequest> BuildSlotRequests(
+        int rows,
+        int columns,
+        PitstopPlacementSettings settings,
+        HexActMapModifiers actModifiers)
     {
-        int desiredCount = settings.GetDesiredCount(rows, columns);
+        int desiredCount = settings.GetDesiredCount(rows, columns, actModifiers.ExtraPitstopCount);
         bool isSmallMap = rows * columns <= 25;
         List<SlotRequest> slots = new();
 
@@ -269,6 +276,7 @@ public sealed class PitstopPlacementPlanner
                 });
             }
 
+            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
             return slots;
         }
 
@@ -323,6 +331,7 @@ public sealed class PitstopPlacementPlanner
                 RelaxEdgeAvoidance = true
             });
 
+            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
             return slots;
         }
 
@@ -366,17 +375,56 @@ public sealed class PitstopPlacementPlanner
             });
         }
 
-        for (int extraIndex = 4; extraIndex < desiredCount; extraIndex++)
-        {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.Mid,
-                ProgressRange = settings.GetMidBand(rows, columns),
-                RelaxEdgeAvoidance = false
-            });
-        }
+        AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
 
         return slots;
+    }
+
+    private static void AppendAdditionalSlots(
+        List<SlotRequest> slots,
+        int extraSlotCount,
+        int rows,
+        int columns,
+        PitstopPlacementSettings settings,
+        HexBoonMapPlacementBand placementBand)
+    {
+        if (extraSlotCount <= 0)
+        {
+            return;
+        }
+
+        for (int extraIndex = 0; extraIndex < extraSlotCount; extraIndex++)
+        {
+            slots.Add(CreateAdditionalSlot(rows, columns, settings, placementBand));
+        }
+    }
+
+    private static SlotRequest CreateAdditionalSlot(
+        int rows,
+        int columns,
+        PitstopPlacementSettings settings,
+        HexBoonMapPlacementBand placementBand)
+    {
+        SlotType type = placementBand switch
+        {
+            HexBoonMapPlacementBand.Early => SlotType.EarlyFlexible,
+            HexBoonMapPlacementBand.Late => SlotType.Late,
+            _ => SlotType.Mid
+        };
+
+        PitstopFloatRange progressRange = placementBand switch
+        {
+            HexBoonMapPlacementBand.Early => settings.GetEarlyBand(rows, columns),
+            HexBoonMapPlacementBand.Late => settings.GetLateBand(rows, columns),
+            _ => settings.GetMidBand(rows, columns)
+        };
+
+        return new SlotRequest
+        {
+            Type = type,
+            ProgressRange = progressRange,
+            RelaxEdgeAvoidance = type != SlotType.Mid
+        };
     }
 
     private static bool TryBuildLayout(

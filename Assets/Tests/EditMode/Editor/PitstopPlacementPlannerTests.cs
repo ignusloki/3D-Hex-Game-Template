@@ -106,6 +106,64 @@ public class PitstopPlacementPlannerTests
         Assert.That(lateBand.Count, Is.EqualTo(1));
     }
 
+    [Test]
+    public void GeneratePitstops_AddsAMidAnchorOnSmallMapsWhenActModifierRequestsExtraPitstop()
+    {
+        HexGridData gridData = CreateGrid(5, 5);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(2, 0);
+        HexCoordinates goal = new(2, 4);
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(9876),
+            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(3));
+
+        List<HexCoordinates> earlyBand = FilterByProgress(result.Coordinates, start, goal, settings.earlyBandOnFiveByFive);
+        List<HexCoordinates> midBand = FilterByProgress(result.Coordinates, start, goal, settings.midBandOnFiveByFive);
+        List<HexCoordinates> lateBand = FilterByProgress(result.Coordinates, start, goal, settings.lateBandOnFiveByFive);
+
+        Assert.That(earlyBand.Count, Is.EqualTo(1));
+        Assert.That(midBand.Count, Is.EqualTo(1));
+        Assert.That(lateBand.Count, Is.EqualTo(1));
+    }
+
+    [TestCase(0, 9)]
+    [TestCase(9, 0)]
+    public void GeneratePitstops_AddsAnExtraMidAnchorOnLargeMapsWhenActModifierRequestsExtraPitstop(int startColumn, int goalColumn)
+    {
+        HexGridData gridData = CreateGrid(10, 10);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(5, startColumn);
+        HexCoordinates goal = new(5, goalColumn);
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(12345),
+            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(5));
+
+        List<HexCoordinates> midBand = FilterByProgress(result.Coordinates, start, goal, settings.midBandOnTenByTen);
+        Assert.That(midBand.Count, Is.EqualTo(2));
+    }
+
     private static PitstopPlacementSettings CreateSettings(TenByTenPitstopLayoutMode tenByTenLayoutMode)
     {
         PitstopPlacementSettings settings = new()
@@ -133,6 +191,7 @@ public class PitstopPlacementPlannerTests
             midBandOnTenByTenSeven = new PitstopFloatRange(0.4f, 0.65f),
             lateBandOnTenByTenSeven = new PitstopFloatRange(0.65f, 0.85f),
             earlyBandOnFiveByFive = new PitstopFloatRange(0.2f, 0.35f),
+            midBandOnFiveByFive = new PitstopFloatRange(0.42f, 0.58f),
             lateBandOnFiveByFive = new PitstopFloatRange(0.65f, 0.8f),
             topLaneCenter = 0.25f,
             middleLaneCenter = 0.5f,

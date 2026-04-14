@@ -38,6 +38,7 @@ public class PlayerController : MonoBehaviour
     private HexNemesisController nemesisController;
     private HexRunStateModalPresenter runStateModalPresenter;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
+    private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
 
     private HexagonTile currentTile;
@@ -48,6 +49,7 @@ public class PlayerController : MonoBehaviour
     private bool isReady;
     private bool isRunOver;
     private bool resourcesInitialized;
+    private string pendingPitstopBoonHint;
 
     private void Awake()
     {
@@ -104,6 +106,7 @@ public class PlayerController : MonoBehaviour
         }
 
         InitializeFogOfWar();
+        InitializeBoonSystem();
         HexFogUpdateResult initialFogUpdate = RefreshFogOfWar();
         InitializeObstacleSystem(initialFogUpdate);
         InitializeNemesisSystem();
@@ -290,6 +293,7 @@ public class PlayerController : MonoBehaviour
         }
 
         PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
+        string pitstopBoonHint = ProcessPitstopRecharge();
         bool hasDeferredNemesisPitstopDestruction = nemesisTurnResult.DeferredPitstopDestructions.Count > 0;
 
         if (caravanResources.IsDefeated)
@@ -301,6 +305,7 @@ public class PlayerController : MonoBehaviour
 
         if (pitstopEventResult.RequiresChoice)
         {
+            pendingPitstopBoonHint = pitstopBoonHint;
             pendingDeferredNemesisResult = hasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
             pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
         }
@@ -308,11 +313,19 @@ public class PlayerController : MonoBehaviour
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowPitstopEvent(currentTile, pitstopEventResult, caravanResources.ToSnapshot());
+            if (!string.IsNullOrWhiteSpace(pitstopBoonHint))
+            {
+                hudPresenter.ShowHint(pitstopBoonHint);
+            }
         }
         else if (obstacleTurnResult.ContactResult.HasContact)
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowObstacleEncounter(currentTile, obstacleTurnResult.ContactResult, caravanResources.ToSnapshot());
+            if (!string.IsNullOrWhiteSpace(obstacleTurnResult.ContactPenaltyIgnoreNote))
+            {
+                hudPresenter.ShowHint(obstacleTurnResult.ContactPenaltyIgnoreNote);
+            }
         }
         else if (nemesisTurnResult.Active && (nemesisTurnResult.Acted || nemesisTurnResult.DestroyedPitstops.Count > 0))
         {
@@ -349,6 +362,13 @@ public class PlayerController : MonoBehaviour
         {
             hudPresenter.ShowCaravanIdle(currentTile);
         }
+
+        if (!string.IsNullOrWhiteSpace(pendingPitstopBoonHint))
+        {
+            hudPresenter.ShowHint(pendingPitstopBoonHint);
+        }
+
+        pendingPitstopBoonHint = string.Empty;
     }
 
     private void FinalizeDeferredNemesisPitstopDestructionIfNeeded(HexNemesisTurnResult turnResult)
@@ -536,8 +556,19 @@ public class PlayerController : MonoBehaviour
     {
         if (resourcesText != null)
         {
-            resourcesText.text =
+            string resourceLine =
                 $"Food: {Mathf.Max(caravanResources.Food, 0)}  Morale: {Mathf.Max(caravanResources.Morale, 0)}  Gold: {Mathf.Max(caravanResources.Gold, 0)}";
+
+            if (boonRuntime != null && boonRuntime.HasActiveBoon)
+            {
+                string boonLine = boonRuntime.GetStatusLine();
+                resourcesText.text = string.IsNullOrWhiteSpace(boonLine)
+                    ? resourceLine
+                    : $"{resourceLine}\n{boonLine}";
+                return;
+            }
+
+            resourcesText.text = resourceLine;
         }
     }
 
@@ -610,6 +641,16 @@ public class PlayerController : MonoBehaviour
     {
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         fogOfWarController.Initialize(mapGenerator, BuildAlwaysKnownCoordinates());
+    }
+
+    private void InitializeBoonSystem()
+    {
+        boonRuntime = HexBoonRuntimeState.FromCurrentSelection();
+        pendingPitstopBoonHint = string.Empty;
+        if (fogOfWarController != null)
+        {
+            fogOfWarController.SetVisionRadiusBonus(boonRuntime?.GetVisibilityRadiusBonus() ?? 0);
+        }
     }
 
     private HexFogUpdateResult RefreshFogOfWar()
@@ -763,6 +804,14 @@ public class PlayerController : MonoBehaviour
             return turnResult;
         }
 
+        if (boonRuntime != null && boonRuntime.TryConsumeObstacleIgnore(out HexBoonChargeChangeResult chargeChange))
+        {
+            turnResult.ContactPenaltyIgnored = true;
+            turnResult.ContactPenaltyIgnoreNote = chargeChange.Message;
+            UpdateResourcesText();
+            return turnResult;
+        }
+
         caravanResources.Spend(turnResult.ContactResult.AffectedResource, turnResult.ContactResult.AmountDrained);
         UpdateResourcesText();
         return turnResult;
@@ -783,6 +832,27 @@ public class PlayerController : MonoBehaviour
 
         UpdateResourcesText();
         return result;
+    }
+
+    private string ProcessPitstopRecharge()
+    {
+        if (boonRuntime == null
+            || currentTile == null
+            || pitstopSpawner == null
+            || !pitstopSpawner.TryGetPitstop(currentTile.Coordinates, out PitstopSite site)
+            || site == null
+            || site.IsDestroyed)
+        {
+            return string.Empty;
+        }
+
+        if (!boonRuntime.TryRecharge(HexBoonRechargeTrigger.PitstopArrival, out HexBoonChargeChangeResult chargeChange))
+        {
+            return string.Empty;
+        }
+
+        UpdateResourcesText();
+        return chargeChange.Message;
     }
 
     private HexNemesisTurnResult ProcessNemesisTurn(HexCoordinates previousCoordinates, HexCoordinates currentCoordinates)

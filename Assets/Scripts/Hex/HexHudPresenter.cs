@@ -394,6 +394,11 @@ public sealed class HexHudPresenter
         SetText(hintText, string.Empty);
     }
 
+    public void ShowHint(string message)
+    {
+        SetText(hintText, string.IsNullOrWhiteSpace(message) ? string.Empty : message);
+    }
+
     private static string FormatCoordinates(HexCoordinates coordinates)
     {
         return $"{coordinates.Row},{coordinates.Column}";

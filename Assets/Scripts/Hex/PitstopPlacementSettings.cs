@@ -109,6 +109,7 @@ public sealed class PitstopPlacementSettings
 
     [Header("5x5 Progress Bands")]
     public PitstopFloatRange earlyBandOnFiveByFive = new(0.2f, 0.35f);
+    public PitstopFloatRange midBandOnFiveByFive = new(0.42f, 0.58f);
     public PitstopFloatRange lateBandOnFiveByFive = new(0.65f, 0.8f);
 
     [Header("Lanes")]
@@ -134,11 +135,13 @@ public sealed class PitstopPlacementSettings
     [Range(0f, 2f)] public float openNeighborWeight = 0.3f;
     [Range(0f, 2f)] public float distanceTargetWeight = 0.85f;
 
-    public int GetDesiredCount(int rows, int columns)
+    public int GetDesiredCount(int rows, int columns, int extraPitstops = 0)
     {
-        return IsSmallMap(rows, columns)
+        int baseCount = IsSmallMap(rows, columns)
             ? pitstopsOnFiveByFive
             : (UseSevenPitstopLayout(rows, columns) ? 7 : 4);
+
+        return Mathf.Max(0, baseCount + Mathf.Max(0, extraPitstops));
     }
 
     public int GetMinimumSpacing(int rows, int columns)
@@ -182,6 +185,11 @@ public sealed class PitstopPlacementSettings
 
     public PitstopFloatRange GetMidBand(int rows, int columns)
     {
+        if (IsSmallMap(rows, columns))
+        {
+            return midBandOnFiveByFive;
+        }
+
         return UseSevenPitstopLayout(rows, columns)
             ? midBandOnTenByTenSeven
             : midBandOnTenByTen;
@@ -217,6 +225,7 @@ public sealed class PitstopPlacementSettings
         earlyDistanceFromSpawn.Validate();
         lateDistanceFromGoal.Validate();
         earlyBandOnFiveByFive.Validate();
+        midBandOnFiveByFive.Validate();
         earlyBandOnTenByTen.Validate();
         midBandOnTenByTen.Validate();
         lateBandOnFiveByFive.Validate();
