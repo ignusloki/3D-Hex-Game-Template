@@ -5,6 +5,7 @@ public sealed class PitstopSite : MonoBehaviour
     [field: SerializeField] public PitstopKind Kind { get; private set; }
     [field: SerializeField] public int Row { get; private set; }
     [field: SerializeField] public int Column { get; private set; }
+    [field: SerializeField] public bool IsDestroyed { get; private set; }
     [field: SerializeField] public bool Visited { get; private set; }
     [field: SerializeField] public int VisitCount { get; private set; }
     [field: SerializeField] public string EventTitle { get; private set; } = "Pitstop";
@@ -19,6 +20,7 @@ public sealed class PitstopSite : MonoBehaviour
         Kind = kind;
         Row = coordinates.Row;
         Column = coordinates.Column;
+        IsDestroyed = false;
         Visited = false;
         VisitCount = 0;
         ConfigureEventMetadata(kind.ToString(), "placeholder", true, false);
@@ -41,5 +43,25 @@ public sealed class PitstopSite : MonoBehaviour
         SpecialEventDescription = string.IsNullOrWhiteSpace(description) ? "placeholder" : description;
         HasRefuelPoint = hasRefuelPoint;
         Repeatable = repeatable;
+    }
+
+    public void MarkDestroyed(string destroyedDescription, Color destroyedTint)
+    {
+        if (IsDestroyed)
+        {
+            return;
+        }
+
+        IsDestroyed = true;
+        HasRefuelPoint = false;
+        Repeatable = false;
+        SpecialEventDescription = string.IsNullOrWhiteSpace(destroyedDescription)
+            ? "This stop has been ruined."
+            : destroyedDescription;
+
+        foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))
+        {
+            renderer.material.color = destroyedTint;
+        }
     }
 }

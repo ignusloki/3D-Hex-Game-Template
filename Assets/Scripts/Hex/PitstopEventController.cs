@@ -40,6 +40,11 @@ public sealed class PitstopEventController : MonoBehaviour
             return PitstopEventResult.Empty;
         }
 
+        if (site.IsDestroyed)
+        {
+            return PitstopEventResult.Empty;
+        }
+
         if (!definitionsByKind.TryGetValue(site.Kind, out PitstopEventDefinition definition) || definition == null)
         {
             return PitstopEventResult.Empty;

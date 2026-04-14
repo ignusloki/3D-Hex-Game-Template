@@ -35,7 +35,9 @@ public class PlayerController : MonoBehaviour
     private PitstopEventController pitstopEventController;
     private HexFogOfWarController fogOfWarController;
     private HexObstacleController obstacleController;
+    private HexNemesisController nemesisController;
     private HexRunStateModalPresenter runStateModalPresenter;
+    private HexNemesisTurnResult pendingDeferredNemesisResult;
     private readonly CaravanResourceState caravanResources = new();
 
     private HexagonTile currentTile;
@@ -104,6 +106,7 @@ public class PlayerController : MonoBehaviour
         InitializeFogOfWar();
         HexFogUpdateResult initialFogUpdate = RefreshFogOfWar();
         InitializeObstacleSystem(initialFogUpdate);
+        InitializeNemesisSystem();
 
         CaravanResourceSnapshot startingResources = caravanMetricsController != null
             ? caravanMetricsController.GetConfiguredSnapshot()
@@ -181,6 +184,15 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (nemesisController != null && nemesisController.IsBlockedDestination(clickedTile.Coordinates))
+        {
+            previewPath = null;
+            travelTimePresenter.Reset();
+            hudPresenter.ShowNemesisBlockedDestination(clickedTile);
+            RefreshHighlights();
+            return;
+        }
+
         previewPath = mapGenerator.FindPath(currentTile.Coordinates, clickedTile.Coordinates);
         if (previewPath == null)
         {
@@ -219,6 +231,13 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (caravanSelectionActive && nemesisController != null && nemesisController.IsBlockedDestination(clickedTile.Coordinates))
+        {
+            travelTimePresenter.Reset();
+            hudPresenter.ShowNemesisBlockedDestination(clickedTile);
+            return;
+        }
+
         if (!caravanSelectionActive || previewPath == null)
         {
             hudPresenter.ShowInspectingTile(clickedTile);
@@ -238,6 +257,7 @@ public class PlayerController : MonoBehaviour
     private void CommitMove(HexagonTile destinationTile, int moveCost)
     {
         ClearHighlights();
+        HexCoordinates previousCoordinates = currentTile.Coordinates;
 
         currentTile.TileData?.SetOccupied(false);
         currentTile = destinationTile;
@@ -254,8 +274,14 @@ public class PlayerController : MonoBehaviour
 
         travelTimePresenter.Reset();
         HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
-        PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
+        HexNemesisTurnResult nemesisTurnResult = ProcessNemesisTurn(previousCoordinates, currentTile.Coordinates);
         RefreshTileDetails(currentTile);
+
+        if (nemesisTurnResult.CausedDefeat)
+        {
+            EndRunAsDefeat(nemesisTurnResult.DefeatReason);
+            return;
+        }
 
         if (goalTile != null && currentTile == goalTile)
         {
@@ -263,26 +289,39 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
+        bool hasDeferredNemesisPitstopDestruction = nemesisTurnResult.DeferredPitstopDestructions.Count > 0;
+
         if (caravanResources.IsDefeated)
         {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             EndRunAsDefeat(caravanResources.GetDefeatReason());
             return;
         }
 
         if (pitstopEventResult.RequiresChoice)
         {
+            pendingDeferredNemesisResult = hasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
             pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
         }
         else if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
         {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowPitstopEvent(currentTile, pitstopEventResult, caravanResources.ToSnapshot());
         }
         else if (obstacleTurnResult.ContactResult.HasContact)
         {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowObstacleEncounter(currentTile, obstacleTurnResult.ContactResult, caravanResources.ToSnapshot());
+        }
+        else if (nemesisTurnResult.Active && (nemesisTurnResult.Acted || nemesisTurnResult.DestroyedPitstops.Count > 0))
+        {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
+            hudPresenter.ShowNemesisUpdate(currentTile, nemesisTurnResult);
         }
         else
         {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowMoveComplete(currentTile, moveCost, caravanResources.ToSnapshot());
         }
         RefreshHighlights();
@@ -290,6 +329,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandlePitstopChoiceResolved(PitstopEventResult eventResult)
     {
+        FinalizeDeferredNemesisPitstopDestructionIfNeeded(pendingDeferredNemesisResult);
+        pendingDeferredNemesisResult = null;
+
         UpdateResourcesText();
         RefreshTileDetails(currentTile);
 
@@ -306,6 +348,20 @@ public class PlayerController : MonoBehaviour
         else
         {
             hudPresenter.ShowCaravanIdle(currentTile);
+        }
+    }
+
+    private void FinalizeDeferredNemesisPitstopDestructionIfNeeded(HexNemesisTurnResult turnResult)
+    {
+        if (turnResult == null || turnResult.DeferredPitstopDestructions.Count == 0 || nemesisController == null)
+        {
+            return;
+        }
+
+        nemesisController.FinalizeDeferredPitstopDestructions(turnResult);
+        if (currentTile != null)
+        {
+            RefreshTileDetails(currentTile);
         }
     }
 
@@ -545,7 +601,9 @@ public class PlayerController : MonoBehaviour
             obstacleController.TryGetVisibleObstacle(tile.Coordinates, out visibleObstacle);
         }
 
-        hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle);
+        string nemesisDetails = nemesisController != null ? nemesisController.GetTileDetails(tile.Coordinates) : string.Empty;
+
+        hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle, nemesisDetails);
     }
 
     private void InitializeFogOfWar()
@@ -657,6 +715,7 @@ public class PlayerController : MonoBehaviour
         fogOfWarController ??= GetComponent<HexFogOfWarController>() ?? gameObject.AddComponent<HexFogOfWarController>();
         obstacleController ??= FindAnyObjectByType<HexObstacleController>();
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
+        nemesisController ??= FindAnyObjectByType<HexNemesisController>();
         runStateModalPresenter ??= GetComponent<HexRunStateModalPresenter>() ?? gameObject.AddComponent<HexRunStateModalPresenter>();
     }
 
@@ -679,6 +738,16 @@ public class PlayerController : MonoBehaviour
         }
 
         pitstopEventController.Initialize(pitstopSpawner);
+    }
+
+    private void InitializeNemesisSystem()
+    {
+        if (nemesisController == null)
+        {
+            return;
+        }
+
+        nemesisController.Initialize(mapGenerator, pitstopSpawner, obstacleController, currentTile.Coordinates);
     }
 
     private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
@@ -714,6 +783,16 @@ public class PlayerController : MonoBehaviour
 
         UpdateResourcesText();
         return result;
+    }
+
+    private HexNemesisTurnResult ProcessNemesisTurn(HexCoordinates previousCoordinates, HexCoordinates currentCoordinates)
+    {
+        if (nemesisController == null)
+        {
+            return HexNemesisTurnResult.Empty;
+        }
+
+        return nemesisController.ProcessCaravanMove(previousCoordinates, currentCoordinates);
     }
 
     public bool HasInitializedCaravanResources => resourcesInitialized;

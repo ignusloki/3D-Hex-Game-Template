@@ -75,6 +75,17 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
+    private GameObject PickBiomePrefab(Biome biome)
+    {
+        GameObject[] biomePrefabs = GetBiomePrefabs(biome);
+        if (biomePrefabs == null || biomePrefabs.Length == 0)
+        {
+            return null;
+        }
+
+        return biomePrefabs[Random.Range(0, biomePrefabs.Length)];
+    }
+
     private HexScriptableObject GetHexProperties(Biome biome)
     {
         if (hexsDictionary.TryGetValue(biome, out HexScriptableObject properties))
@@ -291,6 +302,29 @@ public class MapGenerator : MonoBehaviour
     public bool TryGetGoalTileView(out HexagonTile tile)
     {
         return TryGetTileView(GoalCoordinates, out tile);
+    }
+
+    public bool TryApplyBiomeOverride(HexCoordinates coordinates, Biome biome)
+    {
+        if (gridData == null || !gridData.TryGetTile(coordinates, out HexTileData tileData))
+        {
+            return false;
+        }
+
+        HexScriptableObject properties = GetHexProperties(biome);
+        if (properties == null)
+        {
+            return false;
+        }
+
+        tileData.ApplyBiome(biome, properties);
+        if (tileViews.TryGetValue(coordinates, out HexagonTile tileView) && tileView != null)
+        {
+            tileView.ApplyRuntimeBiomeVisual(PickBiomePrefab(biome), properties);
+        }
+
+        AssignNeighbors();
+        return true;
     }
 
     public IReadOnlyList<HexTileData> FindPath(HexCoordinates start, HexCoordinates goal)

@@ -3,6 +3,7 @@
 using UnityEngine;
 using Pathing;
 using System.Collections.Generic;
+using System;
 using UnityEngine.Rendering;
 
 [RequireComponent(typeof(Renderer))]
@@ -11,10 +12,9 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
     public bool canTravelThrough = true; // Whether the tile can be traversed
 
     // Materials used for different states of the tiles
-    private Material originalMaterial; // Original material of the tile
-    private Material highlightMaterial; // Material used for highlighting tiles
     private Renderer tileRenderer;
-    private Renderer[] terrainRenderers;
+    private Renderer[] baseTerrainRenderers;
+    private Renderer[] runtimeTerrainRenderers = Array.Empty<Renderer>();
     private GameObject fogOverlayObject;
     private MeshRenderer fogOverlayRenderer;
     private Material fogOverlayMaterial;
@@ -22,6 +22,8 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
     private HexFogOfWarSettings currentFogSettings;
     private bool hasSelectionHighlight;
     private Color selectionHighlightColor;
+    private GameObject runtimeTerrainVisual;
+    private readonly Dictionary<Renderer, Material[]> originalHighlightMaterials = new();
 
     // List of neighboring tiles
     public List<HexagonTile> neighbors = new();
@@ -37,8 +39,7 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
 
     private void Awake() {
         tileRenderer = GetComponent<Renderer>();
-        originalMaterial = tileRenderer.material; // Fetch and store the original material on creation
-        terrainRenderers = GetComponentsInChildren<Renderer>(true);
+        baseTerrainRenderers = GetComponentsInChildren<Renderer>(true);
         ApplyProperties();
     }
 
@@ -103,10 +104,7 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
     {
         hasSelectionHighlight = true;
         selectionHighlightColor = color;
-        highlightMaterial = Instantiate(originalMaterial);
-        highlightMaterial.SetColor("_EmissionColor", color);
-        highlightMaterial.EnableKeyword("_EMISSION");
-        tileRenderer.material = highlightMaterial;
+        ApplySelectionHighlight();
         ApplyHighlightToFogOverlay();
     }
 
@@ -114,8 +112,58 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
     public void ResetMaterial()
     {
         hasSelectionHighlight = false;
-        tileRenderer.material = originalMaterial;
+        RestoreRendererMaterials();
         RestoreFogOverlayState();
+    }
+
+    public void ApplyRuntimeBiomeVisual(GameObject biomePrefab, HexScriptableObject biomeProperties)
+    {
+        properties = biomeProperties;
+        ApplyProperties();
+        DestroyRuntimeTerrainVisual();
+
+        if (biomePrefab != null)
+        {
+            runtimeTerrainVisual = Instantiate(biomePrefab, transform);
+            runtimeTerrainVisual.name = $"RuntimeTerrain_{biomePrefab.name}";
+            runtimeTerrainVisual.transform.localPosition = Vector3.zero;
+            runtimeTerrainVisual.transform.localRotation = Quaternion.identity;
+            runtimeTerrainVisual.transform.localScale = Vector3.one;
+
+            foreach (HexagonTile extraTileComponent in runtimeTerrainVisual.GetComponentsInChildren<HexagonTile>(true))
+            {
+                if (extraTileComponent != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(extraTileComponent);
+                    }
+                    else
+                    {
+                        DestroyImmediate(extraTileComponent);
+                    }
+                }
+            }
+
+            foreach (Collider collider in runtimeTerrainVisual.GetComponentsInChildren<Collider>(true))
+            {
+                collider.enabled = false;
+            }
+
+            runtimeTerrainRenderers = runtimeTerrainVisual.GetComponentsInChildren<Renderer>(true);
+        }
+        else
+        {
+            runtimeTerrainRenderers = Array.Empty<Renderer>();
+        }
+
+        RestoreRendererMaterials();
+        ApplyFogState(currentFogState, currentFogSettings);
+
+        if (hasSelectionHighlight)
+        {
+            ApplySelectionHighlight();
+        }
     }
 
     public void ApplyFogState(HexFogKnowledgeState fogState, HexFogOfWarSettings settings)
@@ -212,18 +260,108 @@ public class HexagonTile : MonoBehaviour, IAStarNode {
 
     private void SetTerrainRenderersEnabled(bool enabled)
     {
-        if (terrainRenderers == null)
+        if (baseTerrainRenderers != null)
+        {
+            bool showBaseRenderers = enabled && runtimeTerrainVisual == null;
+            for (int index = 0; index < baseTerrainRenderers.Length; index++)
+            {
+                if (baseTerrainRenderers[index] != null)
+                {
+                    baseTerrainRenderers[index].enabled = showBaseRenderers;
+                }
+            }
+        }
+
+        if (runtimeTerrainRenderers == null)
         {
             return;
         }
 
-        for (int index = 0; index < terrainRenderers.Length; index++)
+        bool showRuntimeRenderers = enabled && runtimeTerrainVisual != null;
+        for (int index = 0; index < runtimeTerrainRenderers.Length; index++)
         {
-            if (terrainRenderers[index] != null)
+            if (runtimeTerrainRenderers[index] != null)
             {
-                terrainRenderers[index].enabled = enabled;
+                runtimeTerrainRenderers[index].enabled = showRuntimeRenderers;
             }
         }
+    }
+
+    private void ApplySelectionHighlight()
+    {
+        RestoreRendererMaterials();
+
+        foreach (Renderer renderer in GetHighlightRenderers())
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Material[] sourceMaterials = renderer.materials;
+            originalHighlightMaterials[renderer] = sourceMaterials;
+            Material[] highlightedMaterials = new Material[sourceMaterials.Length];
+
+            for (int materialIndex = 0; materialIndex < sourceMaterials.Length; materialIndex++)
+            {
+                Material sourceMaterial = sourceMaterials[materialIndex];
+                Material highlightedMaterial = sourceMaterial != null ? new Material(sourceMaterial) : null;
+                if (highlightedMaterial != null)
+                {
+                    if (highlightedMaterial.HasProperty("_EmissionColor"))
+                    {
+                        highlightedMaterial.SetColor("_EmissionColor", selectionHighlightColor);
+                    }
+
+                    highlightedMaterial.EnableKeyword("_EMISSION");
+                }
+
+                highlightedMaterials[materialIndex] = highlightedMaterial;
+            }
+
+            renderer.materials = highlightedMaterials;
+        }
+    }
+
+    private void RestoreRendererMaterials()
+    {
+        foreach ((Renderer renderer, Material[] materials) in originalHighlightMaterials)
+        {
+            if (renderer != null)
+            {
+                renderer.materials = materials;
+            }
+        }
+
+        originalHighlightMaterials.Clear();
+    }
+
+    private Renderer[] GetHighlightRenderers()
+    {
+        return runtimeTerrainVisual != null && runtimeTerrainRenderers.Length > 0
+            ? runtimeTerrainRenderers
+            : baseTerrainRenderers ?? Array.Empty<Renderer>();
+    }
+
+    private void DestroyRuntimeTerrainVisual()
+    {
+        if (runtimeTerrainVisual == null)
+        {
+            runtimeTerrainRenderers = Array.Empty<Renderer>();
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(runtimeTerrainVisual);
+        }
+        else
+        {
+            DestroyImmediate(runtimeTerrainVisual);
+        }
+
+        runtimeTerrainVisual = null;
+        runtimeTerrainRenderers = Array.Empty<Renderer>();
     }
 
     private void SetFogOverlayVisible(bool isVisible, HexFogOfWarSettings settings, float alpha)

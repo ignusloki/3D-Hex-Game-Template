@@ -19,6 +19,7 @@ public sealed class HexObstacleController : MonoBehaviour
     private readonly System.Random random = new();
     private HashSet<HexCoordinates> currentlyVisible = new();
     private int consecutiveFailedEligibleSpawnRolls;
+    private HexObstaclePressureContext pressureContext = HexObstaclePressureContext.Empty;
 
     private MapGenerator mapGenerator;
     private PitstopSpawner pitstopSpawner;
@@ -44,6 +45,7 @@ public sealed class HexObstacleController : MonoBehaviour
         activeObstacles.Clear();
         currentlyVisible.Clear();
         consecutiveFailedEligibleSpawnRolls = 0;
+        pressureContext = HexObstaclePressureContext.Empty;
     }
 
     public void Initialize(MapGenerator mapGenerator, PitstopSpawner pitstopSpawner, HexFogOfWarController fogOfWarController)
@@ -58,7 +60,13 @@ public sealed class HexObstacleController : MonoBehaviour
         activeObstacles.Clear();
         currentlyVisible.Clear();
         consecutiveFailedEligibleSpawnRolls = 0;
+        pressureContext = HexObstaclePressureContext.Empty;
         presenter.Clear();
+    }
+
+    public void SetPressureContext(HexObstaclePressureContext pressureContext)
+    {
+        this.pressureContext = pressureContext ?? HexObstaclePressureContext.Empty;
     }
 
     public void SyncVisibility(HexFogUpdateResult fogUpdate)
@@ -170,10 +178,11 @@ public sealed class HexObstacleController : MonoBehaviour
             return;
         }
 
-        if (activeObstacles.Count >= spawnSettings.maxActiveObstacles)
+        int effectiveMaxActiveObstacles = GetEffectiveMaxActiveObstacles();
+        if (activeObstacles.Count >= effectiveMaxActiveObstacles)
         {
             LogSpawnDebug(
-                $"Skipped obstacle spawn roll because the active cap is full ({activeObstacles.Count}/{spawnSettings.maxActiveObstacles}).");
+                $"Skipped obstacle spawn roll because the active cap is full ({activeObstacles.Count}/{effectiveMaxActiveObstacles}).");
             return;
         }
 
@@ -184,7 +193,7 @@ public sealed class HexObstacleController : MonoBehaviour
 
         LogSpawnDebug(
             $"Eligible obstacle roll. Entered visibility: {fogUpdate.EnteredVisibility.Count}. " +
-            $"Active obstacles: {activeObstacles.Count}/{spawnSettings.maxActiveObstacles}. " +
+            $"Active obstacles: {activeObstacles.Count}/{effectiveMaxActiveObstacles}. " +
             $"Failure streak: {consecutiveFailedEligibleSpawnRolls}. " +
             $"Chance: {spawnChance:P0}. " +
             $"Pity forced: {forceSpawnFromPity}.");
@@ -199,15 +208,24 @@ public sealed class HexObstacleController : MonoBehaviour
         IReadOnlyCollection<HexCoordinates> pitstopCoordinates = pitstopSpawner?.SpawnedSites != null
             ? new HashSet<HexCoordinates>(pitstopSpawner.SpawnedSites.Keys)
             : new HashSet<HexCoordinates>();
+        HashSet<HexCoordinates> effectiveProtectedHexes = new(protectedHexes);
+        if (pressureContext?.AdditionalProtectedHexes != null)
+        {
+            foreach (HexCoordinates coordinates in pressureContext.AdditionalProtectedHexes)
+            {
+                effectiveProtectedHexes.Add(coordinates);
+            }
+        }
 
         HexObstacleSpawnPlan spawnPlan = spawnPlanner.TryPlanSpawn(
             mapGenerator.GridData,
             spawnSettings,
+            pressureContext,
             activeObstacles,
             fogUpdate.VisibleNow,
             fogUpdate.EnteredVisibility,
             pitstopCoordinates,
-            protectedHexes,
+            effectiveProtectedHexes,
             caravanCoordinates,
             mapGenerator.StartCoordinates,
             mapGenerator.GoalCoordinates,
@@ -302,5 +320,11 @@ public sealed class HexObstacleController : MonoBehaviour
         }
 
         Debug.Log($"[ObstacleSystem] {message}", this);
+    }
+
+    private int GetEffectiveMaxActiveObstacles()
+    {
+        int pressuredMinimum = pressureContext != null ? pressureContext.MinimumMaxActiveObstacles : 0;
+        return Mathf.Max(spawnSettings.maxActiveObstacles, pressuredMinimum);
     }
 }

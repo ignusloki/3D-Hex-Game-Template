@@ -156,6 +156,20 @@ public sealed class HexHudPresenter
         ClearHintText();
     }
 
+    public void ShowNemesisBlockedDestination(HexagonTile destinationTile)
+    {
+        if (destinationTile == null)
+        {
+            ShowNoPath();
+            return;
+        }
+
+        SetText(
+            statusText,
+            $"The Echo seals {FormatCoordinates(destinationTile.Coordinates)}. Choose another route.");
+        ClearHintText();
+    }
+
     public void ShowInsufficientResources(HexagonTile destinationTile, int travelCost, int remainingResources)
     {
         if (destinationTile == null)
@@ -182,6 +196,39 @@ public sealed class HexHudPresenter
             statusText,
             $"Caravan moved to {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
+    }
+
+    public void ShowNemesisUpdate(HexagonTile tile, HexNemesisTurnResult turnResult)
+    {
+        if (tile == null || turnResult == null || !turnResult.Active)
+        {
+            ShowCaravanIdle(tile);
+            return;
+        }
+
+        if (turnResult.DestroyedPitstops.Count > 0)
+        {
+            HexCoordinates coordinates = turnResult.DestroyedPitstops[0].Coordinates;
+            SetText(statusText, $"Corruptor ruined a pitstop at {FormatCoordinates(coordinates)}.");
+            ClearHintText();
+            return;
+        }
+
+        if (turnResult.Archetype == HexNemesisArchetype.Echo && turnResult.EchoBlockedCoordinates.HasValue)
+        {
+            SetText(statusText, $"Echo seals {FormatCoordinates(turnResult.EchoBlockedCoordinates.Value)} behind the caravan.");
+            ClearHintText();
+            return;
+        }
+
+        if (turnResult.CurrentCoordinates.HasValue)
+        {
+            SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} advances to {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+            ClearHintText();
+            return;
+        }
+
+        ShowMoveComplete(tile, 0, default);
     }
 
     public void ShowPitstopEvent(HexagonTile tile, PitstopEventResult eventResult, CaravanResourceSnapshot resources)
@@ -292,7 +339,7 @@ public sealed class HexHudPresenter
         ClearHintText();
     }
 
-    public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, HexObstacleInstance visibleObstacle = null)
+    public void ShowTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, HexObstacleInstance visibleObstacle = null, string extraDetails = null)
     {
         if (tile == null)
         {
@@ -306,12 +353,13 @@ public sealed class HexHudPresenter
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}";
         details = AppendObstacleDetails(details, visibleObstacle);
+        details = AppendExtraDetails(details, extraDetails);
 
         SetText(tileDetailsText, details);
         SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
     }
 
-    public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null)
+    public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, string extraDetails = null)
     {
         if (tile == null)
         {
@@ -320,6 +368,7 @@ public sealed class HexHudPresenter
         }
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: Unknown\nTravel Cost: Unknown\nVisibility: Unseen";
+        details = AppendExtraDetails(details, extraDetails);
         SetText(tileDetailsText, details);
         SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
     }
@@ -372,6 +421,11 @@ public sealed class HexHudPresenter
         }
 
         return $"{details}\nObstacle: {obstacleLine}";
+    }
+
+    private static string AppendExtraDetails(string details, string extraDetails)
+    {
+        return string.IsNullOrWhiteSpace(extraDetails) ? details : $"{details}\n{extraDetails}";
     }
 
     private static string FormatResourceType(CaravanResourceType resourceType)
@@ -430,7 +484,8 @@ public sealed class HexHudPresenter
             ? "placeholder"
             : pitstopSite.SpecialEventDescription;
 
-        string panel = $"Pitstop Info\n{title}\nRefuel: {refuelStatus}\nRepeatable: {repeatableStatus}\nVisited: {visitedStatus}\n{description}";
+        string destroyedStatus = pitstopSite.IsDestroyed ? "Yes" : "No";
+        string panel = $"Pitstop Info\n{title}\nDestroyed: {destroyedStatus}\nRefuel: {refuelStatus}\nRepeatable: {repeatableStatus}\nVisited: {visitedStatus}\n{description}";
         if (eventResult == null || !eventResult.Triggered || !eventResult.EffectsApplied)
         {
             return panel;
@@ -461,5 +516,11 @@ public sealed class HexHudPresenter
         }
 
         return string.Join(", ", parts);
+    }
+
+    private static string FormatNemesisArchetype(HexNemesisArchetype archetype)
+    {
+        string raw = archetype.ToString();
+        return char.ToUpperInvariant(raw[0]) + raw[1..];
     }
 }

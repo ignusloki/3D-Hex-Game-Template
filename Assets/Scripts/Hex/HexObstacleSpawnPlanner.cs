@@ -103,6 +103,7 @@ public sealed class HexObstacleSpawnPlanner
     public HexObstacleSpawnPlan TryPlanSpawn(
         HexGridData gridData,
         HexObstacleSpawnSettings settings,
+        HexObstaclePressureContext pressureContext,
         IReadOnlyDictionary<HexCoordinates, HexObstacleInstance> activeObstacles,
         IReadOnlyCollection<HexCoordinates> visibleNow,
         IReadOnlyCollection<HexCoordinates> enteredVisibility,
@@ -130,6 +131,11 @@ public sealed class HexObstacleSpawnPlanner
 
         int enteredCount = enteredVisibility.Count;
         float spawnChance = settings.CalculateSpawnChance(enteredCount);
+        if (HasPressureNearEnteredTiles(enteredSet: new HashSet<HexCoordinates>(enteredVisibility), pressureContext))
+        {
+            spawnChance = Mathf.Clamp01(spawnChance + pressureContext.PressureSpawnChanceBonus);
+        }
+
         if (!forceSpawn && spawnChance <= 0f)
         {
             return HexObstacleSpawnPlan.None;
@@ -149,6 +155,7 @@ public sealed class HexObstacleSpawnPlanner
         List<CandidateInfo> candidates = BuildCandidates(
             gridData,
             settings,
+            pressureContext,
             activeSet,
             visibleSet,
             enteredSet,
@@ -177,6 +184,7 @@ public sealed class HexObstacleSpawnPlanner
     private static List<CandidateInfo> BuildCandidates(
         HexGridData gridData,
         HexObstacleSpawnSettings settings,
+        HexObstaclePressureContext pressureContext,
         IReadOnlyDictionary<HexCoordinates, HexObstacleInstance> activeObstacles,
         HashSet<HexCoordinates> visibleSet,
         HashSet<HexCoordinates> enteredSet,
@@ -210,7 +218,7 @@ public sealed class HexObstacleSpawnPlanner
             }
 
             CountFrontierAdjacency(tile.Coordinates, gridData, visibleSet, enteredSet, out int adjacentVisible, out int adjacentEntered);
-            float weight = ScoreCandidate(tile, gridData, settings, adjacentVisible, adjacentEntered, random);
+            float weight = ScoreCandidate(tile, gridData, settings, pressureContext, adjacentVisible, adjacentEntered, random);
             if (weight < settings.minimumCandidateWeight)
             {
                 continue;
@@ -257,6 +265,7 @@ public sealed class HexObstacleSpawnPlanner
         HexTileData tile,
         HexGridData gridData,
         HexObstacleSpawnSettings settings,
+        HexObstaclePressureContext pressureContext,
         int adjacentVisible,
         int adjacentEntered,
         System.Random random)
@@ -265,9 +274,50 @@ public sealed class HexObstacleSpawnPlanner
         float weight = 1f;
         weight += adjacentVisible * settings.visibleNeighborWeight;
         weight += adjacentEntered * settings.enteredNeighborWeight;
+        if (IsNearPressure(tile.Coordinates, pressureContext))
+        {
+            weight += pressureContext.PressureCandidateWeightBonus;
+        }
+
         weight -= edgeDistance == 0 ? settings.edgePenaltyWeight : 0f;
         weight += (float)random.NextDouble() * settings.randomJitter;
         return Mathf.Max(0f, weight);
+    }
+
+    private static bool HasPressureNearEnteredTiles(HashSet<HexCoordinates> enteredSet, HexObstaclePressureContext pressureContext)
+    {
+        if (enteredSet == null || enteredSet.Count == 0 || pressureContext == null || pressureContext.PressureHexes == null)
+        {
+            return false;
+        }
+
+        foreach (HexCoordinates coordinates in enteredSet)
+        {
+            if (IsNearPressure(coordinates, pressureContext))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsNearPressure(HexCoordinates coordinates, HexObstaclePressureContext pressureContext)
+    {
+        if (pressureContext == null || pressureContext.PressureHexes == null)
+        {
+            return false;
+        }
+
+        foreach (HexCoordinates pressureHex in pressureContext.PressureHexes)
+        {
+            if (coordinates.DistanceTo(pressureHex) <= pressureContext.PressureInfluenceRadius)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void CountFrontierAdjacency(

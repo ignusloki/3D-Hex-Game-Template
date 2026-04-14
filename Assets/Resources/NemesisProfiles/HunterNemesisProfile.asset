@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c7e2e252c0e4e329e7cc8c53ae01b1d, type: 3}
+  m_Name: HunterNemesisProfile
+  m_EditorClassIdentifier: 
+  archetype: 1
+  caravanMovesPerActivation: 1
+  stepsPerActivation: 1
+  minimumMaxActiveObstacles: 3
+  corruptionInfluenceRadius: 1
+  corruptionSpawnChanceBonus: 0.12
+  corruptionCandidateWeightBonus: 1.25
+  destroyedPitstopTint: {r: 0.38, g: 0.18, b: 0.18, a: 1}
+  destroyedPitstopDescription: This stop has been ruined by corruption.
+  actorPrefab: {fileID: 0}
+  actorHeight: 0.6
+  actorScale: 0.4
+  corruptionHeight: 0.04
+  corruptionScale: 0.5
+  actorColor: {r: 0.86, g: 0.22, b: 0.19, a: 1}
+  corruptionColor: {r: 0.24, g: 0.09, b: 0.09, a: 0.92}

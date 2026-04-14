@@ -75,6 +75,7 @@ public class HexObstacleSystemTests
         HexObstacleSpawnPlan plan = planner.TryPlanSpawn(
             gridData,
             settings,
+            HexObstaclePressureContext.Empty,
             active,
             visible,
             entered,
@@ -117,6 +118,7 @@ public class HexObstacleSystemTests
         HexObstacleSpawnPlan plan = planner.TryPlanSpawn(
             gridData,
             settings,
+            HexObstaclePressureContext.Empty,
             new Dictionary<HexCoordinates, HexObstacleInstance>(),
             new HashSet<HexCoordinates> { new HexCoordinates(2, 1) },
             new HashSet<HexCoordinates> { new HexCoordinates(2, 1) },
