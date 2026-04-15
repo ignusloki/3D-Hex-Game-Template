@@ -1757,7 +1757,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexNemesisController
   settings:
     enableNemesis: 1
-    activeArchetype: 3
+    activeArchetype: 1
     cornerChoice: 0
     enableDebugLogging: 1
     hunterProfile: {fileID: 11400000, guid: 2f44c8ba3d7d4f46b92ca78c4cd81fd8, type: 2}
@@ -2301,7 +2301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexBoonSystemController
   applySelectedBoonAtRunStart: 1
-  selectedBoon: {fileID: 11400000, guid: 46518f2c8a6734201a29608c7077a92d, type: 2}
+  selectedBoon: {fileID: 11400000, guid: 0c07eaea0438b4f2496a32e538e13bfc, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

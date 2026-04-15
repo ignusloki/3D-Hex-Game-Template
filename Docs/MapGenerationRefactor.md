@@ -321,6 +321,54 @@ Examples:
 
 This keeps boon logic declarative instead of hardcoded into terrain generation.
 
+## Debug Logging And Observability
+
+The refactored map-generation system should include explicit debug logging support from the start.
+
+This should not be added later as an afterthought.
+
+### Logging goals
+
+- make generation failures easier to diagnose
+- make boon-driven terrain changes easier to validate
+- make landmark and object placement decisions inspectable
+- keep normal play logs compact unless verbose logging is enabled
+
+### Recommended logging shape
+
+Add an opt-in generation debug setting that can be enabled from the editor or scenario configuration.
+
+Suggested runtime controls:
+
+- `EnableDebugLogging`
+- `EnableVerbosePhaseLogging`
+- optional per-system prefixes such as `[MapGen]`, `[TerrainStamp]`, `[ObjectPlacement]`
+
+### Minimum useful log output
+
+When debug logging is enabled, the generator should report:
+
+- resolved seed and map size
+- applied generation modifiers
+- per-phase summaries for terrain, regions, features, landmarks, and object placement
+- accepted and rejected landmark placement attempts with rejection reasons
+- accepted and rejected object placements with rejection reasons
+- validation failures that cause rerolls
+- final summary of biome distribution and placed special content
+
+### Rule for future systems
+
+This logging requirement should be treated as a standard engineering rule for future systems as well.
+
+New gameplay systems should ship with at least:
+
+- a clear debug toggle
+- compact success logs
+- actionable warning / failure logs
+- stable log prefixes so related messages can be filtered quickly
+
+The map-generation refactor should follow that rule from the first implementation slice.
+
 ## What The Current Code Already Supports Well
 
 The current code already provides useful foundations:
