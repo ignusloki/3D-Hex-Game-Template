@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-04-11
+Last updated: 2026-04-15
 
 ## Current State
 
@@ -26,16 +26,22 @@ The movement animation task is intentionally deferred for later.
 
 ## Current Priority
 
-### 1. Replay Flow
+### 1. Map Generation Refactor
 
 This is the next active feature to build.
 
 Scope:
 
-- restart current run without stopping Play mode
-- regenerate a fresh map without stopping Play mode
-- decide whether restart preserves the current seed or not
-- keep the flow simple and readable for prototype use
+- preserve the current terrain-generation rules and map feel
+- introduce a broader generation modifier path that is not limited to pitstops
+- support boon-driven terrain tuning such as more or less of a biome
+- support authored terrain landmarks such as mini lakes and oases
+- support spawned map objects such as outposts and quest markers
+- avoid rewriting the whole gameplay loop
+
+Reference:
+
+- `Docs/MapGenerationRefactor.md`
 
 ## Remaining Non-Event Tasks
 
@@ -52,13 +58,16 @@ Scope:
 
 ### Map / Terrain
 
-4. Add a cleanup / smoothing pass for the remaining odd biome scraps.
-5. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
-6. Revisit map validation later if new gameplay systems change what qualifies as a good map.
+4. Refactor map generation around explicit phases and a shared generation context.
+5. Add a landmark stamp pass for authored biome clusters.
+6. Add a shared map-object placement architecture so pitstops, outposts, and quest marks can coexist.
+7. Add a cleanup / smoothing pass for the remaining odd biome scraps.
+8. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
+9. Revisit map validation later if new gameplay systems change what qualifies as a good map.
 
 ### Balance
 
-7. Balance the run economy around the current systems:
+10. Balance the run economy around the current systems:
    - terrain travel costs
    - starting food
    - starting morale
@@ -69,7 +78,7 @@ Scope:
 
 ### Testing / Stability
 
-8. Expand automated tests for the full non-event gameplay loop:
+11. Expand automated tests for the full non-event gameplay loop:
    - movement flow
    - fog transitions
    - obstacle spawn / despawn / contact
@@ -83,11 +92,11 @@ These are useful, but not current blockers:
 1. Caravan movement animation between hexes.
 2. Additional board polish and stronger UI visuals.
 3. More advanced non-resource consequences for events.
-4. Further biome generation polish beyond the current region-based system.
+4. Additional terrain-landmark content once the refactor architecture is in place.
 
 ## Notes
 
 - Pitstop event system is considered a complete first playable slice.
 - Win / lose / retry UI is now in place as a complete first prototype slice.
 - Future event work is now polish / expansion, not a core missing system.
-- The next branch should focus on replay flow unless priorities change.
+- The next branch should focus on the map-generation refactor described in `Docs/MapGenerationRefactor.md`.

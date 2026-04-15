@@ -128,6 +128,23 @@ These are the primary runtime scene objects involved in the pitstop feature:
 7. On selection, the resolver applies the option effects.
 8. The HUD updates and gameplay resumes after `Map` is clicked.
 
+### Architecture note
+
+Pitstops are currently placed by a specialized post-generation system instead of a shared point-of-interest pipeline.
+
+That is still acceptable for the current playable prototype.
+
+However, the planned map-generation refactor is expected to introduce a broader placement architecture so pitstops can eventually coexist more cleanly with:
+
+- authored terrain landmarks
+- outposts
+- quest markers
+- future map objects driven by boons or scenario rules
+
+This direction is documented in:
+
+- `Docs/MapGenerationRefactor.md`
+
 ## Key Scripts
 
 ### Placement and pitstop site data

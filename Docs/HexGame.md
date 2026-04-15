@@ -190,6 +190,38 @@ This means the board is intended to feel more region-based and less like random 
 
 Special tiles such as the start and goal biome overrides have higher priority than normal terrain-generation rules.
 
+### Important limitation
+
+The current terrain generator can bias biome outcomes and paint random compact features, but it does not yet have a dedicated authored-landmark pass.
+
+That means it is currently good at:
+
+- region shaping
+- water / forest / mountain feature biasing
+- rerolling weak maps
+
+But it is not yet good at exact requests such as:
+
+- “place two mini lakes”
+- “stamp an oasis pattern”
+- “spawn a quest outpost at a controlled landmark position”
+
+### Planned refactor direction
+
+The planned next refactor keeps the current layered approach but restructures it into explicit phases:
+
+- base biome pass
+- macro region pass
+- feature pass
+- authored landmark stamp pass
+- special-tile enforcement
+- validation / reroll
+- map-object placement pass
+
+The target architecture for that refactor is documented in:
+
+- `Docs/MapGenerationRefactor.md`
+
 ## 6. Resources and Failure Conditions
 
 The caravan currently has three tracked resources:
@@ -513,6 +545,19 @@ The placement system tries to:
 - avoid spawn / goal adjacency
 - create route-planning anchors
 
+### Planned integration note
+
+Pitstops currently use their own structured placement planner after terrain generation.
+
+That will remain true during the first refactor slice.
+
+Longer term, pitstops are intended to become one consumer of a broader shared map-object placement architecture so they can coexist cleanly with:
+
+- terrain landmarks
+- outposts
+- quest markers
+- future authored points of interest
+
 ## 11.6 Destroyed pitstops
 
 Pitstops can now also be destroyed by the `Corruptor` Nemesis.
@@ -754,6 +799,7 @@ These are important context points for future design discussion:
 - the game currently ends after the first map even though the long-term structure is 3 acts
 - the Nemesis system exists, but the full boon / act progression around it does not yet exist
 - some map-generation visuals still need cleanup
+- the map generator still needs a dedicated landmark / map-object architecture for future biome boons
 - resource balance is still very tunable and not final
 
 ## 17. Current Non-Event Pending Work
@@ -761,6 +807,7 @@ These are important context points for future design discussion:
 Based on the current backlog, the main remaining non-event tasks are:
 
 - add in-game replay flow without stopping Play mode
+- refactor map generation so boon-driven terrain modifiers and authored landmarks can be supported cleanly
 - improve board readability for start, goal, obstacles, fog, and pitstop state
 - continue map visual cleanup and biome consistency work
 - further balance terrain costs, obstacle pressure, pitstop density, and starting resources
