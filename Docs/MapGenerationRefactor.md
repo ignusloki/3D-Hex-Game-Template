@@ -17,7 +17,7 @@ The goal is to preserve the current playable rules while making the system flexi
 
 ## Current Implementation Status
 
-Slice 1 is now in place in code.
+The refactor is now through the shared map-object placement slice.
 
 What is implemented:
 
@@ -32,10 +32,13 @@ What is implemented:
 - scene-level terrain landmark requests on `MapGenerator` for testing and scenario setup
 - generated-map placement reservations for start, goal, terrain landmarks, and pitstops
 - pitstop planning consuming map reservations so landmark tiles are rejected up front
+- a shared map-object placement result model
+- a shared map-object placement pass with pitstops as the first consumer
+- `MapGenerator` retaining map-object placement metadata after planning
 
 What is not implemented yet:
 
-- general map-object placement for outposts and quest markers
+- content placement for outposts and quest markers
 - landmark placement rotation / mirroring
 - boon content that actually uses landmark requests yet
 - broader map-object reservation consumers beyond pitstops
@@ -56,13 +59,15 @@ This is already more structured than a pure random-noise generator and is worth 
 
 ### What is not good enough
 
-The current system is not expressive enough for planned boon and landmark work because:
+The old map-generation architecture was not expressive enough for planned boon and landmark work because:
 
-- boon map modifiers currently only support extra pitstops
-- terrain tuning is mostly threshold-driven, not exposed as a reusable modifier bundle
-- water blobs are random compact features, not explicit authored landmarks
-- pitstops are placed by a specialized post-generation system instead of a broader map-placement architecture
-- tile occupancy is too simple to represent multiple non-blocking map objects safely
+- boon map modifiers were originally limited to extra pitstops
+- terrain tuning was mostly threshold-driven, not exposed as a reusable modifier bundle
+- water blobs were random compact features, not explicit authored landmarks
+- pitstops were placed by a specialized post-generation system instead of a broader map-placement architecture
+- tile occupancy was too simple to represent multiple non-blocking map objects safely
+
+Most of those structural gaps are now addressed in code. The main remaining gap is using the shared map-object placement architecture for actual non-pitstop content.
 
 ### Recommendation
 
@@ -172,7 +177,7 @@ Input:
 - list of `HexTerrainLandmarkPlacementRequest`
 - list of available `HexTerrainLandmarkDefinition` assets
 
-This is the new phase the current system does not have.
+This phase is now implemented.
 
 #### Phase E: special tile enforcement pass
 
@@ -286,6 +291,11 @@ This should support objects such as:
 - relic sites
 - future narrative landmarks
 
+Current implementation note:
+
+- the runtime placement result model and pitstop-backed placement pass now exist
+- future outpost / quest-marker content still needs to use that same pass
+
 ### D. Placement reservations
 
 Do not overload runtime tile occupancy for map-generation placement.
@@ -312,19 +322,19 @@ This avoids breaking pathfinding and unit movement when decorative or interactiv
 
 Pitstops should remain a special gameplay system, but their coordinates should eventually come from the shared map-object placement phase rather than a completely isolated post-process.
 
-Recommended migration path:
+Migration status:
 
-1. Keep `PitstopPlacementPlanner` and `PitstopSpawner` for now.
-2. Make them consume shared placement reservations.
-3. Later move pitstop placement under the common map-object placement pipeline.
+1. `PitstopPlacementPlanner` and `PitstopSpawner` were kept in place.
+2. They now consume shared placement reservations.
+3. Pitstop coordinates now flow through the shared map-object placement pipeline before spawning.
 
-This keeps current gameplay stable while preparing for landmarks and outposts.
+This kept current gameplay stable while preparing for landmarks and future non-pitstop objects.
 
 ## How Boons Fit The New Architecture
 
 ### Current problem
 
-The current boon system can only express extra pitstops as map modification.
+The first boon slice originally could only express extra pitstops as map modification.
 
 That is too narrow for:
 
@@ -345,6 +355,11 @@ Examples:
 - `spawn 1 quest outpost in mid-progress band`
 
 This keeps boon logic declarative instead of hardcoded into terrain generation.
+
+Current implementation note:
+
+- boons can already drive terrain-threshold changes, feature multipliers, and terrain-landmark requests through `HexMapGenerationModifiers`
+- no shipped boon content uses terrain-landmark or map-object placement requests yet
 
 ## Debug Logging And Observability
 

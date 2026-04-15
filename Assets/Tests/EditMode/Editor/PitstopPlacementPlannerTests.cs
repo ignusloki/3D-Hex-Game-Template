@@ -206,6 +206,42 @@ public class PitstopPlacementPlannerTests
         Assert.That(result.DiagnosticsSummary, Does.Contain("reserved=3"));
     }
 
+    [Test]
+    public void MapObjectPlacementPass_PlansPitstopsAsGenericMapObjectsAndReservesThem()
+    {
+        HexGridData gridData = CreateGrid(5, 5);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
+        HexMapObjectPlacementPass placementPass = new();
+        HexCoordinates start = new(2, 0);
+        HexCoordinates goal = new(2, 4);
+        HexMapPlacementReservations reservations = new();
+        reservations.Reserve(new HexCoordinates(2, 2), HexMapPlacementReservationLayer.TerrainLandmark, "Mini Lake");
+
+        HexMapObjectPlacementPlanResult result = placementPass.PlanPitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new HexMapGenerationModifiers(1, HexBoonMapPlacementBand.Mid),
+            reservations,
+            new System.Random(9876));
+
+        List<HexMapObjectPlacement> pitstopPlacements = result.Placements.GetByType(HexMapObjectType.Pitstop);
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(pitstopPlacements.Count, Is.EqualTo(3));
+
+        for (int index = 0; index < pitstopPlacements.Count; index++)
+        {
+            HexMapObjectPlacement placement = pitstopPlacements[index];
+            Assert.That(placement.ObjectType, Is.EqualTo(HexMapObjectType.Pitstop));
+            Assert.That(placement.TryGetPitstopKind(out _), Is.True);
+            Assert.That(result.PlacementReservations.IsReserved(placement.Coordinates, HexMapPlacementReservationLayer.Pitstop), Is.True);
+            Assert.That(placement.Coordinates, Is.Not.EqualTo(new HexCoordinates(2, 2)));
+        }
+    }
+
     [TestCase(0, 9)]
     [TestCase(9, 0)]
     public void GeneratePitstops_AddsAnExtraMidAnchorOnLargeMapsWhenActModifierRequestsExtraPitstop(int startColumn, int goalColumn)

@@ -41,6 +41,7 @@ public class MapGenerator : MonoBehaviour
     public HexCoordinates StartCoordinates { get; private set; }
     public HexCoordinates GoalCoordinates { get; private set; }
     public HexMapPlacementReservations PlacementReservations { get; private set; } = new();
+    public HexMapObjectPlacementCollection MapObjectPlacements { get; private set; } = new();
 
     void Start() {
         if (!GenerateMap())
@@ -242,6 +243,19 @@ public class MapGenerator : MonoBehaviour
         gridData = null;
         pathfinder = null;
         PlacementReservations = new HexMapPlacementReservations();
+        MapObjectPlacements = new HexMapObjectPlacementCollection();
+    }
+
+    public void ApplyMapObjectPlacementPlan(HexMapObjectPlacementPlanResult placementPlan)
+    {
+        if (placementPlan == null)
+        {
+            MapObjectPlacements = new HexMapObjectPlacementCollection();
+            return;
+        }
+
+        MapObjectPlacements = placementPlan.Placements?.Clone() ?? new HexMapObjectPlacementCollection();
+        PlacementReservations = placementPlan.PlacementReservations?.Clone() ?? PlacementReservations ?? new HexMapPlacementReservations();
     }
 
     // Calculates the position of a tile based on its row and column

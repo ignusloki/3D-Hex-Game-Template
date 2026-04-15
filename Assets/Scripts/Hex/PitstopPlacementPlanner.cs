@@ -1181,3 +1181,83 @@ public sealed class PitstopPlacementPlanner
         return ResolveLane(rowProgress, settings);
     }
 }
+
+public sealed class HexMapObjectPlacementPass
+{
+    private readonly PitstopPlacementPlanner pitstopPlacementPlanner = new();
+
+    public HexMapObjectPlacementPlanResult PlanPitstops(
+        HexGridData gridData,
+        HexPathfinder pathfinder,
+        HexCoordinates start,
+        HexCoordinates goal,
+        PitstopPlacementSettings settings,
+        HexMapGenerationModifiers generationModifiers,
+        HexMapPlacementReservations reservations,
+        System.Random random)
+    {
+        settings ??= new PitstopPlacementSettings();
+        settings.Validate();
+        random ??= new System.Random();
+
+        HexMapPlacementReservations workingReservations = reservations?.Clone() ?? new HexMapPlacementReservations();
+        PitstopLayoutResult layoutResult = pitstopPlacementPlanner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            random,
+            generationModifiers,
+            workingReservations);
+
+        HexMapObjectPlacementCollection placements = new();
+        IReadOnlyList<HexCoordinates> coordinates = layoutResult.Coordinates;
+        List<PitstopKind> kindSequence = BuildKindSequence(coordinates.Count, random);
+        for (int index = 0; index < coordinates.Count; index++)
+        {
+            PitstopKind kind = kindSequence[index];
+            HexCoordinates coordinatesForPitstop = coordinates[index];
+            placements.Add(new HexMapObjectPlacement(
+                HexMapObjectType.Pitstop,
+                coordinatesForPitstop,
+                "pitstop",
+                kind.ToString(),
+                kind.ToString()));
+            workingReservations.Reserve(coordinatesForPitstop, HexMapPlacementReservationLayer.Pitstop, "Pitstop");
+        }
+
+        return new HexMapObjectPlacementPlanResult(
+            placements,
+            workingReservations,
+            layoutResult.IsValid,
+            layoutResult.Score,
+            layoutResult.AttemptsUsed,
+            layoutResult.Summary,
+            layoutResult.DiagnosticsSummary);
+    }
+
+    private static List<PitstopKind> BuildKindSequence(int count, System.Random random)
+    {
+        List<PitstopKind> sequence = new(count);
+        PitstopKind[] availableKinds =
+        {
+            PitstopKind.Mill,
+            PitstopKind.WallTower,
+            PitstopKind.Mansion
+        };
+
+        for (int index = 0; index < count; index++)
+        {
+            sequence.Add(availableKinds[index % availableKinds.Length]);
+        }
+
+        for (int index = sequence.Count - 1; index > 0; index--)
+        {
+            int swapIndex = random.Next(index + 1);
+            (sequence[index], sequence[swapIndex]) = (sequence[swapIndex], sequence[index]);
+        }
+
+        return sequence;
+    }
+}

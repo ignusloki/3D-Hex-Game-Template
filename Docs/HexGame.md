@@ -726,6 +726,7 @@ The main gameplay runtime is currently split across these scene objects:
 - `HexMapGenerationContext`
 - `HexMapGenerationModifiers`
 - `HexMapPlacementReservations`
+- `HexMapObjectPlacementPass`
 
 ### Player / movement / HUD
 
@@ -807,7 +808,7 @@ These are important context points for future design discussion:
 - the game currently ends after the first map even though the long-term structure is 3 acts
 - the Nemesis system exists, but the full boon / act progression around it does not yet exist
 - some map-generation visuals still need cleanup
-- the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, and placement reservations, but still needs a broader shared map-object phase
+- the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, and a shared map-object placement pass with pitstops flowing through it as the first consumer
 - resource balance is still very tunable and not final
 
 ## 17. Current Non-Event Pending Work
@@ -815,8 +816,7 @@ These are important context points for future design discussion:
 Based on the current backlog, the main remaining non-event tasks are:
 
 - add in-game replay flow without stopping Play mode
-- refactor map generation so boon-driven terrain modifiers and authored landmarks can be supported cleanly
-- continue the map-generation refactor beyond the current context / landmark / reservation slice so custom map objects can be supported through the same placement pipeline
+- continue the map-generation refactor beyond the current pitstop-backed shared placement slice so outposts, quest marks, and other custom map objects can use the same placement pipeline
 - improve board readability for start, goal, obstacles, fog, and pitstop state
 - continue map visual cleanup and biome consistency work
 - further balance terrain costs, obstacle pressure, pitstop density, and starting resources

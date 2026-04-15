@@ -19,7 +19,7 @@ public class PitstopSpawner : MonoBehaviour
     [Min(0.1f)] [SerializeField] private float visualScale = 1.2f;
     [SerializeField] private bool randomizeRotation = true;
 
-    private readonly PitstopPlacementPlanner placementPlanner = new();
+    private readonly HexMapObjectPlacementPass placementPass = new();
     private readonly Dictionary<HexCoordinates, PitstopSite> spawnedSites = new();
     private const int DetailedRetryLogInterval = 10;
     private MapGenerator mapGenerator;
@@ -70,35 +70,37 @@ public class PitstopSpawner : MonoBehaviour
             yield break;
         }
 
-        PitstopLayoutResult bestFallbackLayout = PitstopLayoutResult.Empty;
+        HexMapObjectPlacementPlanResult bestFallbackPlan = HexMapObjectPlacementPlanResult.Empty;
         int mapAttempt = 0;
         while (true)
         {
             spawnedSites.Clear();
             HexMapGenerationModifiers generationModifiers = HexBoonSelectionService.GetMapGenerationModifiers();
 
-            PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
+            HexMapObjectPlacementPlanResult placementPlan = placementPass.PlanPitstops(
                 mapGenerator.GridData,
                 mapGenerator.Pathfinder,
                 mapGenerator.StartCoordinates,
                 mapGenerator.GoalCoordinates,
                 placementSettings,
-                new System.Random(),
                 generationModifiers,
-                mapGenerator.PlacementReservations);
+                mapGenerator.PlacementReservations,
+                new System.Random());
 
-            if (layoutResult.Score > bestFallbackLayout.Score)
+            if (placementPlan.Score > bestFallbackPlan.Score)
             {
-                bestFallbackLayout = layoutResult;
+                bestFallbackPlan = placementPlan;
             }
 
-            if (layoutResult.IsValid && layoutResult.Coordinates.Count > 0)
+            List<HexMapObjectPlacement> pitstopPlacements = placementPlan.Placements.GetByType(HexMapObjectType.Pitstop);
+            if (placementPlan.IsValid && pitstopPlacements.Count > 0)
             {
-                SpawnPitstopLayout(layoutResult);
+                mapGenerator.ApplyMapObjectPlacementPlan(placementPlan);
+                SpawnPitstopLayout(pitstopPlacements);
                 string diagnosticsSuffix = placementSettings.enableDebugLogging
-                    ? $" {layoutResult.DiagnosticsSummary}"
+                    ? $" {placementPlan.DiagnosticsSummary}"
                     : string.Empty;
-                Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}. Map rerolls: {mapAttempt}.{diagnosticsSuffix}", this);
+                Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {placementPlan.Summary} Attempts: {placementPlan.AttemptsUsed}. Map rerolls: {mapAttempt}.{diagnosticsSuffix}", this);
                 yield break;
             }
 
@@ -117,7 +119,7 @@ public class PitstopSpawner : MonoBehaviour
 
                 Debug.LogWarning(
                     $"Pitstop layout attempt failed on map variant {mapAttempt}. Regenerating map and retrying pitstop placement. " +
-                    $"Planner summary: {layoutResult.Summary} {(placementSettings.enableDebugLogging ? layoutResult.DiagnosticsSummary + " " : string.Empty)}{retryMode}",
+                    $"Planner summary: {placementPlan.Summary} {(placementSettings.enableDebugLogging ? placementPlan.DiagnosticsSummary + " " : string.Empty)}{retryMode}",
                     this);
             }
 
@@ -128,12 +130,14 @@ public class PitstopSpawner : MonoBehaviour
             }
         }
 
-        if (bestFallbackLayout.Coordinates.Count > 0 && placementSettings.keepBestLayoutIfAllAttemptsFail)
+        List<HexMapObjectPlacement> bestFallbackPitstops = bestFallbackPlan.Placements.GetByType(HexMapObjectType.Pitstop);
+        if (bestFallbackPitstops.Count > 0 && placementSettings.keepBestLayoutIfAllAttemptsFail)
         {
-            SpawnPitstopLayout(bestFallbackLayout);
+            mapGenerator.ApplyMapObjectPlacementPlan(bestFallbackPlan);
+            SpawnPitstopLayout(bestFallbackPitstops);
             Debug.LogWarning(
                 $"Spawned {spawnedSites.Count} pitstops using the best available layout after {mapAttempt} map rerolls. " +
-                $"{bestFallbackLayout.Summary} Attempts: {bestFallbackLayout.AttemptsUsed}. {(placementSettings.enableDebugLogging ? bestFallbackLayout.DiagnosticsSummary : string.Empty)}",
+                $"{bestFallbackPlan.Summary} Attempts: {bestFallbackPlan.AttemptsUsed}. {(placementSettings.enableDebugLogging ? bestFallbackPlan.DiagnosticsSummary : string.Empty)}",
                 this);
             yield break;
         }
@@ -144,20 +148,23 @@ public class PitstopSpawner : MonoBehaviour
             this);
     }
 
-    private void SpawnPitstopLayout(PitstopLayoutResult layoutResult)
+    private void SpawnPitstopLayout(IReadOnlyList<HexMapObjectPlacement> placements)
     {
-        IReadOnlyList<HexCoordinates> placements = layoutResult.Coordinates;
-        List<PitstopKind> kindSequence = BuildKindSequence(placements.Count);
         for (int index = 0; index < placements.Count; index++)
         {
-            HexCoordinates coordinates = placements[index];
-            mapGenerator.PlacementReservations?.Reserve(coordinates, HexMapPlacementReservationLayer.Pitstop, "Pitstop");
+            HexMapObjectPlacement placement = placements[index];
+            HexCoordinates coordinates = placement.Coordinates;
             if (!mapGenerator.TryGetTileView(coordinates, out HexagonTile tileView) || tileView == null)
             {
                 continue;
             }
 
-            PitstopKind kind = kindSequence[index];
+            if (!placement.TryGetPitstopKind(out PitstopKind kind))
+            {
+                Debug.LogWarning($"Map object placement at {coordinates} was not a valid pitstop variant.", this);
+                continue;
+            }
+
             GameObject prefab = GetPrefab(kind);
             if (prefab == null)
             {
@@ -181,30 +188,6 @@ public class PitstopSpawner : MonoBehaviour
             site.Initialize(kind, coordinates);
             spawnedSites[coordinates] = site;
         }
-    }
-
-    private List<PitstopKind> BuildKindSequence(int count)
-    {
-        List<PitstopKind> sequence = new(count);
-        PitstopKind[] availableKinds =
-        {
-            PitstopKind.Mill,
-            PitstopKind.WallTower,
-            PitstopKind.Mansion
-        };
-
-        for (int index = 0; index < count; index++)
-        {
-            sequence.Add(availableKinds[index % availableKinds.Length]);
-        }
-
-        for (int index = sequence.Count - 1; index > 0; index--)
-        {
-            int swapIndex = Random.Range(0, index + 1);
-            (sequence[index], sequence[swapIndex]) = (sequence[swapIndex], sequence[index]);
-        }
-
-        return sequence;
     }
 
     private GameObject GetPrefab(PitstopKind kind)

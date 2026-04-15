@@ -48,7 +48,8 @@ Current implementation progress:
 - slice 1 is done: shared generation context, generalized modifier bundle, boon integration through that bundle, and initial map-generation debug logging
 - slice 2 is done: terrain landmark definition assets, exact terrain landmark stamping, and a scene-level testing hook on `MapGenerator`
 - slice 3 is done: generated-map placement reservations and pitstop planning consuming those reservations
-- next slices are still needed for shared map-object placement
+- slice 4 is done: shared map-object placement results and a shared placement pass with pitstops flowing through it as the first consumer
+- the next slice is actual outpost / quest-marker content on top of that placement pass
 
 ## Remaining Non-Event Tasks
 
@@ -65,11 +66,10 @@ Current implementation progress:
 
 ### Map / Terrain
 
-4. Continue the map-generation refactor from the current shared context / modifier slice into explicit generation phases.
-5. Add a shared map-object placement architecture so pitstops, outposts, and quest marks can coexist.
-6. Add a cleanup / smoothing pass for the remaining odd biome scraps.
-7. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
-8. Revisit map validation later if new gameplay systems change what qualifies as a good map.
+4. Add actual outpost / quest-marker content that uses the shared map-object placement architecture.
+5. Add a cleanup / smoothing pass for the remaining odd biome scraps.
+6. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
+7. Revisit map validation later if new gameplay systems change what qualifies as a good map.
 
 ### Balance
 
