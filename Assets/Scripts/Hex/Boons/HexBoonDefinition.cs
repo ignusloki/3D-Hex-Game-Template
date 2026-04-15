@@ -84,6 +84,8 @@ public sealed class HexBoonMapModifierData
     [Min(0f)] public float mountainFeatureSizeMultiplier = 1f;
     [Header("Terrain Landmarks")]
     public HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+    [Header("Map Objects")]
+    public HexMapObjectPlacementRequest[] mapObjectPlacementRequests = System.Array.Empty<HexMapObjectPlacementRequest>();
 
     public void Validate()
     {
@@ -96,10 +98,16 @@ public sealed class HexBoonMapModifierData
         waterFeatureSizeMultiplier = Mathf.Max(0f, waterFeatureSizeMultiplier);
         mountainFeatureSizeMultiplier = Mathf.Max(0f, mountainFeatureSizeMultiplier);
         terrainLandmarkRequests ??= System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+        mapObjectPlacementRequests ??= System.Array.Empty<HexMapObjectPlacementRequest>();
 
         for (int index = 0; index < terrainLandmarkRequests.Length; index++)
         {
             terrainLandmarkRequests[index]?.Validate();
+        }
+
+        for (int index = 0; index < mapObjectPlacementRequests.Length; index++)
+        {
+            mapObjectPlacementRequests[index]?.Validate();
         }
     }
 }
@@ -231,7 +239,8 @@ public sealed class HexBoonDefinition : ScriptableObject
             mapModifier.forestFeatureSizeMultiplier,
             mapModifier.waterFeatureSizeMultiplier,
             mapModifier.mountainFeatureSizeMultiplier,
-            mapModifier.terrainLandmarkRequests);
+            mapModifier.terrainLandmarkRequests,
+            mapModifier.mapObjectPlacementRequests);
     }
 
     private static string SanitizeId(string rawValue)

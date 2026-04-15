@@ -119,22 +119,22 @@ These are the primary runtime scene objects involved in the pitstop feature:
 
 ### Main data flow
 
-1. `PitstopSpawner` places pitstop sites after map generation.
-2. `PitstopEventController` initializes with those spawned sites.
-3. `PlayerController` detects arrival on a pitstop tile.
-4. `PitstopEventResolver` applies the base arrival reward.
-5. `PitstopEventController` selects a matching event asset.
-6. `PitstopEventModalPresenter` shows the choice UI.
-7. On selection, the resolver applies the option effects.
-8. The HUD updates and gameplay resumes after `Map` is clicked.
+1. `PitstopSpawner` requests a shared map-object placement plan after terrain generation.
+2. That plan now contains both pitstops and any requested non-pitstop map objects.
+3. `PitstopSpawner` spawns the pitstop sites from that shared plan.
+4. `PitstopEventController` initializes with those spawned sites.
+5. `PlayerController` detects arrival on a pitstop tile.
+6. `PitstopEventResolver` applies the base arrival reward.
+7. `PitstopEventController` selects a matching event asset.
+8. `PitstopEventModalPresenter` shows the choice UI.
+9. On selection, the resolver applies the option effects.
+10. The HUD updates and gameplay resumes after `Map` is clicked.
 
 ### Architecture note
 
-Pitstops are currently placed by a specialized post-generation system instead of a shared point-of-interest pipeline.
+Pitstops still keep their own gameplay logic, but their coordinates now come from the shared map-object placement pipeline before spawning.
 
-That is still acceptable for the current playable prototype.
-
-However, the planned map-generation refactor is expected to introduce a broader placement architecture so pitstops can eventually coexist more cleanly with:
+That broader placement architecture lets pitstops coexist more cleanly with:
 
 - authored terrain landmarks
 - outposts

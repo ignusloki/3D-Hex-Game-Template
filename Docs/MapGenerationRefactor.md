@@ -17,7 +17,7 @@ The goal is to preserve the current playable rules while making the system flexi
 
 ## Current Implementation Status
 
-The refactor is now through the shared map-object placement slice.
+The refactor is now through the first real non-pitstop map-object slice.
 
 What is implemented:
 
@@ -30,18 +30,20 @@ What is implemented:
 - asset-driven `HexTerrainLandmarkDefinition` authoring
 - a terrain landmark stamp pass for exact biome footprints
 - scene-level terrain landmark requests on `MapGenerator` for testing and scenario setup
+- scene-level map-object requests on `MapGenerator` for testing and scenario setup
 - generated-map placement reservations for start, goal, terrain landmarks, and pitstops
 - pitstop planning consuming map reservations so landmark tiles are rejected up front
 - a shared map-object placement result model
-- a shared map-object placement pass with pitstops as the first consumer
+- a shared map-object placement pass that now plans pitstops and non-pitstop objects together
 - `MapGenerator` retaining map-object placement metadata after planning
+- sample `Outpost` and `QuestMarker` definition assets
+- current runtime spawning of non-pitstop map objects from the shared placement plan
 
 What is not implemented yet:
 
-- content placement for outposts and quest markers
 - landmark placement rotation / mirroring
-- boon content that actually uses landmark requests yet
-- broader map-object reservation consumers beyond pitstops
+- shipped boon content that actually uses terrain-landmark or map-object requests
+- movement-blocking map objects at runtime
 
 ## Strict Assessment
 
@@ -67,7 +69,7 @@ The old map-generation architecture was not expressive enough for planned boon a
 - pitstops were placed by a specialized post-generation system instead of a broader map-placement architecture
 - tile occupancy was too simple to represent multiple non-blocking map objects safely
 
-Most of those structural gaps are now addressed in code. The main remaining gap is using the shared map-object placement architecture for actual non-pitstop content.
+Most of those structural gaps are now addressed in code. The main remaining gaps are deeper content behaviors and polish rather than missing core placement architecture.
 
 ### Recommendation
 
@@ -294,7 +296,7 @@ This should support objects such as:
 Current implementation note:
 
 - the runtime placement result model and pitstop-backed placement pass now exist
-- future outpost / quest-marker content still needs to use that same pass
+- outpost and quest-marker definitions can now use that same pass through map-object placement requests
 
 ### D. Placement reservations
 
@@ -327,6 +329,7 @@ Migration status:
 1. `PitstopPlacementPlanner` and `PitstopSpawner` were kept in place.
 2. They now consume shared placement reservations.
 3. Pitstop coordinates now flow through the shared map-object placement pipeline before spawning.
+4. Non-pitstop map objects now spawn from the same placement plan in the current runtime.
 
 This kept current gameplay stable while preparing for landmarks and future non-pitstop objects.
 
@@ -358,7 +361,7 @@ This keeps boon logic declarative instead of hardcoded into terrain generation.
 
 Current implementation note:
 
-- boons can already drive terrain-threshold changes, feature multipliers, and terrain-landmark requests through `HexMapGenerationModifiers`
+- boons can already drive terrain-threshold changes, feature multipliers, terrain-landmark requests, and map-object requests through `HexMapGenerationModifiers`
 - no shipped boon content uses terrain-landmark or map-object placement requests yet
 
 ## Debug Logging And Observability
@@ -420,23 +423,23 @@ The current code already provides useful foundations:
 
 These are strong enough to build on.
 
-## What Must Change First
+## What Already Changed
 
-The first refactor slice should be:
+The first implementation wave is now in place:
 
-1. Introduce `HexMapGenerationContext`.
-2. Replace the current pitstop-only modifier model with `HexMapGenerationModifiers`.
-3. Allow the terrain generator to consume modifier deltas for biome thresholds and feature counts.
-4. Add a terrain landmark stamp pass with a minimal landmark-definition asset.
-5. Add placement reservations so terrain landmarks, pitstops, and future objects can coexist safely.
+1. `HexMapGenerationContext` is the shared runtime contract for terrain generation.
+2. `HexMapGenerationModifiers` replaced the old pitstop-only modifier path.
+3. Terrain generation now consumes threshold and feature modifiers.
+4. Terrain landmarks are stamped from authored definition assets.
+5. Placement reservations keep landmarks, pitstops, and map objects from colliding.
+6. Pitstops, outposts, and quest markers can now flow through the shared map-object placement plan.
 
-That is the minimum architecture needed before implementing new biome-spawn boons.
+That is the minimum architecture that was needed before implementing new biome-spawn boons and shared map objects.
 
 ## What Can Wait
 
-These parts can be deferred until after the first refactor slice:
+These parts can still be deferred after the current slice:
 
-- migrating pitstops fully into the shared placement pipeline
 - sophisticated landmark rarity tables
 - multi-act generation profiles
 - complex quest-object behaviors

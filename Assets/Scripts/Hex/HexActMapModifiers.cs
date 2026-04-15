@@ -14,6 +14,7 @@ public readonly struct HexMapGenerationModifiers
         1f,
         1f,
         1f,
+        null,
         null);
 
     public HexMapGenerationModifiers(
@@ -26,7 +27,8 @@ public readonly struct HexMapGenerationModifiers
         float forestFeatureSizeMultiplier = 1f,
         float waterFeatureSizeMultiplier = 1f,
         float mountainFeatureSizeMultiplier = 1f,
-        HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = null)
+        HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = null,
+        HexMapObjectPlacementRequest[] mapObjectPlacementRequests = null)
     {
         ExtraPitstopCount = Mathf.Max(0, extraPitstopCount);
         ExtraPitstopPlacementBand = extraPitstopPlacementBand;
@@ -38,6 +40,7 @@ public readonly struct HexMapGenerationModifiers
         WaterFeatureSizeMultiplier = SanitizeMultiplier(waterFeatureSizeMultiplier);
         MountainFeatureSizeMultiplier = SanitizeMultiplier(mountainFeatureSizeMultiplier);
         TerrainLandmarkRequests = SanitizeRequests(terrainLandmarkRequests);
+        MapObjectPlacementRequests = SanitizeObjectRequests(mapObjectPlacementRequests);
     }
 
     public int ExtraPitstopCount { get; }
@@ -50,9 +53,11 @@ public readonly struct HexMapGenerationModifiers
     public float WaterFeatureSizeMultiplier { get; }
     public float MountainFeatureSizeMultiplier { get; }
     public HexTerrainLandmarkPlacementRequest[] TerrainLandmarkRequests { get; }
+    public HexMapObjectPlacementRequest[] MapObjectPlacementRequests { get; }
 
     public bool HasPitstopModifiers => ExtraPitstopCount > 0;
     public bool HasLandmarkRequests => TerrainLandmarkRequests != null && TerrainLandmarkRequests.Length > 0;
+    public bool HasMapObjectRequests => MapObjectPlacementRequests != null && MapObjectPlacementRequests.Length > 0;
 
     public bool HasTerrainModifiers =>
         !Mathf.Approximately(WaterThresholdDelta, 0f)
@@ -63,7 +68,7 @@ public readonly struct HexMapGenerationModifiers
         || !Mathf.Approximately(WaterFeatureSizeMultiplier, 1f)
         || !Mathf.Approximately(MountainFeatureSizeMultiplier, 1f);
 
-    public bool HasAny => HasPitstopModifiers || HasTerrainModifiers || HasLandmarkRequests;
+    public bool HasAny => HasPitstopModifiers || HasTerrainModifiers || HasLandmarkRequests || HasMapObjectRequests;
 
     public string GetDebugSummary()
     {
@@ -110,6 +115,26 @@ public readonly struct HexMapGenerationModifiers
             }
         }
 
+        if (HasMapObjectRequests)
+        {
+            if (summary.Length > 0)
+            {
+                summary.Append("; ");
+            }
+
+            summary.Append("objects=");
+            for (int index = 0; index < MapObjectPlacementRequests.Length; index++)
+            {
+                if (index > 0)
+                {
+                    summary.Append(", ");
+                }
+
+                HexMapObjectPlacementRequest request = MapObjectPlacementRequests[index];
+                summary.Append($"{request.GetResolvedDisplayName()}x{request.count} [{request.placementBand}]");
+            }
+        }
+
         return summary.ToString();
     }
 
@@ -139,7 +164,8 @@ public readonly struct HexMapGenerationModifiers
             ForestFeatureSizeMultiplier * other.ForestFeatureSizeMultiplier,
             WaterFeatureSizeMultiplier * other.WaterFeatureSizeMultiplier,
             MountainFeatureSizeMultiplier * other.MountainFeatureSizeMultiplier,
-            CombineRequests(TerrainLandmarkRequests, other.TerrainLandmarkRequests));
+            CombineRequests(TerrainLandmarkRequests, other.TerrainLandmarkRequests),
+            CombineObjectRequests(MapObjectPlacementRequests, other.MapObjectPlacementRequests));
     }
 
     private static float SanitizeMultiplier(float value)
@@ -175,6 +201,32 @@ public readonly struct HexMapGenerationModifiers
         return sanitized.Count == 0 ? Array.Empty<HexTerrainLandmarkPlacementRequest>() : sanitized.ToArray();
     }
 
+    private static HexMapObjectPlacementRequest[] SanitizeObjectRequests(HexMapObjectPlacementRequest[] requests)
+    {
+        if (requests == null || requests.Length == 0)
+        {
+            return Array.Empty<HexMapObjectPlacementRequest>();
+        }
+
+        List<HexMapObjectPlacementRequest> sanitized = new(requests.Length);
+        for (int index = 0; index < requests.Length; index++)
+        {
+            HexMapObjectPlacementRequest request = requests[index];
+            if (request == null)
+            {
+                continue;
+            }
+
+            request.Validate();
+            if (request.IsUsable)
+            {
+                sanitized.Add(request.Clone());
+            }
+        }
+
+        return sanitized.Count == 0 ? Array.Empty<HexMapObjectPlacementRequest>() : sanitized.ToArray();
+    }
+
     private static HexTerrainLandmarkPlacementRequest[] CombineRequests(
         HexTerrainLandmarkPlacementRequest[] left,
         HexTerrainLandmarkPlacementRequest[] right)
@@ -201,6 +253,34 @@ public readonly struct HexMapGenerationModifiers
         Array.Copy(left, 0, combined, 0, left.Length);
         Array.Copy(right, 0, combined, left.Length, right.Length);
         return SanitizeRequests(combined);
+    }
+
+    private static HexMapObjectPlacementRequest[] CombineObjectRequests(
+        HexMapObjectPlacementRequest[] left,
+        HexMapObjectPlacementRequest[] right)
+    {
+        bool hasLeft = left != null && left.Length > 0;
+        bool hasRight = right != null && right.Length > 0;
+
+        if (!hasLeft && !hasRight)
+        {
+            return Array.Empty<HexMapObjectPlacementRequest>();
+        }
+
+        if (!hasLeft)
+        {
+            return SanitizeObjectRequests(right);
+        }
+
+        if (!hasRight)
+        {
+            return SanitizeObjectRequests(left);
+        }
+
+        HexMapObjectPlacementRequest[] combined = new HexMapObjectPlacementRequest[left.Length + right.Length];
+        Array.Copy(left, 0, combined, 0, left.Length);
+        Array.Copy(right, 0, combined, left.Length, right.Length);
+        return SanitizeObjectRequests(combined);
     }
 }
 

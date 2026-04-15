@@ -75,9 +75,9 @@ public class PitstopSpawner : MonoBehaviour
         while (true)
         {
             spawnedSites.Clear();
-            HexMapGenerationModifiers generationModifiers = HexBoonSelectionService.GetMapGenerationModifiers();
+            HexMapGenerationModifiers generationModifiers = mapGenerator.ActiveGenerationModifiers;
 
-            HexMapObjectPlacementPlanResult placementPlan = placementPass.PlanPitstops(
+            HexMapObjectPlacementPlanResult placementPlan = placementPass.PlanPlacements(
                 mapGenerator.GridData,
                 mapGenerator.Pathfinder,
                 mapGenerator.StartCoordinates,
@@ -97,6 +97,7 @@ public class PitstopSpawner : MonoBehaviour
             {
                 mapGenerator.ApplyMapObjectPlacementPlan(placementPlan);
                 SpawnPitstopLayout(pitstopPlacements);
+                SpawnNonPitstopObjects(placementPlan.Placements);
                 string diagnosticsSuffix = placementSettings.enableDebugLogging
                     ? $" {placementPlan.DiagnosticsSummary}"
                     : string.Empty;
@@ -135,6 +136,7 @@ public class PitstopSpawner : MonoBehaviour
         {
             mapGenerator.ApplyMapObjectPlacementPlan(bestFallbackPlan);
             SpawnPitstopLayout(bestFallbackPitstops);
+            SpawnNonPitstopObjects(bestFallbackPlan.Placements);
             Debug.LogWarning(
                 $"Spawned {spawnedSites.Count} pitstops using the best available layout after {mapAttempt} map rerolls. " +
                 $"{bestFallbackPlan.Summary} Attempts: {bestFallbackPlan.AttemptsUsed}. {(placementSettings.enableDebugLogging ? bestFallbackPlan.DiagnosticsSummary : string.Empty)}",
@@ -199,6 +201,48 @@ public class PitstopSpawner : MonoBehaviour
             PitstopKind.Mansion => mansionPrefab,
             _ => null
         };
+    }
+
+    private void SpawnNonPitstopObjects(HexMapObjectPlacementCollection placements)
+    {
+        if (placements == null || placements.Count == 0)
+        {
+            return;
+        }
+
+        IReadOnlyList<HexMapObjectPlacement> allPlacements = placements.All;
+        for (int index = 0; index < allPlacements.Count; index++)
+        {
+            HexMapObjectPlacement placement = allPlacements[index];
+            if (placement.ObjectType == HexMapObjectType.Pitstop)
+            {
+                continue;
+            }
+
+            HexMapObjectDefinition definition = placement.Definition;
+            if (definition == null || definition.prefab == null)
+            {
+                Debug.LogWarning($"Map object placement '{placement.DisplayName}' at {placement.Coordinates} has no prefab definition.", this);
+                continue;
+            }
+
+            if (!mapGenerator.TryGetTileView(placement.Coordinates, out HexagonTile tileView) || tileView == null)
+            {
+                continue;
+            }
+
+            GameObject instance = Instantiate(definition.prefab, tileView.transform);
+            instance.name = $"MapObject_{placement.DisplayName}_{placement.Coordinates}";
+            instance.transform.localPosition = new Vector3(0f, definition.visualHeightOffset, 0f);
+            instance.transform.localRotation = Quaternion.Euler(0f, randomizeRotation ? Random.Range(0, 6) * 60f : 0f, 0f);
+            instance.transform.localScale = Vector3.one * definition.visualScale;
+            DisableColliders(instance);
+
+            if (definition.blocksMovement)
+            {
+                Debug.LogWarning($"Map object '{placement.DisplayName}' requests movement blocking, but runtime movement blocking for map objects is not implemented yet.", this);
+            }
+        }
     }
 
     private static void DisableColliders(GameObject root)

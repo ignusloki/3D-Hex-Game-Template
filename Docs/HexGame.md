@@ -190,25 +190,22 @@ This means the board is intended to feel more region-based and less like random 
 
 Special tiles such as the start and goal biome overrides have higher priority than normal terrain-generation rules.
 
-### Important limitation
+### Current map-generation state
 
-The current terrain generator can bias biome outcomes and paint random compact features, but it does not yet have a dedicated authored-landmark pass.
+The map generator now goes beyond simple biome biasing.
 
-That means it is currently good at:
+It is currently good at:
 
 - region shaping
 - water / forest / mountain feature biasing
 - rerolling weak maps
+- stamping exact terrain landmarks such as mini lakes and oases
+- reserving placement space for landmarks, pitstops, and map objects
+- planning pitstops, outposts, and quest markers through a shared placement pass
 
-But it is not yet good at exact requests such as:
+### Current refactor direction
 
-- “place two mini lakes”
-- “stamp an oasis pattern”
-- “spawn a quest outpost at a controlled landmark position”
-
-### Planned refactor direction
-
-The planned next refactor keeps the current layered approach but restructures it into explicit phases:
+The refactor keeps the current layered approach but has restructured it around explicit phases:
 
 - base biome pass
 - macro region pass
@@ -218,7 +215,7 @@ The planned next refactor keeps the current layered approach but restructures it
 - validation / reroll
 - map-object placement pass
 
-The target architecture for that refactor is documented in:
+The target architecture and remaining follow-up work are documented in:
 
 - `Docs/MapGenerationRefactor.md`
 
@@ -547,11 +544,7 @@ The placement system tries to:
 
 ### Planned integration note
 
-Pitstops currently use their own structured placement planner after terrain generation.
-
-That will remain true during the first refactor slice.
-
-Longer term, pitstops are intended to become one consumer of a broader shared map-object placement architecture so they can coexist cleanly with:
+Pitstops still use their own structured gameplay planner, but their coordinates now flow through the broader shared map-object placement architecture before spawning so they can coexist cleanly with:
 
 - terrain landmarks
 - outposts
@@ -775,6 +768,10 @@ Authored terrain landmark definitions now live in:
 
 - `Assets/Resources/TerrainLandmarks`
 
+Authored map-object definitions now live in:
+
+- `Assets/Resources/MapObjects/Definitions`
+
 ### Pitstop events
 
 Pitstop encounter assets live in:
@@ -808,7 +805,7 @@ These are important context points for future design discussion:
 - the game currently ends after the first map even though the long-term structure is 3 acts
 - the Nemesis system exists, but the full boon / act progression around it does not yet exist
 - some map-generation visuals still need cleanup
-- the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, and a shared map-object placement pass with pitstops flowing through it as the first consumer
+- the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, scene-level map-object requests, and a shared map-object placement pass that can plan pitstops, outposts, and quest markers together
 - resource balance is still very tunable and not final
 
 ## 17. Current Non-Event Pending Work
@@ -816,7 +813,7 @@ These are important context points for future design discussion:
 Based on the current backlog, the main remaining non-event tasks are:
 
 - add in-game replay flow without stopping Play mode
-- continue the map-generation refactor beyond the current pitstop-backed shared placement slice so outposts, quest marks, and other custom map objects can use the same placement pipeline
+- continue the map-generation refactor from the current shared placement slice into richer object behaviors, movement-blocking support if ever needed, and additional map-object content
 - improve board readability for start, goal, obstacles, fog, and pitstop state
 - continue map visual cleanup and biome consistency work
 - further balance terrain costs, obstacle pressure, pitstop density, and starting resources

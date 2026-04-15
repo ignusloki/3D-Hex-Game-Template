@@ -242,6 +242,76 @@ public class PitstopPlacementPlannerTests
         }
     }
 
+    [Test]
+    public void MapObjectPlacementPass_PlansRequestedOutpostsAndQuestMarkers()
+    {
+        HexGridData gridData = CreateGrid(5, 5);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
+        HexMapObjectPlacementPass placementPass = new();
+        HexCoordinates start = new(2, 0);
+        HexCoordinates goal = new(2, 4);
+        HexMapPlacementReservations reservations = new();
+        reservations.Reserve(new HexCoordinates(2, 2), HexMapPlacementReservationLayer.TerrainLandmark, "Mini Lake");
+
+        HexMapObjectDefinition outpostDefinition = CreateMapObjectDefinition(
+            HexMapObjectType.Outpost,
+            "Outpost",
+            blocksPlacement: true,
+            minDistanceFromReservedTiles: 1);
+        HexMapObjectDefinition questDefinition = CreateMapObjectDefinition(
+            HexMapObjectType.QuestMarker,
+            "Quest Marker",
+            blocksPlacement: false,
+            minDistanceFromReservedTiles: 0);
+
+        HexMapGenerationModifiers modifiers = new(
+            0,
+            HexBoonMapPlacementBand.Default,
+            mapObjectPlacementRequests: new[]
+            {
+                new HexMapObjectPlacementRequest
+                {
+                    definition = outpostDefinition,
+                    count = 1,
+                    placementBand = HexBoonMapPlacementBand.Mid
+                },
+                new HexMapObjectPlacementRequest
+                {
+                    definition = questDefinition,
+                    count = 1,
+                    placementBand = HexBoonMapPlacementBand.Late
+                }
+            });
+
+        HexMapObjectPlacementPlanResult result = placementPass.PlanPlacements(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            modifiers,
+            reservations,
+            new System.Random(9876));
+
+        List<HexMapObjectPlacement> outposts = result.Placements.GetByType(HexMapObjectType.Outpost);
+        List<HexMapObjectPlacement> questMarkers = result.Placements.GetByType(HexMapObjectType.QuestMarker);
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(outposts.Count, Is.EqualTo(1));
+        Assert.That(questMarkers.Count, Is.EqualTo(1));
+
+        HexMapObjectPlacement outpost = outposts[0];
+        HexMapObjectPlacement questMarker = questMarkers[0];
+        Assert.That(outpost.Definition, Is.EqualTo(outpostDefinition));
+        Assert.That(questMarker.Definition, Is.EqualTo(questDefinition));
+        Assert.That(outpost.Coordinates, Is.Not.EqualTo(new HexCoordinates(2, 2)));
+        Assert.That(questMarker.Coordinates, Is.Not.EqualTo(new HexCoordinates(2, 2)));
+        Assert.That(outpost.Coordinates, Is.Not.EqualTo(questMarker.Coordinates));
+        Assert.That(result.PlacementReservations.IsReserved(outpost.Coordinates, HexMapPlacementReservationLayer.MapObject), Is.True);
+        Assert.That(result.PlacementReservations.IsReserved(questMarker.Coordinates, HexMapPlacementReservationLayer.MapObject), Is.False);
+        Assert.That(result.DiagnosticsSummary, Does.Contain("Map object summary"));
+    }
+
     [TestCase(0, 9)]
     [TestCase(9, 0)]
     public void GeneratePitstops_AddsAnExtraMidAnchorOnLargeMapsWhenActModifierRequestsExtraPitstop(int startColumn, int goalColumn)
@@ -333,6 +403,22 @@ public class PitstopPlacementPlannerTests
         }
 
         return grid;
+    }
+
+    private static HexMapObjectDefinition CreateMapObjectDefinition(
+        HexMapObjectType objectType,
+        string displayName,
+        bool blocksPlacement,
+        int minDistanceFromReservedTiles)
+    {
+        HexMapObjectDefinition definition = ScriptableObject.CreateInstance<HexMapObjectDefinition>();
+        definition.objectType = objectType;
+        definition.displayName = displayName;
+        definition.blocksPlacementOfOtherObjects = blocksPlacement;
+        definition.minDistanceFromReservedTiles = minDistanceFromReservedTiles;
+        definition.allowedBaseBiomes = new[] { Biome.grass, Biome.forest };
+        definition.Validate();
+        return definition;
     }
 
     private static void AssertPairwiseSpacing(IReadOnlyList<HexCoordinates> coordinates, int minimumSpacing)

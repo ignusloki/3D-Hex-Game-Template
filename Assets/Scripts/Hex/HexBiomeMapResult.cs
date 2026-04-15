@@ -27,6 +27,21 @@ public sealed class HexMapPlacementReservations
 {
     private readonly Dictionary<HexCoordinates, List<HexMapPlacementReservation>> reservationsByCoordinate = new();
 
+    public IEnumerable<HexMapPlacementReservation> All
+    {
+        get
+        {
+            foreach (KeyValuePair<HexCoordinates, List<HexMapPlacementReservation>> pair in reservationsByCoordinate)
+            {
+                List<HexMapPlacementReservation> reservations = pair.Value;
+                for (int index = 0; index < reservations.Count; index++)
+                {
+                    yield return reservations[index];
+                }
+            }
+        }
+    }
+
     public int Count
     {
         get

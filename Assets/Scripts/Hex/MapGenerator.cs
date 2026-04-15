@@ -17,6 +17,8 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] private HexSpecialTileSettings specialTileSettings = new();
     [Header("Terrain Landmarks")]
     [SerializeField] private HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+    [Header("Map Objects")]
+    [SerializeField] private HexMapObjectPlacementRequest[] mapObjectPlacementRequests = System.Array.Empty<HexMapObjectPlacementRequest>();
     [Header("Debug")]
     [SerializeField] private bool enableGenerationDebugLogging;
     [SerializeField] private bool enableVerboseGenerationPhaseLogging;
@@ -42,6 +44,7 @@ public class MapGenerator : MonoBehaviour
     public HexCoordinates GoalCoordinates { get; private set; }
     public HexMapPlacementReservations PlacementReservations { get; private set; } = new();
     public HexMapObjectPlacementCollection MapObjectPlacements { get; private set; } = new();
+    public HexMapGenerationModifiers ActiveGenerationModifiers { get; private set; } = HexMapGenerationModifiers.None;
 
     void Start() {
         if (!GenerateMap())
@@ -62,6 +65,12 @@ public class MapGenerator : MonoBehaviour
         for (int index = 0; index < terrainLandmarkRequests.Length; index++)
         {
             terrainLandmarkRequests[index]?.Validate();
+        }
+
+        mapObjectPlacementRequests ??= System.Array.Empty<HexMapObjectPlacementRequest>();
+        for (int index = 0; index < mapObjectPlacementRequests.Length; index++)
+        {
+            mapObjectPlacementRequests[index]?.Validate();
         }
     }
 
@@ -152,6 +161,7 @@ public class MapGenerator : MonoBehaviour
             ? unchecked(originalSeed + (runtimeGenerationVariant * 7919))
             : null;
         HexMapGenerationModifiers generationModifiers = ResolveGenerationModifiers();
+        ActiveGenerationModifiers = generationModifiers;
         HexMapGenerationContext generationContext = new(
             Rows,
             Columns,
@@ -214,7 +224,8 @@ public class MapGenerator : MonoBehaviour
         HexMapGenerationModifiers sceneLandmarkModifiers = new(
             0,
             HexBoonMapPlacementBand.Default,
-            terrainLandmarkRequests: terrainLandmarkRequests);
+            terrainLandmarkRequests: terrainLandmarkRequests,
+            mapObjectPlacementRequests: mapObjectPlacementRequests);
         return boonModifiers.Combine(sceneLandmarkModifiers);
     }
 
@@ -244,6 +255,7 @@ public class MapGenerator : MonoBehaviour
         pathfinder = null;
         PlacementReservations = new HexMapPlacementReservations();
         MapObjectPlacements = new HexMapObjectPlacementCollection();
+        ActiveGenerationModifiers = HexMapGenerationModifiers.None;
     }
 
     public void ApplyMapObjectPlacementPlan(HexMapObjectPlacementPlanResult placementPlan)
