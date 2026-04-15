@@ -17,6 +17,22 @@ public sealed class HexBiomeRegionSettings
     [Range(0f, 1f)] public float localVariationChance = 0.08f;
     [Range(0f, 2f)] public float seedSpacingBias = 0.75f;
 
+    public HexBiomeRegionSettings Clone()
+    {
+        return new HexBiomeRegionSettings
+        {
+            enableMacroRegions = enableMacroRegions,
+            restrictBaseToLandBiomes = restrictBaseToLandBiomes,
+            fiveByFiveMinRegions = fiveByFiveMinRegions,
+            fiveByFiveMaxRegions = fiveByFiveMaxRegions,
+            tenByTenMinRegions = tenByTenMinRegions,
+            tenByTenMaxRegions = tenByTenMaxRegions,
+            boundaryNoiseStrength = boundaryNoiseStrength,
+            localVariationChance = localVariationChance,
+            seedSpacingBias = seedSpacingBias
+        };
+    }
+
     public void Validate()
     {
         fiveByFiveMinRegions = Mathf.Clamp(fiveByFiveMinRegions, 1, 8);

@@ -15,6 +15,31 @@ The goal is to preserve the current playable rules while making the system flexi
 - custom spawned map objects such as outposts or quest markers
 - future act-based map modifiers without hardcoding one-off cases
 
+## Current Implementation Status
+
+Slice 1 is now in place in code.
+
+What is implemented:
+
+- a shared `HexMapGenerationContext`
+- a generalized `HexMapGenerationModifiers` runtime bundle
+- boon-to-map integration routed through that modifier bundle
+- terrain generation consuming the shared context
+- pitstop placement consuming the same modifier bundle
+- initial opt-in debug logging for map generation attempts and summaries
+- asset-driven `HexTerrainLandmarkDefinition` authoring
+- a terrain landmark stamp pass for exact biome footprints
+- scene-level terrain landmark requests on `MapGenerator` for testing and scenario setup
+- generated-map placement reservations for start, goal, terrain landmarks, and pitstops
+- pitstop planning consuming map reservations so landmark tiles are rejected up front
+
+What is not implemented yet:
+
+- general map-object placement for outposts and quest markers
+- landmark placement rotation / mirroring
+- boon content that actually uses landmark requests yet
+- broader map-object reservation consumers beyond pitstops
+
 ## Strict Assessment
 
 ### What should stay

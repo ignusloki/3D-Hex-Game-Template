@@ -37,10 +37,26 @@ public class HexBoonRuntimeStateTests
         HexBoonDefinition definition = CreateMapModifierBoon();
         HexBoonRuntimeState runtime = new(definition);
 
-        HexActMapModifiers modifiers = runtime.GetActMapModifiers();
+        HexMapGenerationModifiers modifiers = runtime.GetMapGenerationModifiers();
         Assert.That(modifiers.ExtraPitstopCount, Is.EqualTo(1));
         Assert.That(modifiers.ExtraPitstopPlacementBand, Is.EqualTo(HexBoonMapPlacementBand.Mid));
         Assert.That(runtime.GetStatusLine(), Does.Contain("+1 pitstop"));
+    }
+
+    [Test]
+    public void MapBoon_ExposesTerrainGenerationModifiers()
+    {
+        HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();
+        definition.displayName = "Waters of Mercy";
+        definition.category = HexBoonCategory.MapModifying;
+        definition.mapModifier.waterThresholdDelta = 0.1f;
+        definition.Validate();
+
+        HexBoonRuntimeState runtime = new(definition);
+        HexMapGenerationModifiers modifiers = runtime.GetMapGenerationModifiers();
+
+        Assert.That(modifiers.WaterThresholdDelta, Is.EqualTo(0.1f).Within(0.0001f));
+        Assert.That(runtime.GetStatusLine(), Does.Contain("modifies terrain generation"));
     }
 
     private static HexBoonDefinition CreatePassiveBoon()

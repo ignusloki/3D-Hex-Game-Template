@@ -100,7 +100,7 @@ public class PitstopPlacementPlannerTests
             goal,
             settings,
             new System.Random(12345),
-            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+            new HexMapGenerationModifiers(1, HexBoonMapPlacementBand.Mid));
 
         Assert.That(result.IsValid, Is.True, result.Summary);
         Assert.That(result.Coordinates.Count, Is.EqualTo(8));
@@ -158,7 +158,7 @@ public class PitstopPlacementPlannerTests
             goal,
             settings,
             new System.Random(9876),
-            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+            new HexMapGenerationModifiers(1, HexBoonMapPlacementBand.Mid));
 
         Assert.That(result.IsValid, Is.True, result.Summary);
         Assert.That(result.Coordinates.Count, Is.EqualTo(3));
@@ -170,6 +170,40 @@ public class PitstopPlacementPlannerTests
         Assert.That(earlyBand.Count, Is.EqualTo(1));
         Assert.That(midBand.Count, Is.EqualTo(1));
         Assert.That(lateBand.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void GeneratePitstops_RejectsReservedLandmarkTiles()
+    {
+        HexGridData gridData = CreateGrid(5, 5);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.FourStrategicAnchors);
+        settings.enableDebugLogging = true;
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(2, 0);
+        HexCoordinates goal = new(2, 4);
+        HexMapPlacementReservations reservations = new();
+        reservations.Reserve(new HexCoordinates(1, 2), HexMapPlacementReservationLayer.TerrainLandmark, "Mini Lake");
+        reservations.Reserve(new HexCoordinates(2, 2), HexMapPlacementReservationLayer.TerrainLandmark, "Mini Lake");
+        reservations.Reserve(new HexCoordinates(3, 2), HexMapPlacementReservationLayer.TerrainLandmark, "Mini Lake");
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(9876),
+            new HexMapGenerationModifiers(1, HexBoonMapPlacementBand.Mid),
+            reservations);
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        for (int index = 0; index < result.Coordinates.Count; index++)
+        {
+            Assert.That(reservations.IsReserved(result.Coordinates[index]), Is.False);
+        }
+
+        Assert.That(result.DiagnosticsSummary, Does.Contain("reserved=3"));
     }
 
     [TestCase(0, 9)]
@@ -190,7 +224,7 @@ public class PitstopPlacementPlannerTests
             goal,
             settings,
             new System.Random(12345),
-            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+            new HexMapGenerationModifiers(1, HexBoonMapPlacementBand.Mid));
 
         Assert.That(result.IsValid, Is.True, result.Summary);
         Assert.That(result.Coordinates.Count, Is.EqualTo(5));

@@ -11,6 +11,20 @@ public sealed class HexBiomeMapQualitySettings
     [Min(1)] public int minMeaningfulRegionSize = 3;
     [Range(0f, 0.3f)] public float maxSmallSecondaryRegionRatio = 0.08f;
 
+    public HexBiomeMapQualitySettings Clone()
+    {
+        return new HexBiomeMapQualitySettings
+        {
+            enableQualityRerolls = enableQualityRerolls,
+            maxGenerationAttempts = maxGenerationAttempts,
+            maxDominantBiomeRatio = maxDominantBiomeRatio,
+            minDistinctBiomeCount = minDistinctBiomeCount,
+            minSecondaryRegionRatio = minSecondaryRegionRatio,
+            minMeaningfulRegionSize = minMeaningfulRegionSize,
+            maxSmallSecondaryRegionRatio = maxSmallSecondaryRegionRatio
+        };
+    }
+
     public void Validate()
     {
         maxGenerationAttempts = Mathf.Max(1, maxGenerationAttempts);

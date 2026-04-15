@@ -29,6 +29,30 @@ public sealed class HexBiomeFeatureSettings
     [Range(0f, 1f)] public float ridgeTurnChance = 0.35f;
     [Range(0f, 1f)] public float ridgeBranchChance = 0.2f;
 
+    public HexBiomeFeatureSettings Clone()
+    {
+        return new HexBiomeFeatureSettings
+        {
+            enableFeatureOverlays = enableFeatureOverlays,
+            minForestFeatureCount = minForestFeatureCount,
+            maxForestFeatureCount = maxForestFeatureCount,
+            forestFeatureMinRatio = forestFeatureMinRatio,
+            forestFeatureMaxRatio = forestFeatureMaxRatio,
+            minWaterFeatureCount = minWaterFeatureCount,
+            maxWaterFeatureCount = maxWaterFeatureCount,
+            waterFeatureMinRatio = waterFeatureMinRatio,
+            waterFeatureMaxRatio = waterFeatureMaxRatio,
+            minMountainFeatureCount = minMountainFeatureCount,
+            maxMountainFeatureCount = maxMountainFeatureCount,
+            mountainFeatureMinRatio = mountainFeatureMinRatio,
+            mountainFeatureMaxRatio = mountainFeatureMaxRatio,
+            featureEdgePadding = featureEdgePadding,
+            compactnessBias = compactnessBias,
+            ridgeTurnChance = ridgeTurnChance,
+            ridgeBranchChance = ridgeBranchChance
+        };
+    }
+
     public void Validate()
     {
         minForestFeatureCount = Mathf.Clamp(minForestFeatureCount, 0, 4);

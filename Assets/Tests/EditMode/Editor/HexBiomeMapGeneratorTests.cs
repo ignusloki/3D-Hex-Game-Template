@@ -1,5 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
+using UnityEngine;
 
 public class HexBiomeMapGeneratorTests
 {
@@ -236,6 +237,134 @@ public class HexBiomeMapGeneratorTests
         Assert.That(mountainCount, Is.GreaterThanOrEqualTo(6));
     }
 
+    [Test]
+    public void Generate_WithWaterThresholdModifierInContext_ProducesMoreWaterTiles()
+    {
+        HexBiomeGenerationSettings settings = CreateSettings();
+        settings.useRandomSeed = false;
+        settings.seed = 13579;
+        settings.isolatedAnomalyChance = 0f;
+        settings.microPatchChance = 0f;
+        settings.regionSettings = new HexBiomeRegionSettings
+        {
+            enableMacroRegions = false
+        };
+        settings.featureSettings = new HexBiomeFeatureSettings
+        {
+            enableFeatureOverlays = false
+        };
+        settings.qualitySettings = new HexBiomeMapQualitySettings
+        {
+            enableQualityRerolls = false,
+            maxGenerationAttempts = 1
+        };
+        settings.Validate();
+
+        HexBiomeMapGenerator generator = new();
+        HexSpecialTileSettings specialTileSettings = CreateSpecialTileSettings();
+        HexBiomeMapResult baseline = generator.Generate(20, 20, settings, specialTileSettings);
+        HexBiomeMapResult modified = generator.Generate(new HexMapGenerationContext(
+            20,
+            20,
+            settings,
+            specialTileSettings,
+            new HexMapGenerationModifiers(
+                0,
+                HexBoonMapPlacementBand.Default,
+                waterThresholdDelta: 0.1f)));
+
+        Assert.That(CountBiome(modified.BiomeMap, Biome.water), Is.GreaterThan(CountBiome(baseline.BiomeMap, Biome.water)));
+    }
+
+    [Test]
+    public void Context_ResolvedBiomeSettingsApplyTerrainModifiersWithoutMutatingSourceSettings()
+    {
+        HexBiomeGenerationSettings settings = new()
+        {
+            useRandomSeed = false,
+            seed = 12345,
+            waterThreshold = 0.28f,
+            featureSettings = new HexBiomeFeatureSettings
+            {
+                minWaterFeatureCount = 1,
+                maxWaterFeatureCount = 2,
+                waterFeatureMinRatio = 0.05f,
+                waterFeatureMaxRatio = 0.08f
+            }
+        };
+        settings.Validate();
+
+        HexMapGenerationContext context = new(
+            10,
+            10,
+            settings,
+            new HexSpecialTileSettings(),
+            new HexMapGenerationModifiers(
+                0,
+                HexBoonMapPlacementBand.Default,
+                waterThresholdDelta: 0.1f,
+                waterFeatureCountMultiplier: 2f,
+                waterFeatureSizeMultiplier: 1.5f));
+
+        Assert.That(context.ResolvedBiomeSettings.waterThreshold, Is.EqualTo(0.38f).Within(0.0001f));
+        Assert.That(context.ResolvedBiomeSettings.featureSettings.minWaterFeatureCount, Is.EqualTo(2));
+        Assert.That(context.ResolvedBiomeSettings.featureSettings.maxWaterFeatureCount, Is.EqualTo(3));
+        Assert.That(context.ResolvedBiomeSettings.featureSettings.waterFeatureMinRatio, Is.EqualTo(0.075f).Within(0.0001f));
+        Assert.That(context.ResolvedBiomeSettings.featureSettings.waterFeatureMaxRatio, Is.EqualTo(0.12f).Within(0.0001f));
+
+        Assert.That(settings.waterThreshold, Is.EqualTo(0.28f).Within(0.0001f));
+        Assert.That(settings.featureSettings.minWaterFeatureCount, Is.EqualTo(1));
+        Assert.That(settings.featureSettings.maxWaterFeatureCount, Is.EqualTo(2));
+        Assert.That(settings.featureSettings.waterFeatureMinRatio, Is.EqualTo(0.05f).Within(0.0001f));
+        Assert.That(settings.featureSettings.waterFeatureMaxRatio, Is.EqualTo(0.08f).Within(0.0001f));
+    }
+
+    [Test]
+    public void Generate_WithTerrainLandmarkRequest_StampsExactBiomeFootprint()
+    {
+        HexBiomeGenerationSettings settings = CreateUniformGrassSettings(24680);
+        HexSpecialTileSettings specialTileSettings = CreateSpecialTileSettings();
+        HexTerrainLandmarkDefinition definition = ScriptableObject.CreateInstance<HexTerrainLandmarkDefinition>();
+        definition.displayName = "Mini Lake";
+        definition.edgePadding = 1;
+        definition.minDistanceFromStart = 2;
+        definition.minDistanceFromGoal = 2;
+        definition.footprint = new[]
+        {
+            new HexTerrainLandmarkCell { axialQ = 0, axialR = 0, biome = Biome.water },
+            new HexTerrainLandmarkCell { axialQ = 1, axialR = 0, biome = Biome.water },
+            new HexTerrainLandmarkCell { axialQ = 0, axialR = 1, biome = Biome.water },
+            new HexTerrainLandmarkCell { axialQ = 1, axialR = 1, biome = Biome.water }
+        };
+        definition.Validate();
+
+        HexTerrainLandmarkPlacementRequest request = new()
+        {
+            definition = definition,
+            count = 1,
+            placementBand = HexBoonMapPlacementBand.Mid
+        };
+        request.Validate();
+
+        HexBiomeMapGenerator generator = new();
+        HexBiomeMapResult result = generator.Generate(new HexMapGenerationContext(
+            10,
+            10,
+            settings,
+            specialTileSettings,
+            new HexMapGenerationModifiers(
+                0,
+                HexBoonMapPlacementBand.Default,
+                terrainLandmarkRequests: new[] { request })));
+
+        Assert.That(CountBiome(result.BiomeMap, Biome.water), Is.EqualTo(4));
+        Assert.That(result.BiomeMap[result.StartCoordinates.Row, result.StartCoordinates.Column], Is.EqualTo(Biome.grass));
+        Assert.That(result.BiomeMap[result.GoalCoordinates.Row, result.GoalCoordinates.Column], Is.EqualTo(Biome.grass));
+        Assert.That(result.PlacementReservations.IsReserved(result.StartCoordinates, HexMapPlacementReservationLayer.StartGoal), Is.True);
+        Assert.That(result.PlacementReservations.IsReserved(result.GoalCoordinates, HexMapPlacementReservationLayer.StartGoal), Is.True);
+        Assert.That(result.PlacementReservations.CountReservations(HexMapPlacementReservationLayer.TerrainLandmark), Is.EqualTo(4));
+    }
+
     private static HexBiomeGenerationSettings CreateSettings()
     {
         HexBiomeGenerationSettings settings = new()
@@ -264,6 +393,38 @@ public class HexBiomeMapGeneratorTests
             microPatchMaxSize = 4
         };
 
+        settings.Validate();
+        return settings;
+    }
+
+    private static HexBiomeGenerationSettings CreateUniformGrassSettings(int seed)
+    {
+        HexBiomeGenerationSettings settings = new()
+        {
+            useRandomSeed = false,
+            seed = seed,
+            enableDesert = false,
+            waterThreshold = 0f,
+            mountainThreshold = 1f,
+            forestMoistureThreshold = 1f,
+            desertMoistureThreshold = 0f,
+            desertHeatThreshold = 1f,
+            isolatedAnomalyChance = 0f,
+            microPatchChance = 0f,
+            regionSettings = new HexBiomeRegionSettings
+            {
+                enableMacroRegions = false
+            },
+            featureSettings = new HexBiomeFeatureSettings
+            {
+                enableFeatureOverlays = false
+            },
+            qualitySettings = new HexBiomeMapQualitySettings
+            {
+                enableQualityRerolls = false,
+                maxGenerationAttempts = 1
+            }
+        };
         settings.Validate();
         return settings;
     }

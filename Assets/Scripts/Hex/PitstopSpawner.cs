@@ -75,7 +75,7 @@ public class PitstopSpawner : MonoBehaviour
         while (true)
         {
             spawnedSites.Clear();
-            HexActMapModifiers actMapModifiers = HexBoonSelectionService.GetActMapModifiers();
+            HexMapGenerationModifiers generationModifiers = HexBoonSelectionService.GetMapGenerationModifiers();
 
             PitstopLayoutResult layoutResult = placementPlanner.GeneratePitstops(
                 mapGenerator.GridData,
@@ -84,7 +84,8 @@ public class PitstopSpawner : MonoBehaviour
                 mapGenerator.GoalCoordinates,
                 placementSettings,
                 new System.Random(),
-                actMapModifiers);
+                generationModifiers,
+                mapGenerator.PlacementReservations);
 
             if (layoutResult.Score > bestFallbackLayout.Score)
             {
@@ -94,7 +95,10 @@ public class PitstopSpawner : MonoBehaviour
             if (layoutResult.IsValid && layoutResult.Coordinates.Count > 0)
             {
                 SpawnPitstopLayout(layoutResult);
-                Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}. Map rerolls: {mapAttempt}.", this);
+                string diagnosticsSuffix = placementSettings.enableDebugLogging
+                    ? $" {layoutResult.DiagnosticsSummary}"
+                    : string.Empty;
+                Debug.Log($"Spawned {spawnedSites.Count} pitstops across the map. {layoutResult.Summary} Attempts: {layoutResult.AttemptsUsed}. Map rerolls: {mapAttempt}.{diagnosticsSuffix}", this);
                 yield break;
             }
 
@@ -113,7 +117,7 @@ public class PitstopSpawner : MonoBehaviour
 
                 Debug.LogWarning(
                     $"Pitstop layout attempt failed on map variant {mapAttempt}. Regenerating map and retrying pitstop placement. " +
-                    $"Planner summary: {layoutResult.Summary} {retryMode}",
+                    $"Planner summary: {layoutResult.Summary} {(placementSettings.enableDebugLogging ? layoutResult.DiagnosticsSummary + " " : string.Empty)}{retryMode}",
                     this);
             }
 
@@ -129,7 +133,7 @@ public class PitstopSpawner : MonoBehaviour
             SpawnPitstopLayout(bestFallbackLayout);
             Debug.LogWarning(
                 $"Spawned {spawnedSites.Count} pitstops using the best available layout after {mapAttempt} map rerolls. " +
-                $"{bestFallbackLayout.Summary} Attempts: {bestFallbackLayout.AttemptsUsed}.",
+                $"{bestFallbackLayout.Summary} Attempts: {bestFallbackLayout.AttemptsUsed}. {(placementSettings.enableDebugLogging ? bestFallbackLayout.DiagnosticsSummary : string.Empty)}",
                 this);
             yield break;
         }
@@ -147,6 +151,7 @@ public class PitstopSpawner : MonoBehaviour
         for (int index = 0; index < placements.Count; index++)
         {
             HexCoordinates coordinates = placements[index];
+            mapGenerator.PlacementReservations?.Reserve(coordinates, HexMapPlacementReservationLayer.Pitstop, "Pitstop");
             if (!mapGenerator.TryGetTileView(coordinates, out HexagonTile tileView) || tileView == null)
             {
                 continue;

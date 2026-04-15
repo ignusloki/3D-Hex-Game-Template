@@ -78,6 +78,9 @@ public sealed class PitstopPlacementSettings
     [Min(1)] public int candidatePoolSize = 4;
     [Range(0f, 0.25f)] public float randomJitter = 0.05f;
 
+    [Header("Debug")]
+    public bool enableDebugLogging;
+
     [Header("Map Retry")]
     public bool regenerateMapUntilValidLayout = true;
     public bool retryMapUntilValidLayoutWithoutLimit = true;

@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d2b5e3189b64997af052babef543085, type: 3}
+  m_Name: OasisSmall
+  m_EditorClassIdentifier: Assembly-CSharp::HexTerrainLandmarkDefinition
+  id: oasis-small
+  displayName: Oasis Small
+  description: A small oasis with a two-hex water core and a surrounding desert ring.
+  isEnabled: 1
+  edgePadding: 1
+  minDistanceFromStart: 2
+  minDistanceFromGoal: 2
+  allowedBaseBiomes: []
+  forbiddenBaseBiomes: []
+  footprint:
+  - axialQ: 0
+    axialR: 0
+    biome: 2
+  - axialQ: 1
+    axialR: 0
+    biome: 2
+  - axialQ: -1
+    axialR: 0
+    biome: 1
+  - axialQ: 0
+    axialR: -1
+    biome: 1
+  - axialQ: 1
+    axialR: -1
+    biome: 1
+  - axialQ: -1
+    axialR: 1
+    biome: 1
+  - axialQ: 0
+    axialR: 1
+    biome: 1
+  - axialQ: 1
+    axialR: 1
+    biome: 1

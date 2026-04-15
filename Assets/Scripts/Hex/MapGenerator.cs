@@ -15,6 +15,11 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] private HexMapSizePreset mapSize = HexMapSizePreset.TenByTen;
     [SerializeField] private HexBiomeGenerationSettings biomeGenerationSettings = new();
     [SerializeField] private HexSpecialTileSettings specialTileSettings = new();
+    [Header("Terrain Landmarks")]
+    [SerializeField] private HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+    [Header("Debug")]
+    [SerializeField] private bool enableGenerationDebugLogging;
+    [SerializeField] private bool enableVerboseGenerationPhaseLogging;
 
     private readonly HexBiomeMapGenerator biomeMapGenerator = new();
     private Dictionary<Biome, HexScriptableObject> hexsDictionary;
@@ -35,6 +40,7 @@ public class MapGenerator : MonoBehaviour
     public HexPathfinder Pathfinder => pathfinder;
     public HexCoordinates StartCoordinates { get; private set; }
     public HexCoordinates GoalCoordinates { get; private set; }
+    public HexMapPlacementReservations PlacementReservations { get; private set; } = new();
 
     void Start() {
         if (!GenerateMap())
@@ -51,6 +57,11 @@ public class MapGenerator : MonoBehaviour
         biomeGenerationSettings ??= new HexBiomeGenerationSettings();
         biomeGenerationSettings.Validate();
         specialTileSettings ??= new HexSpecialTileSettings();
+        terrainLandmarkRequests ??= System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+        for (int index = 0; index < terrainLandmarkRequests.Length; index++)
+        {
+            terrainLandmarkRequests[index]?.Validate();
+        }
     }
 
     private GameObject[] GetBiomePrefabs(Biome chosen) {
@@ -136,19 +147,25 @@ public class MapGenerator : MonoBehaviour
         gridData = new HexGridData(Rows, Columns);
         int originalSeed = biomeGenerationSettings.seed;
         bool shouldOffsetFixedSeed = !biomeGenerationSettings.useRandomSeed && runtimeGenerationVariant > 0;
-        if (shouldOffsetFixedSeed)
-        {
-            biomeGenerationSettings.seed = unchecked(originalSeed + (runtimeGenerationVariant * 7919));
-        }
+        int? fixedSeedOverride = shouldOffsetFixedSeed
+            ? unchecked(originalSeed + (runtimeGenerationVariant * 7919))
+            : null;
+        HexMapGenerationModifiers generationModifiers = ResolveGenerationModifiers();
+        HexMapGenerationContext generationContext = new(
+            Rows,
+            Columns,
+            biomeGenerationSettings,
+            specialTileSettings,
+            generationModifiers,
+            fixedSeedOverride,
+            enableGenerationDebugLogging,
+            enableVerboseGenerationPhaseLogging);
 
-        HexBiomeMapResult biomeMapResult = biomeMapGenerator.Generate(Rows, Columns, biomeGenerationSettings, specialTileSettings);
-        if (shouldOffsetFixedSeed)
-        {
-            biomeGenerationSettings.seed = originalSeed;
-        }
+        HexBiomeMapResult biomeMapResult = biomeMapGenerator.Generate(generationContext);
         Biome[,] biomeMap = biomeMapResult.BiomeMap;
         StartCoordinates = biomeMapResult.StartCoordinates;
         GoalCoordinates = biomeMapResult.GoalCoordinates;
+        PlacementReservations = biomeMapResult.PlacementReservations?.Clone() ?? new HexMapPlacementReservations();
 
         for (int row = 0; row < Rows; row++)
         {
@@ -176,16 +193,28 @@ public class MapGenerator : MonoBehaviour
         {
             Debug.Log(
                 $"Generated biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
-                $"Dominant biome: {biomeMapGenerator.LastQualityReport?.DominantBiome} ({biomeMapGenerator.LastQualityReport?.DominantBiomeRatio:P0}).",
+                $"Dominant biome: {biomeMapGenerator.LastQualityReport?.DominantBiome} ({biomeMapGenerator.LastQualityReport?.DominantBiomeRatio:P0}). " +
+                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}.",
                 this);
         }
         else
         {
             Debug.LogWarning(
                 $"Generated best-effort biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
-                $"Quality score: {biomeMapGenerator.LastQualityReport?.Score:F2}.",
+                $"Quality score: {biomeMapGenerator.LastQualityReport?.Score:F2}. " +
+                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}.",
                 this);
         }
+    }
+
+    private HexMapGenerationModifiers ResolveGenerationModifiers()
+    {
+        HexMapGenerationModifiers boonModifiers = HexBoonSelectionService.GetMapGenerationModifiers();
+        HexMapGenerationModifiers sceneLandmarkModifiers = new(
+            0,
+            HexBoonMapPlacementBand.Default,
+            terrainLandmarkRequests: terrainLandmarkRequests);
+        return boonModifiers.Combine(sceneLandmarkModifiers);
     }
 
     private void ClearGeneratedMap()
@@ -212,6 +241,7 @@ public class MapGenerator : MonoBehaviour
         tileViews = new Dictionary<HexCoordinates, HexagonTile>();
         gridData = null;
         pathfinder = null;
+        PlacementReservations = new HexMapPlacementReservations();
     }
 
     // Calculates the position of a tile based on its row and column

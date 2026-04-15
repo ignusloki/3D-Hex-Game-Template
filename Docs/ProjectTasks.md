@@ -43,6 +43,13 @@ Reference:
 
 - `Docs/MapGenerationRefactor.md`
 
+Current implementation progress:
+
+- slice 1 is done: shared generation context, generalized modifier bundle, boon integration through that bundle, and initial map-generation debug logging
+- slice 2 is done: terrain landmark definition assets, exact terrain landmark stamping, and a scene-level testing hook on `MapGenerator`
+- slice 3 is done: generated-map placement reservations and pitstop planning consuming those reservations
+- next slices are still needed for shared map-object placement
+
 ## Remaining Non-Event Tasks
 
 ### Core Presentation / Flow
@@ -58,12 +65,11 @@ Reference:
 
 ### Map / Terrain
 
-4. Refactor map generation around explicit phases and a shared generation context.
-5. Add a landmark stamp pass for authored biome clusters.
-6. Add a shared map-object placement architecture so pitstops, outposts, and quest marks can coexist.
-7. Add a cleanup / smoothing pass for the remaining odd biome scraps.
-8. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
-9. Revisit map validation later if new gameplay systems change what qualifies as a good map.
+4. Continue the map-generation refactor from the current shared context / modifier slice into explicit generation phases.
+5. Add a shared map-object placement architecture so pitstops, outposts, and quest marks can coexist.
+6. Add a cleanup / smoothing pass for the remaining odd biome scraps.
+7. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
+8. Revisit map validation later if new gameplay systems change what qualifies as a good map.
 
 ### Balance
 
@@ -99,4 +105,4 @@ These are useful, but not current blockers:
 - Pitstop event system is considered a complete first playable slice.
 - Win / lose / retry UI is now in place as a complete first prototype slice.
 - Future event work is now polish / expansion, not a core missing system.
-- The next branch should focus on the map-generation refactor described in `Docs/MapGenerationRefactor.md`.
+- The current branch is already on the first slice of the map-generation refactor described in `Docs/MapGenerationRefactor.md`.

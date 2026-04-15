@@ -44,6 +44,38 @@ public sealed class HexBiomeGenerationSettings
     [Header("Quality")]
     public HexBiomeMapQualitySettings qualitySettings = new();
 
+    public HexBiomeGenerationSettings Clone()
+    {
+        return new HexBiomeGenerationSettings
+        {
+            enableGrass = enableGrass,
+            enableForest = enableForest,
+            enableMountain = enableMountain,
+            enableWater = enableWater,
+            enableDesert = enableDesert,
+            useRandomSeed = useRandomSeed,
+            seed = seed,
+            elevationFrequency = elevationFrequency,
+            moistureFrequency = moistureFrequency,
+            heatFrequency = heatFrequency,
+            noiseOctaves = noiseOctaves,
+            noisePersistence = noisePersistence,
+            noiseLacunarity = noiseLacunarity,
+            waterThreshold = waterThreshold,
+            mountainThreshold = mountainThreshold,
+            forestMoistureThreshold = forestMoistureThreshold,
+            desertMoistureThreshold = desertMoistureThreshold,
+            desertHeatThreshold = desertHeatThreshold,
+            isolatedAnomalyChance = isolatedAnomalyChance,
+            microPatchChance = microPatchChance,
+            microPatchMinSize = microPatchMinSize,
+            microPatchMaxSize = microPatchMaxSize,
+            regionSettings = regionSettings?.Clone() ?? new HexBiomeRegionSettings(),
+            featureSettings = featureSettings?.Clone() ?? new HexBiomeFeatureSettings(),
+            qualitySettings = qualitySettings?.Clone() ?? new HexBiomeMapQualitySettings()
+        };
+    }
+
     public void Validate()
     {
         enableGrass = true;

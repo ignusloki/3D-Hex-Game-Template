@@ -4,20 +4,28 @@ using UnityEngine;
 
 public sealed class PitstopLayoutResult
 {
-    public static PitstopLayoutResult Empty { get; } = new(new List<HexCoordinates>(), false, float.MinValue, 0, "No valid pitstop layout was generated.");
+    public static PitstopLayoutResult Empty { get; } = new(
+        new List<HexCoordinates>(),
+        false,
+        float.MinValue,
+        0,
+        "No valid pitstop layout was generated.",
+        string.Empty);
 
     public PitstopLayoutResult(
         IReadOnlyList<HexCoordinates> coordinates,
         bool isValid,
         float score,
         int attemptsUsed,
-        string summary)
+        string summary,
+        string diagnosticsSummary)
     {
         Coordinates = coordinates ?? new List<HexCoordinates>();
         IsValid = isValid;
         Score = score;
         AttemptsUsed = attemptsUsed;
         Summary = summary ?? string.Empty;
+        DiagnosticsSummary = diagnosticsSummary ?? string.Empty;
     }
 
     public IReadOnlyList<HexCoordinates> Coordinates { get; }
@@ -25,6 +33,66 @@ public sealed class PitstopLayoutResult
     public float Score { get; }
     public int AttemptsUsed { get; }
     public string Summary { get; }
+    public string DiagnosticsSummary { get; }
+}
+
+public sealed class PitstopCandidateDiagnostics
+{
+    public int TotalTilesEvaluated { get; private set; }
+    public int RejectedImpassable { get; private set; }
+    public int RejectedEndpointTile { get; private set; }
+    public int RejectedReserved { get; private set; }
+    public int RejectedBiome { get; private set; }
+    public int RejectedEndpointBuffer { get; private set; }
+    public int RejectedOpenNeighbors { get; private set; }
+    public int AcceptedCandidates { get; private set; }
+
+    public void CountImpassable()
+    {
+        TotalTilesEvaluated++;
+        RejectedImpassable++;
+    }
+
+    public void CountEndpointTile()
+    {
+        TotalTilesEvaluated++;
+        RejectedEndpointTile++;
+    }
+
+    public void CountReserved()
+    {
+        TotalTilesEvaluated++;
+        RejectedReserved++;
+    }
+
+    public void CountBiome()
+    {
+        TotalTilesEvaluated++;
+        RejectedBiome++;
+    }
+
+    public void CountEndpointBuffer()
+    {
+        TotalTilesEvaluated++;
+        RejectedEndpointBuffer++;
+    }
+
+    public void CountOpenNeighbors()
+    {
+        TotalTilesEvaluated++;
+        RejectedOpenNeighbors++;
+    }
+
+    public void CountAccepted()
+    {
+        TotalTilesEvaluated++;
+        AcceptedCandidates++;
+    }
+
+    public string GetSummary()
+    {
+        return $"Pitstop candidate summary: accepted={AcceptedCandidates}/{TotalTilesEvaluated}, reserved={RejectedReserved}, biome={RejectedBiome}, endpointTiles={RejectedEndpointTile}, endpointBuffer={RejectedEndpointBuffer}, openNeighbors={RejectedOpenNeighbors}, impassable={RejectedImpassable}.";
+    }
 }
 
 public sealed class PitstopPlacementPlanner
@@ -89,28 +157,41 @@ public sealed class PitstopPlacementPlanner
         HexCoordinates goal,
         PitstopPlacementSettings settings,
         System.Random random,
-        HexActMapModifiers? actModifiers = null)
+        HexMapGenerationModifiers? generationModifiers = null,
+        HexMapPlacementReservations reservations = null)
     {
         settings ??= new PitstopPlacementSettings();
         settings.Validate();
         random ??= new System.Random();
-        HexActMapModifiers resolvedActModifiers = actModifiers ?? HexActMapModifiers.None;
+        HexMapGenerationModifiers resolvedGenerationModifiers = generationModifiers ?? HexMapGenerationModifiers.None;
 
         if (gridData == null)
         {
             return PitstopLayoutResult.Empty;
         }
 
-        List<CandidateInfo> candidates = BuildCandidates(gridData, pathfinder, start, goal, settings);
+        List<CandidateInfo> candidates = BuildCandidates(gridData, pathfinder, start, goal, settings, reservations, out PitstopCandidateDiagnostics diagnostics);
         if (candidates.Count == 0)
         {
-            return PitstopLayoutResult.Empty;
+            return new PitstopLayoutResult(
+                new List<HexCoordinates>(),
+                false,
+                float.MinValue,
+                0,
+                "No valid pitstop candidates were generated.",
+                diagnostics.GetSummary());
         }
 
-        List<SlotRequest> slots = BuildSlotRequests(gridData.Rows, gridData.Columns, settings, resolvedActModifiers);
+        List<SlotRequest> slots = BuildSlotRequests(gridData.Rows, gridData.Columns, settings, resolvedGenerationModifiers);
         if (slots.Count == 0)
         {
-            return PitstopLayoutResult.Empty;
+            return new PitstopLayoutResult(
+                new List<HexCoordinates>(),
+                false,
+                float.MinValue,
+                0,
+                "No pitstop slots were requested for this map.",
+                diagnostics.GetSummary());
         }
 
         PlacedCandidate[] bestLayout = null;
@@ -139,7 +220,8 @@ public sealed class PitstopPlacementPlanner
                     true,
                     score,
                     attempt,
-                    summary);
+                    summary,
+                    diagnostics.GetSummary());
             }
         }
 
@@ -150,10 +232,17 @@ public sealed class PitstopPlacementPlanner
                 false,
                 bestScore,
                 settings.maxGenerationAttempts,
-                bestSummary);
+                bestSummary,
+                diagnostics.GetSummary());
         }
 
-        return PitstopLayoutResult.Empty;
+        return new PitstopLayoutResult(
+            new List<HexCoordinates>(),
+            false,
+            float.MinValue,
+            settings.maxGenerationAttempts,
+            "No valid pitstop layout was generated.",
+            diagnostics.GetSummary());
     }
 
     public IReadOnlyList<HexCoordinates> Plan(
@@ -163,9 +252,10 @@ public sealed class PitstopPlacementPlanner
         HexCoordinates goal,
         PitstopPlacementSettings settings,
         System.Random random,
-        HexActMapModifiers? actModifiers = null)
+        HexMapGenerationModifiers? generationModifiers = null,
+        HexMapPlacementReservations reservations = null)
     {
-        return GeneratePitstops(gridData, pathfinder, start, goal, settings, random, actModifiers).Coordinates;
+        return GeneratePitstops(gridData, pathfinder, start, goal, settings, random, generationModifiers, reservations).Coordinates;
     }
 
     private static List<CandidateInfo> BuildCandidates(
@@ -173,8 +263,11 @@ public sealed class PitstopPlacementPlanner
         HexPathfinder pathfinder,
         HexCoordinates start,
         HexCoordinates goal,
-        PitstopPlacementSettings settings)
+        PitstopPlacementSettings settings,
+        HexMapPlacementReservations reservations,
+        out PitstopCandidateDiagnostics diagnostics)
     {
+        diagnostics = new PitstopCandidateDiagnostics();
         List<HexTileData> corridorTiles = pathfinder?.FindPath(start, goal) is IReadOnlyList<HexTileData> path
             ? new List<HexTileData>(path)
             : new List<HexTileData>();
@@ -182,24 +275,51 @@ public sealed class PitstopPlacementPlanner
         List<CandidateInfo> candidates = new();
         foreach (HexTileData tile in gridData.Tiles)
         {
-            if (tile == null
-                || !tile.IsPassable
-                || tile.Coordinates.Equals(start)
-                || tile.Coordinates.Equals(goal)
-                || !settings.IsAllowedBiome(tile.Biome))
+            if (tile == null)
             {
+                continue;
+            }
+
+            if (!tile.IsPassable)
+            {
+                diagnostics.CountImpassable();
+                continue;
+            }
+
+            if (tile.Coordinates.Equals(start) || tile.Coordinates.Equals(goal))
+            {
+                diagnostics.CountEndpointTile();
+                continue;
+            }
+
+            if (reservations != null && reservations.IsReserved(tile.Coordinates))
+            {
+                diagnostics.CountReserved();
+                continue;
+            }
+
+            if (!settings.IsAllowedBiome(tile.Biome))
+            {
+                diagnostics.CountBiome();
                 continue;
             }
 
             CandidateInfo candidate = BuildCandidateInfo(tile, gridData, corridorTiles, start, goal, settings);
             if (candidate.DistanceToStart <= settings.spawnGoalAdjacencyBuffer
-                || candidate.DistanceToGoal <= settings.spawnGoalAdjacencyBuffer
-                || candidate.OpenNeighborCount < settings.minimumOpenNeighbors)
+                || candidate.DistanceToGoal <= settings.spawnGoalAdjacencyBuffer)
             {
+                diagnostics.CountEndpointBuffer();
+                continue;
+            }
+
+            if (candidate.OpenNeighborCount < settings.minimumOpenNeighbors)
+            {
+                diagnostics.CountOpenNeighbors();
                 continue;
             }
 
             candidates.Add(candidate);
+            diagnostics.CountAccepted();
         }
 
         return candidates;
@@ -240,9 +360,9 @@ public sealed class PitstopPlacementPlanner
         int rows,
         int columns,
         PitstopPlacementSettings settings,
-        HexActMapModifiers actModifiers)
+        HexMapGenerationModifiers generationModifiers)
     {
-        int desiredCount = settings.GetDesiredCount(rows, columns, actModifiers.ExtraPitstopCount);
+        int desiredCount = settings.GetDesiredCount(rows, columns, generationModifiers.ExtraPitstopCount);
         bool isSmallMap = rows * columns <= 25;
         List<SlotRequest> slots = new();
 
@@ -263,7 +383,7 @@ public sealed class PitstopPlacementPlanner
                 slots.Add(CreateSlot(SlotType.Late, settings.GetLateBand(rows, columns), true));
             }
 
-            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
+            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, generationModifiers.ExtraPitstopPlacementBand);
             return slots;
         }
 
@@ -277,7 +397,7 @@ public sealed class PitstopPlacementPlanner
             slots.Add(CreateSlot(SlotType.LateTop, settings.GetLateBand(rows, columns), true));
             slots.Add(CreateSlot(SlotType.LateBottom, settings.GetLateBand(rows, columns), true));
 
-            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
+            AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, generationModifiers.ExtraPitstopPlacementBand);
             return slots;
         }
 
@@ -301,7 +421,7 @@ public sealed class PitstopPlacementPlanner
             slots.Add(CreateSlot(SlotType.Late, settings.GetLateBand(rows, columns), true));
         }
 
-        AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
+        AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, generationModifiers.ExtraPitstopPlacementBand);
 
         return slots;
     }

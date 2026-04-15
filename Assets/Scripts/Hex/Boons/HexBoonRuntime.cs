@@ -47,16 +47,14 @@ public sealed class HexBoonRuntimeState
         return HasActiveBoon ? Definition.GetVisibilityRadiusBonus() : 0;
     }
 
-    public HexActMapModifiers GetActMapModifiers()
+    public HexMapGenerationModifiers GetMapGenerationModifiers()
     {
         if (!HasActiveBoon)
         {
-            return HexActMapModifiers.None;
+            return HexMapGenerationModifiers.None;
         }
 
-        return new HexActMapModifiers(
-            Definition.GetAdditionalPitstopCount(),
-            Definition.GetAdditionalPitstopPlacementBand());
+        return Definition.GetMapGenerationModifiers();
     }
 
     public bool TryConsumeObstacleIgnore(out HexBoonChargeChangeResult chargeChange)
@@ -108,6 +106,7 @@ public sealed class HexBoonRuntimeState
         }
 
         string name = Definition.GetResolvedDisplayName();
+        HexMapGenerationModifiers mapGenerationModifiers = Definition.GetMapGenerationModifiers();
         return Definition.category switch
         {
             HexBoonCategory.Passive when Definition.GetVisibilityRadiusBonus() > 0
@@ -116,6 +115,8 @@ public sealed class HexBoonRuntimeState
                 => $"Boon: {name} ({CurrentCharges}/{MaxCharges} charges, recharges at pitstops)",
             HexBoonCategory.MapModifying when Definition.GetAdditionalPitstopCount() > 0
                 => $"Boon: {name} (+{Definition.GetAdditionalPitstopCount()} pitstop this act)",
+            HexBoonCategory.MapModifying when mapGenerationModifiers.HasTerrainModifiers || mapGenerationModifiers.HasLandmarkRequests
+                => $"Boon: {name} (modifies terrain generation)",
             _ => $"Boon: {name}"
         };
     }

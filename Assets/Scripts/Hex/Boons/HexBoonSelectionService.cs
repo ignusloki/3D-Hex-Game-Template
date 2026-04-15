@@ -26,16 +26,14 @@ public static class HexBoonSelectionService
         return selectionAsset != null ? selectionAsset.GetSelectedBoon() : null;
     }
 
-    public static HexActMapModifiers GetActMapModifiers()
+    public static HexMapGenerationModifiers GetMapGenerationModifiers()
     {
         HexBoonDefinition definition = GetSelectedBoonDefinition();
         if (definition == null)
         {
-            return HexActMapModifiers.None;
+            return HexMapGenerationModifiers.None;
         }
 
-        return new HexActMapModifiers(
-            definition.GetAdditionalPitstopCount(),
-            definition.GetAdditionalPitstopPlacementBand());
+        return definition.GetMapGenerationModifiers();
     }
 }

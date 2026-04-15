@@ -72,10 +72,35 @@ public sealed class HexBoonMapModifierData
     public HexBoonMapModifierType effectType = HexBoonMapModifierType.None;
     [Min(0)] public int magnitude;
     public HexBoonMapPlacementBand placementBand = HexBoonMapPlacementBand.Default;
+    [Header("Terrain Thresholds")]
+    [Range(-0.25f, 0.25f)] public float waterThresholdDelta;
+    [Header("Feature Count Multipliers")]
+    [Min(0f)] public float forestFeatureCountMultiplier = 1f;
+    [Min(0f)] public float waterFeatureCountMultiplier = 1f;
+    [Min(0f)] public float mountainFeatureCountMultiplier = 1f;
+    [Header("Feature Size Multipliers")]
+    [Min(0f)] public float forestFeatureSizeMultiplier = 1f;
+    [Min(0f)] public float waterFeatureSizeMultiplier = 1f;
+    [Min(0f)] public float mountainFeatureSizeMultiplier = 1f;
+    [Header("Terrain Landmarks")]
+    public HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
 
     public void Validate()
     {
         magnitude = Mathf.Max(0, magnitude);
+        waterThresholdDelta = Mathf.Clamp(waterThresholdDelta, -0.25f, 0.25f);
+        forestFeatureCountMultiplier = Mathf.Max(0f, forestFeatureCountMultiplier);
+        waterFeatureCountMultiplier = Mathf.Max(0f, waterFeatureCountMultiplier);
+        mountainFeatureCountMultiplier = Mathf.Max(0f, mountainFeatureCountMultiplier);
+        forestFeatureSizeMultiplier = Mathf.Max(0f, forestFeatureSizeMultiplier);
+        waterFeatureSizeMultiplier = Mathf.Max(0f, waterFeatureSizeMultiplier);
+        mountainFeatureSizeMultiplier = Mathf.Max(0f, mountainFeatureSizeMultiplier);
+        terrainLandmarkRequests ??= System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
+
+        for (int index = 0; index < terrainLandmarkRequests.Length; index++)
+        {
+            terrainLandmarkRequests[index]?.Validate();
+        }
     }
 }
 
@@ -187,6 +212,26 @@ public sealed class HexBoonDefinition : ScriptableObject
         }
 
         return mapModifier.placementBand;
+    }
+
+    public HexMapGenerationModifiers GetMapGenerationModifiers()
+    {
+        if (!isEnabled || category != HexBoonCategory.MapModifying)
+        {
+            return HexMapGenerationModifiers.None;
+        }
+
+        return new HexMapGenerationModifiers(
+            GetAdditionalPitstopCount(),
+            GetAdditionalPitstopPlacementBand(),
+            mapModifier.waterThresholdDelta,
+            mapModifier.forestFeatureCountMultiplier,
+            mapModifier.waterFeatureCountMultiplier,
+            mapModifier.mountainFeatureCountMultiplier,
+            mapModifier.forestFeatureSizeMultiplier,
+            mapModifier.waterFeatureSizeMultiplier,
+            mapModifier.mountainFeatureSizeMultiplier,
+            mapModifier.terrainLandmarkRequests);
     }
 
     private static string SanitizeId(string rawValue)
