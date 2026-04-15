@@ -75,6 +75,41 @@ public class PitstopPlacementPlannerTests
         Assert.That(GetUniqueLaneCount(result.Coordinates, 10, settings), Is.GreaterThanOrEqualTo(3));
     }
 
+    [TestCase(0, 9)]
+    [TestCase(9, 0)]
+    public void GeneratePitstops_AddsAnExtraAnchorToSevenAnchorLayoutsWithMainSceneSettings(int startColumn, int goalColumn)
+    {
+        HexGridData gridData = CreateGrid(10, 10);
+        HexPathfinder pathfinder = new(gridData);
+        PitstopPlacementSettings settings = CreateSettings(TenByTenPitstopLayoutMode.SevenStrategicAnchors);
+        settings.candidatePoolSize = 10;
+        settings.randomJitter = 0.05f;
+        settings.minimumSpacingOnTenByTenSeven = 3;
+        settings.earlyDistanceFromSpawn = new PitstopIntRange(3, 4);
+        settings.lateDistanceFromGoal = new PitstopIntRange(3, 4);
+        settings.Validate();
+
+        PitstopPlacementPlanner planner = new();
+        HexCoordinates start = new(5, startColumn);
+        HexCoordinates goal = new(5, goalColumn);
+
+        PitstopLayoutResult result = planner.GeneratePitstops(
+            gridData,
+            pathfinder,
+            start,
+            goal,
+            settings,
+            new System.Random(12345),
+            new HexActMapModifiers(1, HexBoonMapPlacementBand.Mid));
+
+        Assert.That(result.IsValid, Is.True, result.Summary);
+        Assert.That(result.Coordinates.Count, Is.EqualTo(8));
+        Assert.That(new HashSet<HexCoordinates>(result.Coordinates).Count, Is.EqualTo(8));
+        AssertPairwiseSpacing(result.Coordinates, 3);
+        AssertSafeDistanceFromEndpoints(result.Coordinates, start, goal, 1);
+        Assert.That(GetUniqueLaneCount(result.Coordinates, 10, settings), Is.GreaterThanOrEqualTo(3));
+    }
+
     [Test]
     public void GeneratePitstops_BuildsEarlyAndLateAnchorsOnSmallMaps()
     {

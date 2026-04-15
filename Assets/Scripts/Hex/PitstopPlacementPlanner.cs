@@ -45,6 +45,7 @@ public sealed class PitstopPlacementPlanner
         MidTop,
         MidMiddle,
         MidBottom,
+        Support,
         Late,
         LateTop,
         LateBottom
@@ -70,6 +71,7 @@ public sealed class PitstopPlacementPlanner
     {
         public SlotType Type;
         public PitstopFloatRange ProgressRange;
+        public PitstopFloatRange AllowedProgressRange;
         public bool RelaxEdgeAvoidance;
     }
 
@@ -248,32 +250,17 @@ public sealed class PitstopPlacementPlanner
         {
             if (desiredCount >= 1)
             {
-                slots.Add(new SlotRequest
-                {
-                    Type = SlotType.EarlyFlexible,
-                    ProgressRange = settings.GetEarlyBand(rows, columns),
-                    RelaxEdgeAvoidance = true
-                });
+                slots.Add(CreateSlot(SlotType.EarlyFlexible, settings.GetEarlyBand(rows, columns), true));
             }
 
             if (desiredCount >= 3)
             {
-                slots.Add(new SlotRequest
-                {
-                    Type = SlotType.Mid,
-                    ProgressRange = settings.GetMidBand(rows, columns),
-                    RelaxEdgeAvoidance = false
-                });
+                slots.Add(CreateSlot(SlotType.Mid, settings.GetMidBand(rows, columns), false));
             }
 
             if (desiredCount >= 2)
             {
-                slots.Add(new SlotRequest
-                {
-                    Type = SlotType.Late,
-                    ProgressRange = settings.GetLateBand(rows, columns),
-                    RelaxEdgeAvoidance = true
-                });
+                slots.Add(CreateSlot(SlotType.Late, settings.GetLateBand(rows, columns), true));
             }
 
             AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
@@ -282,54 +269,13 @@ public sealed class PitstopPlacementPlanner
 
         if (settings.UseSevenPitstopLayout(rows, columns))
         {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.EarlyTop,
-                ProgressRange = settings.GetEarlyBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.EarlyBottom,
-                ProgressRange = settings.GetEarlyBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.MidTop,
-                ProgressRange = settings.GetMidBand(rows, columns),
-                RelaxEdgeAvoidance = false
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.MidMiddle,
-                ProgressRange = settings.GetMidBand(rows, columns),
-                RelaxEdgeAvoidance = false
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.MidBottom,
-                ProgressRange = settings.GetMidBand(rows, columns),
-                RelaxEdgeAvoidance = false
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.LateTop,
-                ProgressRange = settings.GetLateBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
-
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.LateBottom,
-                ProgressRange = settings.GetLateBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
+            slots.Add(CreateSlot(SlotType.EarlyTop, settings.GetEarlyBand(rows, columns), true));
+            slots.Add(CreateSlot(SlotType.EarlyBottom, settings.GetEarlyBand(rows, columns), true));
+            slots.Add(CreateSlot(SlotType.MidTop, settings.GetMidBand(rows, columns), false));
+            slots.Add(CreateSlot(SlotType.MidMiddle, settings.GetMidBand(rows, columns), false));
+            slots.Add(CreateSlot(SlotType.MidBottom, settings.GetMidBand(rows, columns), false));
+            slots.Add(CreateSlot(SlotType.LateTop, settings.GetLateBand(rows, columns), true));
+            slots.Add(CreateSlot(SlotType.LateBottom, settings.GetLateBand(rows, columns), true));
 
             AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
             return slots;
@@ -337,47 +283,42 @@ public sealed class PitstopPlacementPlanner
 
         if (desiredCount >= 1)
         {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.EarlyTop,
-                ProgressRange = settings.GetEarlyBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
+            slots.Add(CreateSlot(SlotType.EarlyTop, settings.GetEarlyBand(rows, columns), true));
         }
 
         if (desiredCount >= 2)
         {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.EarlyBottom,
-                ProgressRange = settings.GetEarlyBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
+            slots.Add(CreateSlot(SlotType.EarlyBottom, settings.GetEarlyBand(rows, columns), true));
         }
 
         if (desiredCount >= 3)
         {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.Mid,
-                ProgressRange = settings.GetMidBand(rows, columns),
-                RelaxEdgeAvoidance = false
-            });
+            slots.Add(CreateSlot(SlotType.Mid, settings.GetMidBand(rows, columns), false));
         }
 
         if (desiredCount >= 4)
         {
-            slots.Add(new SlotRequest
-            {
-                Type = SlotType.Late,
-                ProgressRange = settings.GetLateBand(rows, columns),
-                RelaxEdgeAvoidance = true
-            });
+            slots.Add(CreateSlot(SlotType.Late, settings.GetLateBand(rows, columns), true));
         }
 
         AppendAdditionalSlots(slots, desiredCount - slots.Count, rows, columns, settings, actModifiers.ExtraPitstopPlacementBand);
 
         return slots;
+    }
+
+    private static SlotRequest CreateSlot(
+        SlotType type,
+        PitstopFloatRange progressRange,
+        bool relaxEdgeAvoidance,
+        PitstopFloatRange? allowedProgressRange = null)
+    {
+        return new SlotRequest
+        {
+            Type = type,
+            ProgressRange = progressRange,
+            AllowedProgressRange = allowedProgressRange ?? progressRange,
+            RelaxEdgeAvoidance = relaxEdgeAvoidance
+        };
     }
 
     private static void AppendAdditionalSlots(
@@ -393,10 +334,61 @@ public sealed class PitstopPlacementPlanner
             return;
         }
 
+        int insertionIndex = GetAdditionalSlotInsertionIndex(slots, placementBand);
         for (int extraIndex = 0; extraIndex < extraSlotCount; extraIndex++)
         {
-            slots.Add(CreateAdditionalSlot(rows, columns, settings, placementBand));
+            SlotRequest slot = CreateAdditionalSlot(rows, columns, settings, placementBand);
+            int targetIndex = Mathf.Clamp(insertionIndex + extraIndex, 0, slots.Count);
+            slots.Insert(targetIndex, slot);
         }
+    }
+
+    private static int GetAdditionalSlotInsertionIndex(List<SlotRequest> slots, HexBoonMapPlacementBand placementBand)
+    {
+        if (placementBand == HexBoonMapPlacementBand.Early)
+        {
+            return CountContiguousMatchingSlots(slots, IsEarlySlot);
+        }
+
+        if (placementBand == HexBoonMapPlacementBand.Late)
+        {
+            return slots.Count;
+        }
+
+        for (int index = 0; index < slots.Count; index++)
+        {
+            if (IsLateSlot(slots[index].Type))
+            {
+                return index;
+            }
+        }
+
+        return slots.Count;
+    }
+
+    private static int CountContiguousMatchingSlots(List<SlotRequest> slots, Func<SlotType, bool> predicate)
+    {
+        int count = 0;
+        while (count < slots.Count && predicate(slots[count].Type))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static bool IsEarlySlot(SlotType type)
+    {
+        return type == SlotType.EarlyTop
+            || type == SlotType.EarlyBottom
+            || type == SlotType.EarlyFlexible;
+    }
+
+    private static bool IsLateSlot(SlotType type)
+    {
+        return type == SlotType.Late
+            || type == SlotType.LateTop
+            || type == SlotType.LateBottom;
     }
 
     private static SlotRequest CreateAdditionalSlot(
@@ -412,6 +404,13 @@ public sealed class PitstopPlacementPlanner
             _ => SlotType.Mid
         };
 
+        if (type == SlotType.Mid && settings.UseSevenPitstopLayout(rows, columns))
+        {
+            PitstopFloatRange supportPreferredRange = settings.GetLateBand(rows, columns);
+            PitstopFloatRange supportAllowedRange = settings.GetAdditionalPitstopAllowedBand(rows, columns, HexBoonMapPlacementBand.Late);
+            return CreateSlot(SlotType.Support, supportPreferredRange, false, supportAllowedRange);
+        }
+
         PitstopFloatRange progressRange = placementBand switch
         {
             HexBoonMapPlacementBand.Early => settings.GetEarlyBand(rows, columns),
@@ -419,12 +418,8 @@ public sealed class PitstopPlacementPlanner
             _ => settings.GetMidBand(rows, columns)
         };
 
-        return new SlotRequest
-        {
-            Type = type,
-            ProgressRange = progressRange,
-            RelaxEdgeAvoidance = type != SlotType.Mid
-        };
+        PitstopFloatRange allowedProgressRange = settings.GetAdditionalPitstopAllowedBand(rows, columns, placementBand);
+        return CreateSlot(type, progressRange, type != SlotType.Mid, allowedProgressRange);
     }
 
     private static bool TryBuildLayout(
@@ -505,7 +500,7 @@ public sealed class PitstopPlacementPlanner
 
     private static bool MatchesSlot(CandidateInfo candidate, SlotRequest slot, PitstopPlacementSettings settings)
     {
-        if (!slot.ProgressRange.Contains(candidate.Progress))
+        if (!slot.AllowedProgressRange.Contains(candidate.Progress))
         {
             return false;
         }
@@ -519,6 +514,7 @@ public sealed class PitstopPlacementPlanner
             SlotType.MidTop => candidate.Lane == PitstopLane.Top,
             SlotType.MidMiddle => candidate.Lane == PitstopLane.Middle,
             SlotType.MidBottom => candidate.Lane == PitstopLane.Bottom,
+            SlotType.Support => true,
             SlotType.Late => true,
             SlotType.LateTop => candidate.Lane == PitstopLane.Top,
             SlotType.LateBottom => candidate.Lane == PitstopLane.Bottom,
@@ -603,6 +599,7 @@ public sealed class PitstopPlacementPlanner
             SlotType.Late => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
             SlotType.LateTop => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
             SlotType.LateBottom => ScoreIntRangeCloseness(candidate.DistanceToGoal, settings.lateDistanceFromGoal),
+            SlotType.Support => 0.5f,
             _ => 0.5f
         };
     }
@@ -622,11 +619,28 @@ public sealed class PitstopPlacementPlanner
             SlotType.MidTop => ScoreExplicitMidLane(candidate, placed, settings.topLaneCenter),
             SlotType.MidMiddle => ScoreExplicitMidLane(candidate, placed, settings.middleLaneCenter),
             SlotType.MidBottom => ScoreExplicitMidLane(candidate, placed, settings.bottomLaneCenter),
+            SlotType.Support => ScoreSupportLane(candidate, placed, settings),
             SlotType.Late => ScoreLateLane(candidate, placed, settings),
             SlotType.LateTop => ScoreExplicitLateLane(candidate, placed, settings.topLaneCenter),
             SlotType.LateBottom => ScoreExplicitLateLane(candidate, placed, settings.bottomLaneCenter),
             _ => 0f
         };
+    }
+
+    private static float ScoreSupportLane(CandidateInfo candidate, List<PlacedCandidate> placed, PitstopPlacementSettings settings)
+    {
+        float score = ScoreLaneCloseness(candidate.RowProgress, settings.middleLaneCenter);
+        if (candidate.Lane == PitstopLane.Top || candidate.Lane == PitstopLane.Bottom)
+        {
+            score -= 0.2f;
+        }
+
+        if (CountLaneMatches(candidate.Lane, placed) >= 2)
+        {
+            score -= 0.15f;
+        }
+
+        return score;
     }
 
     private static float ScoreExplicitMidLane(CandidateInfo candidate, List<PlacedCandidate> placed, float laneCenter)

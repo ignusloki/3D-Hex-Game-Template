@@ -207,6 +207,29 @@ public sealed class PitstopPlacementSettings
             : lateBandOnTenByTen;
     }
 
+    public PitstopFloatRange GetAdditionalPitstopAllowedBand(int rows, int columns, HexBoonMapPlacementBand placementBand)
+    {
+        PitstopFloatRange preferredBand = placementBand switch
+        {
+            HexBoonMapPlacementBand.Early => GetEarlyBand(rows, columns),
+            HexBoonMapPlacementBand.Late => GetLateBand(rows, columns),
+            _ => GetMidBand(rows, columns)
+        };
+
+        if (IsSmallMap(rows, columns))
+        {
+            return preferredBand;
+        }
+
+        float padding = UseSevenPitstopLayout(rows, columns) ? 0.15f : 0.08f;
+        return placementBand switch
+        {
+            HexBoonMapPlacementBand.Early => ExpandRange(preferredBand, 0f, padding),
+            HexBoonMapPlacementBand.Late => ExpandRange(preferredBand, padding, 0f),
+            _ => ExpandRange(preferredBand, padding, padding)
+        };
+    }
+
     public void Validate()
     {
         pitstopsOnFiveByFive = Mathf.Max(0, pitstopsOnFiveByFive);
@@ -295,6 +318,13 @@ public sealed class PitstopPlacementSettings
     {
         return !IsSmallMap(rows, columns)
             && tenByTenLayoutMode == TenByTenPitstopLayoutMode.SevenStrategicAnchors;
+    }
+
+    private static PitstopFloatRange ExpandRange(PitstopFloatRange range, float minPadding, float maxPadding)
+    {
+        float min = Mathf.Clamp01(range.min - Mathf.Max(0f, minPadding));
+        float max = Mathf.Clamp01(range.max + Mathf.Max(0f, maxPadding));
+        return max < min ? new PitstopFloatRange(min, min) : new PitstopFloatRange(min, max);
     }
 
     private static bool IsSmallMap(int rows, int columns)
