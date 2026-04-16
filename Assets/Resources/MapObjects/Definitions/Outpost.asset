@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: c05e340cf2e54e2d9cfd35091d5815d9, type: 3}
   m_Name: Outpost
   m_EditorClassIdentifier: Assembly-CSharp::HexMapObjectDefinition
   id: outpost

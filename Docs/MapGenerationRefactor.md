@@ -1,6 +1,6 @@
 # Map Generation Refactor Architecture
 
-Last updated: 2026-04-15
+Last updated: 2026-04-16
 
 ## Purpose
 
@@ -17,7 +17,7 @@ The goal is to preserve the current playable rules while making the system flexi
 
 ## Current Implementation Status
 
-The refactor is now through the first real non-pitstop map-object slice.
+The refactor is now through the first playable quest-marker prototype slice.
 
 What is implemented:
 
@@ -38,11 +38,14 @@ What is implemented:
 - `MapGenerator` retaining map-object placement metadata after planning
 - sample `Outpost` and `QuestMarker` definition assets
 - current runtime spawning of non-pitstop map objects from the shared placement plan
+- a mock quest-marker arrival interaction with placeholder modal UI so shared map-object placement can be tested in play
 
 What is not implemented yet:
 
 - landmark placement rotation / mirroring
 - shipped boon content that actually uses terrain-landmark or map-object requests
+- real quest data, quest-state progression, and per-marker quest payloads
+- interactive outpost behavior
 - movement-blocking map objects at runtime
 
 ## Strict Assessment
@@ -442,7 +445,7 @@ These parts can still be deferred after the current slice:
 
 - sophisticated landmark rarity tables
 - multi-act generation profiles
-- complex quest-object behaviors
+- complex quest-object behaviors beyond the current mock quest-marker flow
 - movement-blocking objects
 
 ## Expected Outcome

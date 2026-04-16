@@ -37,6 +37,7 @@ public class PlayerController : MonoBehaviour
     private HexObstacleController obstacleController;
     private HexNemesisController nemesisController;
     private HexRunStateModalPresenter runStateModalPresenter;
+    private HexMockQuestMarkerController mockQuestMarkerController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -110,6 +111,7 @@ public class PlayerController : MonoBehaviour
         HexFogUpdateResult initialFogUpdate = RefreshFogOfWar();
         InitializeObstacleSystem(initialFogUpdate);
         InitializeNemesisSystem();
+        InitializeMockQuestMarkerSystem();
 
         CaravanResourceSnapshot startingResources = caravanMetricsController != null
             ? caravanMetricsController.GetConfiguredSnapshot()
@@ -128,7 +130,10 @@ public class PlayerController : MonoBehaviour
     {
         EnsureRuntimeReferences();
 
-        if (!isReady || isRunOver || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen))
+        if (!isReady
+            || isRunOver
+            || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
+            || (mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen))
         {
             return;
         }
@@ -300,6 +305,13 @@ public class PlayerController : MonoBehaviour
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             EndRunAsDefeat(caravanResources.GetDefeatReason());
+            return;
+        }
+
+        if (mockQuestMarkerController != null && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
+        {
+            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
+            RefreshHighlights();
             return;
         }
 
@@ -586,6 +598,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         pitstopEventController?.HideActiveModal();
+        mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
         runStateModalPresenter?.ShowVictory(RetryCurrentScene);
@@ -605,6 +618,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         pitstopEventController?.HideActiveModal();
+        mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile, defeatReason);
         runStateModalPresenter?.ShowDefeat(RetryCurrentScene);
@@ -758,6 +772,7 @@ public class PlayerController : MonoBehaviour
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
         nemesisController ??= FindAnyObjectByType<HexNemesisController>();
         runStateModalPresenter ??= GetComponent<HexRunStateModalPresenter>() ?? gameObject.AddComponent<HexRunStateModalPresenter>();
+        mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -789,6 +804,16 @@ public class PlayerController : MonoBehaviour
         }
 
         nemesisController.Initialize(mapGenerator, pitstopSpawner, obstacleController, currentTile.Coordinates);
+    }
+
+    private void InitializeMockQuestMarkerSystem()
+    {
+        if (mockQuestMarkerController == null || mapGenerator == null)
+        {
+            return;
+        }
+
+        mockQuestMarkerController.Initialize(mapGenerator);
     }
 
     private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
@@ -892,5 +917,94 @@ public class PlayerController : MonoBehaviour
     private void RetryCurrentScene()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+}
+
+public sealed class HexMockQuestMarkerController : MonoBehaviour
+{
+    [Header("Mock Content")]
+    [SerializeField] private string fallbackTitle = "Quest Marker";
+    [TextArea(3, 6)] [SerializeField] private string placeholderBody =
+        "This is a mock quest marker.\n\nReplace this placeholder with a real quest flow later.";
+
+    private readonly Dictionary<HexCoordinates, HexMapObjectPlacement> questMarkersByCoordinate = new();
+    private readonly HashSet<HexCoordinates> resolvedQuestMarkers = new();
+
+    private MapGenerator mapGenerator;
+    private HexMockQuestMarkerModalPresenter modalPresenter;
+    private HexCoordinates? activeQuestMarker;
+
+    public bool IsModalOpen => modalPresenter != null && modalPresenter.IsOpen;
+
+    public void Initialize(MapGenerator generator)
+    {
+        mapGenerator = generator;
+        modalPresenter ??= GetComponent<HexMockQuestMarkerModalPresenter>() ?? gameObject.AddComponent<HexMockQuestMarkerModalPresenter>();
+        RebuildQuestMarkers();
+    }
+
+    public bool TryProcessArrival(HexCoordinates coordinates)
+    {
+        if (IsModalOpen
+            || resolvedQuestMarkers.Contains(coordinates)
+            || !questMarkersByCoordinate.TryGetValue(coordinates, out HexMapObjectPlacement placement))
+        {
+            return false;
+        }
+
+        activeQuestMarker = coordinates;
+        modalPresenter.Show(
+            ResolveTitle(placement),
+            ResolveBody(placement),
+            HandleDialogClosed);
+        Debug.Log($"[QuestMock] Opened placeholder quest marker at {coordinates}.", this);
+        return true;
+    }
+
+    public void HideActiveModal()
+    {
+        activeQuestMarker = null;
+        modalPresenter?.Hide();
+    }
+
+    private void HandleDialogClosed()
+    {
+        if (activeQuestMarker.HasValue)
+        {
+            resolvedQuestMarkers.Add(activeQuestMarker.Value);
+            Debug.Log($"[QuestMock] Resolved placeholder quest marker at {activeQuestMarker.Value}.", this);
+        }
+
+        activeQuestMarker = null;
+    }
+
+    private void RebuildQuestMarkers()
+    {
+        questMarkersByCoordinate.Clear();
+        if (mapGenerator?.MapObjectPlacements == null)
+        {
+            return;
+        }
+
+        List<HexMapObjectPlacement> questMarkers = mapGenerator.MapObjectPlacements.GetByType(HexMapObjectType.QuestMarker);
+        for (int index = 0; index < questMarkers.Count; index++)
+        {
+            HexMapObjectPlacement placement = questMarkers[index];
+            questMarkersByCoordinate[placement.Coordinates] = placement;
+        }
+    }
+
+    private string ResolveTitle(HexMapObjectPlacement placement)
+    {
+        return string.IsNullOrWhiteSpace(placement.DisplayName) ? fallbackTitle : placement.DisplayName;
+    }
+
+    private string ResolveBody(HexMapObjectPlacement placement)
+    {
+        string baseBody = string.IsNullOrWhiteSpace(placeholderBody)
+            ? "This is a mock quest marker placeholder."
+            : placeholderBody.Trim();
+
+        return $"{baseBody}\n\nLocation: {placement.Coordinates}";
     }
 }

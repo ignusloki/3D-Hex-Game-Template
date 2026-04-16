@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: c05e340cf2e54e2d9cfd35091d5815d9, type: 3}
   m_Name: QuestMarker
   m_EditorClassIdentifier: Assembly-CSharp::HexMapObjectDefinition
   id: quest-marker
@@ -25,7 +25,7 @@ MonoBehaviour:
   minDistanceFromReservedTiles: 0
   allowedBaseBiomes: 03000000000000000100000004000000
   forbiddenBaseBiomes: 02000000
-  visualHeightOffset: 0.08
+  visualHeightOffset: 1
   visualScale: 1.2
   blocksPlacementOfOtherObjects: 0
   blocksMovement: 0

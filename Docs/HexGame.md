@@ -806,6 +806,7 @@ These are important context points for future design discussion:
 - the Nemesis system exists, but the full boon / act progression around it does not yet exist
 - some map-generation visuals still need cleanup
 - the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, scene-level map-object requests, and a shared map-object placement pass that can plan pitstops, outposts, and quest markers together
+- quest markers can now be placed and spawned through the shared map-object pipeline, and they currently use a prototype-only mock interaction that shows placeholder dialog text on arrival; a real quest system does not exist yet
 - resource balance is still very tunable and not final
 
 ## 17. Current Non-Event Pending Work

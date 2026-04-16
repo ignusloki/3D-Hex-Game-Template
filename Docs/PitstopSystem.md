@@ -141,6 +141,8 @@ That broader placement architecture lets pitstops coexist more cleanly with:
 - quest markers
 - future map objects driven by boons or scenario rules
 
+Quest markers currently only use a mock placeholder arrival dialog for testing the shared map-object runtime flow. They are not a full quest system yet.
+
 This direction is documented in:
 
 - `Docs/MapGenerationRefactor.md`

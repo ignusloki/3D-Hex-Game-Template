@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-04-15
+Last updated: 2026-04-16
 
 ## Current State
 
@@ -49,7 +49,7 @@ Current implementation progress:
 - slice 2 is done: terrain landmark definition assets, exact terrain landmark stamping, and a scene-level testing hook on `MapGenerator`
 - slice 3 is done: generated-map placement reservations and pitstop planning consuming those reservations
 - slice 4 is done: shared map-object placement results and a shared placement pass with pitstops flowing through it as the first consumer
-- slice 5 is done: actual outpost / quest-marker placement content now runs through the shared placement pass, with sample definition assets and runtime spawning support
+- slice 5 is done: actual outpost / quest-marker placement content now runs through the shared placement pass, with sample definition assets, runtime spawning support, and a mock quest-marker arrival dialog for playtesting
 
 ## Remaining Non-Event Tasks
 
@@ -68,7 +68,8 @@ Current implementation progress:
 
 4. Add richer behaviors on top of the shared map-object architecture:
    - interactive outposts
-   - quest logic
+   - real quest logic beyond the current mock quest-marker dialog
+   - per-marker quest data / rewards / completion state
    - optional movement-blocking support if the design ever needs it
 5. Add a cleanup / smoothing pass for the remaining odd biome scraps.
 6. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
@@ -108,4 +109,4 @@ These are useful, but not current blockers:
 - Pitstop event system is considered a complete first playable slice.
 - Win / lose / retry UI is now in place as a complete first prototype slice.
 - Future event work is now polish / expansion, not a core missing system.
-- The current branch is already on the first slice of the map-generation refactor described in `Docs/MapGenerationRefactor.md`.
+- The map-generation refactor is now through the shared placement and mock quest-marker slice described in `Docs/MapGenerationRefactor.md`.
