@@ -444,7 +444,7 @@ That is the minimum architecture that was needed before implementing new biome-s
 These parts can still be deferred after the current slice:
 
 - sophisticated landmark rarity tables
-- multi-act generation profiles
+- deeper multi-act act-profile rules beyond what is now tracked in `Docs/ActTransitionSystem.md`
 - complex quest-object behaviors beyond the current mock quest-marker flow
 - movement-blocking objects
 

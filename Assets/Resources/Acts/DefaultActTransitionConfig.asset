@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ce0b618f91654d179fe33d11ac682cc, type: 3}
+  m_Name: DefaultActTransitionConfig
+  m_EditorClassIdentifier: 
+  enableActTransitions: 1
+  totalActs: 3
+  disableNemesisInAct2: 1
+  act1ToAct2:
+    title: Act 1 Complete
+    body: The caravan reaches the first goal. A harder road opens ahead.
+    continueButtonLabel: Begin Act 2
+    betweenActGrant:
+      food: 6
+      morale: 1
+      gold: 2
+  act2ToAct3:
+    title: Act 2 Complete
+    body: The crossing continues. The last stretch of the journey is near.
+    continueButtonLabel: Begin Act 3
+    betweenActGrant:
+      food: 8
+      morale: 1
+      gold: 3

@@ -6,11 +6,12 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
     [Header("Layout")]
     [Min(160f)] [SerializeField] private float panelWidth = 420f;
-    [Min(120f)] [SerializeField] private float panelHeight = 220f;
+    [Min(120f)] [SerializeField] private float panelHeight = 260f;
 
     [Header("Colors")]
     [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.9f);
     [SerializeField] private Color titleColor = new(0.98f, 0.98f, 0.98f, 1f);
+    [SerializeField] private Color bodyColor = new(0.9f, 0.9f, 0.9f, 1f);
     [SerializeField] private Color buttonColor = new(0.12f, 0.15f, 0.19f, 0.96f);
     [SerializeField] private Color buttonHighlightColor = new(0.19f, 0.24f, 0.31f, 0.98f);
     [SerializeField] private Color buttonPressedColor = new(0.28f, 0.34f, 0.42f, 1f);
@@ -18,33 +19,39 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     private GameObject overlayRoot;
     private Text titleText;
-    private Button retryButton;
-    private Text retryButtonText;
+    private Text bodyText;
+    private Button actionButton;
+    private Text actionButtonText;
     private Font uiFont;
-    private Action retryCallback;
+    private Action actionCallback;
 
     public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
 
     public void ShowVictory(Action onRetryRequested)
     {
-        Show("You win!", onRetryRequested);
+        Show("You win!", string.Empty, "Retry", onRetryRequested);
     }
 
     public void ShowDefeat(Action onRetryRequested)
     {
-        Show("Game over!", onRetryRequested);
+        Show("Game over!", string.Empty, "Retry", onRetryRequested);
+    }
+
+    public void ShowTransition(string title, string body, string continueButtonLabel, Action onContinueRequested)
+    {
+        Show(title, body, continueButtonLabel, onContinueRequested);
     }
 
     public void Hide()
     {
-        retryCallback = null;
+        actionCallback = null;
         if (overlayRoot != null)
         {
             overlayRoot.SetActive(false);
         }
     }
 
-    private void Show(string title, Action onRetryRequested)
+    private void Show(string title, string body, string buttonLabel, Action onActionRequested)
     {
         EnsureUi();
         if (overlayRoot == null)
@@ -52,10 +59,12 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             return;
         }
 
-        retryCallback = onRetryRequested;
+        actionCallback = onActionRequested;
         overlayRoot.SetActive(true);
         titleText.text = title;
-        retryButtonText.text = "Retry";
+        bodyText.text = string.IsNullOrWhiteSpace(body) ? string.Empty : body.Trim();
+        bodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(bodyText.text));
+        actionButtonText.text = string.IsNullOrWhiteSpace(buttonLabel) ? "Continue" : buttonLabel.Trim();
     }
 
     private void EnsureUi()
@@ -99,7 +108,17 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         titleRect.sizeDelta = new Vector2(panelWidth, 60f);
         titleText.alignment = TextAnchor.MiddleCenter;
 
-        RectTransform buttonRect = CreateRectTransform("Retry Button", panelRect);
+        bodyText = CreateText("Body", panelRect, 24, FontStyle.Italic, bodyColor);
+        RectTransform bodyRect = bodyText.rectTransform;
+        bodyRect.anchorMin = Vector2.zero;
+        bodyRect.anchorMax = Vector2.one;
+        bodyRect.pivot = new Vector2(0.5f, 0.5f);
+        bodyRect.offsetMin = new Vector2(24f, 88f);
+        bodyRect.offsetMax = new Vector2(-24f, -88f);
+        bodyText.alignment = TextAnchor.MiddleCenter;
+        bodyText.gameObject.SetActive(false);
+
+        RectTransform buttonRect = CreateRectTransform("Action Button", panelRect);
         buttonRect.anchorMin = new Vector2(0.5f, 0f);
         buttonRect.anchorMax = new Vector2(0.5f, 0f);
         buttonRect.pivot = new Vector2(0.5f, 0f);
@@ -108,24 +127,24 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         Image buttonImage = buttonRect.gameObject.AddComponent<Image>();
         buttonImage.color = buttonColor;
-        retryButton = buttonRect.gameObject.AddComponent<Button>();
-        ColorBlock buttonColors = retryButton.colors;
+        actionButton = buttonRect.gameObject.AddComponent<Button>();
+        ColorBlock buttonColors = actionButton.colors;
         buttonColors.normalColor = buttonColor;
         buttonColors.highlightedColor = buttonHighlightColor;
         buttonColors.pressedColor = buttonPressedColor;
         buttonColors.selectedColor = buttonHighlightColor;
         buttonColors.disabledColor = buttonColor * 0.6f;
-        retryButton.colors = buttonColors;
-        retryButton.onClick.AddListener(HandleRetryClicked);
+        actionButton.colors = buttonColors;
+        actionButton.onClick.AddListener(HandleActionClicked);
 
-        retryButtonText = CreateText("Retry Button Text", buttonRect, 24, FontStyle.Bold, buttonTextColor);
-        StretchToParent(retryButtonText.rectTransform, 12f, 8f);
-        retryButtonText.alignment = TextAnchor.MiddleCenter;
+        actionButtonText = CreateText("Action Button Text", buttonRect, 24, FontStyle.Bold, buttonTextColor);
+        StretchToParent(actionButtonText.rectTransform, 12f, 8f);
+        actionButtonText.alignment = TextAnchor.MiddleCenter;
     }
 
-    private void HandleRetryClicked()
+    private void HandleActionClicked()
     {
-        Action callback = retryCallback;
+        Action callback = actionCallback;
         Hide();
         callback?.Invoke();
     }

@@ -1,7 +1,7 @@
 # Hex Game
 
-Snapshot date: 2026-04-14  
-Scope of this document: current playable prototype plus the latest in-progress `Nemesis` branch work.  
+Snapshot date: 2026-04-16  
+Scope of this document: current playable prototype plus the documented target for the next multi-act transition feature.  
 Audience: another chat session focused on game design decisions, not implementation details only.
 
 ## 1. Game Summary
@@ -29,6 +29,19 @@ At a high level, the game is currently about:
 
 The current playable prototype already supports a full run from spawn to goal, including win and lose screens.
 
+The next production step is no longer just "reach the goal once."
+
+The intended run is a 3-act structure with:
+
+- transition screens between acts
+- boon selection after Act 1 and Act 2
+- stacked boons by Act 3
+- Act 3 nemesis activation based on the family locked by the first boon choice
+
+That target flow is documented in:
+
+- `Docs/ActTransitionSystem.md`
+
 ## 2. Current Prototype Scope
 
 ### 2.1 What is already implemented
@@ -43,6 +56,7 @@ The current playable prototype already supports a full run from spawn to goal, i
 - pitstop placement
 - pitstop rewards
 - pitstop events with choice-based modal UI
+- data-driven boon framework with reusable map-generation integration
 - win / lose / retry modal
 - optional Nemesis system with three archetypes:
   - `Hunter`
@@ -61,6 +75,26 @@ The current prototype does **not** yet play through all 3 acts as a full product
 - `Gold` reaching `0` does **not** cause defeat
 
 The `Nemesis` exists now as a configurable testable system that can be enabled in the Unity editor. It is architected as if it belongs to later acts, but can currently be turned on for prototype iteration.
+
+The first runtime slice of the act-transition system now exists:
+
+- reaching the goal in Act 1 or Act 2 can hand off into the next act instead of ending the whole run
+- resources can carry between acts with configurable grants
+- the run still reloads the same gameplay scene between acts for now
+
+But the full intended act flow is still incomplete because boon selection, act-profile generation, and Act 3 family-locked nemesis activation are not implemented yet.
+
+The next target production flow is:
+
+- Act 1 ends at the goal and leads into a transition screen
+- the first transition chooses the Act 2 boon and locks the Act 3 nemesis family
+- Act 2 uses a desert-biased procedural map and has no nemesis
+- the second transition chooses the Act 3 boon from the locked family
+- Act 3 uses a general procedural map and enables the locked-family nemesis
+
+The detailed target for that feature lives in:
+
+- `Docs/ActTransitionSystem.md`
 
 ## 3. Core Player Fantasy
 
@@ -123,6 +157,33 @@ This order has a few important consequences:
 - That move is still allowed to resolve.
 - If the player reaches the goal on that move, victory takes priority over normal post-move resource defeat.
 - If a pitstop and the Corruptor reach the same tile on the same move, the caravan has priority. The caravan gets the pitstop first, then the Corruptor destroys it afterward for future use.
+
+## 4.3 Target multi-act run flow
+
+Once the act-transition system is implemented, the target loop becomes:
+
+1. Generate and play Act 1.
+2. Reach the goal.
+3. Show an act transition screen with story text and boon selection.
+4. Apply the chosen boon to Act 2 and lock the boon family for Act 3.
+5. Carry caravan resources forward and apply any configured between-act grant.
+6. Generate and play Act 2 with a desert-biased map profile and no nemesis.
+7. Reach the goal.
+8. Show a second transition screen with story text and boon selection from the locked family.
+9. Carry caravan resources forward again and apply any configured between-act grant.
+10. Generate and play Act 3 with the stacked boon loadout.
+11. Enable the Act 3 nemesis based on the family locked after Act 1.
+12. Reach the goal to end the game.
+
+## 4.4 Act transition responsibilities
+
+The transition screen is expected to handle:
+
+- story / omen text
+- boon selection
+- act handoff to the next map
+
+The first production slice does not require final cinematic presentation.
 
 ## 5. Board and Map Structure
 
@@ -218,6 +279,29 @@ The refactor keeps the current layered approach but has restructured it around e
 The target architecture and remaining follow-up work are documented in:
 
 - `Docs/MapGenerationRefactor.md`
+
+## 5.5 Planned act-specific map profiles
+
+The next production flow introduces act-specific generation profiles.
+
+### Act 1
+
+- general procedural profile
+- no special theme required
+
+### Act 2
+
+- desert-dominant profile
+- forest should be nearly absent: `0` to `2` tiles total is acceptable
+- water should stay rare, but not as rare as forest
+- mountains remain allowed
+- exact tuning should remain editable in the Unity editor
+
+### Act 3
+
+- general procedural profile again
+- no special biome theme by default
+- boon and future quest effects may still modify generation
 
 ## 6. Resources and Failure Conditions
 
@@ -569,6 +653,11 @@ The Nemesis system exists in the current development branch and is intended as a
 
 It is designed for the future 3-act structure, but can already be enabled manually for testing in the editor.
 
+In the documented target flow:
+
+- Act 2 has no nemesis
+- Act 3 enables the nemesis archetype locked by the first boon choice
+
 ## 12.2 Shared Nemesis rules
 
 - always visible
@@ -803,7 +892,7 @@ These are important context points for future design discussion:
 - movement animation is not done
 - some board-state readability still needs polish
 - the game currently ends after the first map even though the long-term structure is 3 acts
-- the Nemesis system exists, but the full boon / act progression around it does not yet exist
+- the multi-act transition flow now has a first runtime slice, but boon selection, act-profile generation, and Act 3 family-locked nemesis activation are still missing
 - some map-generation visuals still need cleanup
 - the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, scene-level map-object requests, and a shared map-object placement pass that can plan pitstops, outposts, and quest markers together
 - quest markers can now be placed and spawned through the shared map-object pipeline, and they currently use a prototype-only mock interaction that shows placeholder dialog text on arrival; a real quest system does not exist yet
@@ -813,6 +902,7 @@ These are important context points for future design discussion:
 
 Based on the current backlog, the main remaining non-event tasks are:
 
+- implement the documented act-transition system from `Docs/ActTransitionSystem.md`
 - add in-game replay flow without stopping Play mode
 - continue the map-generation refactor from the current shared placement slice into richer object behaviors, movement-blocking support if ever needed, and additional map-object content
 - improve board readability for start, goal, obstacles, fog, and pitstop state

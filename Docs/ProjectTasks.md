@@ -26,24 +26,27 @@ The movement animation task is intentionally deferred for later.
 
 ## Current Priority
 
-### 1. Map Generation Refactor
+### 1. Act Transition System
 
 This is the next active feature to build.
 
 Scope:
 
-- preserve the current terrain-generation rules and map feel
-- introduce a broader generation modifier path that is not limited to pitstops
-- support boon-driven terrain tuning such as more or less of a biome
-- support authored terrain landmarks such as mini lakes and oases
-- support spawned map objects such as outposts and quest markers
-- avoid rewriting the whole gameplay loop
+- add a persistent multi-act run state
+- transition from Act 1 to Act 2 and from Act 2 to Act 3 without ending the game
+- show transition screens with story text and boon selection
+- carry resources between acts with editor-configurable between-act grants
+- stack boons across acts
+- lock the Act 3 boon family and nemesis archetype from the first transition choice
+- generate a desert-biased Act 2 map
+- generate a general Act 3 map
+- enable the locked-family nemesis only in Act 3
 
 Reference:
 
-- `Docs/MapGenerationRefactor.md`
+- `Docs/ActTransitionSystem.md`
 
-Current implementation progress:
+Supporting foundation already in place:
 
 - slice 1 is done: shared generation context, generalized modifier bundle, boon integration through that bundle, and initial map-generation debug logging
 - slice 2 is done: terrain landmark definition assets, exact terrain landmark stamping, and a scene-level testing hook on `MapGenerator`
@@ -51,13 +54,27 @@ Current implementation progress:
 - slice 4 is done: shared map-object placement results and a shared placement pass with pitstops flowing through it as the first consumer
 - slice 5 is done: actual outpost / quest-marker placement content now runs through the shared placement pass, with sample definition assets, runtime spawning support, and a mock quest-marker arrival dialog for playtesting
 
+Act-transition implementation status:
+
+- slice 1 is done: persistent multi-act run session, transition modal, scene reload between acts, resource carryover, configurable between-act grants, and Act 2 nemesis suppression
+- slice 2 is next: act-specific map generation profiles with desert-biased Act 2 generation
+- slice 3 is pending: transition boon choice UI, family lock, and multi-boon stacking
+- slice 4 is pending: Act 3 nemesis activation from the locked family
+
+### 2. Map Generation Follow-Up
+
+The map-generation refactor is complete enough for the act-transition feature.
+
+Remaining follow-up work on top of that foundation is still valuable, but it is no longer the primary blocker.
+
 ## Remaining Non-Event Tasks
 
 ### Core Presentation / Flow
 
-1. Add in-game replay flow so the player can restart or regenerate without stopping Play mode.
-2. Replace temporary caravan and goal visuals with better placeholder or final assets.
-3. Improve board readability for:
+1. Implement the multi-act transition flow from `Docs/ActTransitionSystem.md`.
+2. Add in-game replay flow so the player can restart or regenerate without stopping Play mode.
+3. Replace temporary caravan and goal visuals with better placeholder or final assets.
+4. Improve board readability for:
    - start
    - goal
    - visible obstacles
@@ -66,14 +83,14 @@ Current implementation progress:
 
 ### Map / Terrain
 
-4. Add richer behaviors on top of the shared map-object architecture:
+5. Add richer behaviors on top of the shared map-object architecture:
    - interactive outposts
    - real quest logic beyond the current mock quest-marker dialog
    - per-marker quest data / rewards / completion state
    - optional movement-blocking support if the design ever needs it
-5. Add a cleanup / smoothing pass for the remaining odd biome scraps.
-6. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
-7. Revisit map validation later if new gameplay systems change what qualifies as a good map.
+6. Add a cleanup / smoothing pass for the remaining odd biome scraps.
+7. Refine biome prefab grouping so forest, grass, mountain, and water look more consistent.
+8. Revisit map validation later if new gameplay systems change what qualifies as a good map.
 
 ### Balance
 
@@ -110,3 +127,4 @@ These are useful, but not current blockers:
 - Win / lose / retry UI is now in place as a complete first prototype slice.
 - Future event work is now polish / expansion, not a core missing system.
 - The map-generation refactor is now through the shared placement and mock quest-marker slice described in `Docs/MapGenerationRefactor.md`.
+- The next design source of truth for production progression is `Docs/ActTransitionSystem.md`.
