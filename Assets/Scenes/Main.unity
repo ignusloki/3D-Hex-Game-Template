@@ -1259,6 +1259,22 @@ MonoBehaviour:
     startBiome: 3
     enforceGoalBiome: 1
     goalBiome: 1
+  terrainLandmarkRequests:
+  - isEnabled: 1
+    definition: {fileID: 11400000, guid: 6aa7d191ad4c4c5ca0de247c7a7e1280, type: 2}
+    count: 1
+    placementBand: 2
+  - isEnabled: 1
+    definition: {fileID: 11400000, guid: d6e9eec2dc7745e7bfeb8724a79dca4f, type: 2}
+    count: 1
+    placementBand: 3
+  mapObjectPlacementRequests:
+  - isEnabled: 1
+    definition: {fileID: 11400000, guid: 8bfba660f0818434694b964228c94113, type: 2}
+    count: 1
+    placementBand: 1
+  enableGenerationDebugLogging: 1
+  enableVerboseGenerationPhaseLogging: 0
   X1stTileSpacing: 1
   XTileSpacing: 0.9997
   YTileSpacing: 0.87
@@ -1863,6 +1879,10 @@ MonoBehaviour:
     startBiome: 3
     enforceGoalBiome: 1
     goalBiome: 3
+  terrainLandmarkRequests: []
+  mapObjectPlacementRequests: []
+  enableGenerationDebugLogging: 0
+  enableVerboseGenerationPhaseLogging: 0
   X1stTileSpacing: 1
   XTileSpacing: 1
   YTileSpacing: 0.75
@@ -1940,6 +1960,7 @@ MonoBehaviour:
     keepBestLayoutIfAllAttemptsFail: 1
     candidatePoolSize: 10
     randomJitter: 0.05
+    enableDebugLogging: 1
     regenerateMapUntilValidLayout: 1
     retryMapUntilValidLayoutWithoutLimit: 1
     maxMapRegenerationAttempts: 25
@@ -2301,7 +2322,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexBoonSystemController
   applySelectedBoonAtRunStart: 1
-  selectedBoon: {fileID: 11400000, guid: 0c07eaea0438b4f2496a32e538e13bfc, type: 2}
+  selectedBoon: {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
