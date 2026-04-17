@@ -1,6 +1,6 @@
 # Act Transition System
 
-Last updated: 2026-04-16
+Last updated: 2026-04-17
 
 ## Purpose
 
@@ -34,13 +34,15 @@ Delivered:
 
 ### Slice 2: Act-specific map generation profiles
 
-Status: next
+Status: done
 
-Target:
+Delivered:
 
 - act-profile authoring support
 - desert-biased Act 2 generation
 - general Act 1 / Act 3 generation profiles
+- scene-level `Act Transition System` override/controller for tuning in the Inspector
+- fallback-biome support in act profiles so Act 2 can default to desert instead of grass
 
 ### Slice 3: Transition boon selection and stacking
 

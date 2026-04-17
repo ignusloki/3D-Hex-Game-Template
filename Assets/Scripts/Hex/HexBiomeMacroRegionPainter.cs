@@ -21,6 +21,7 @@ public sealed class HexBiomeMacroRegionPainter
         Biome[,] biomeMap,
         HexGridData gridLayout,
         HexBiomeGenerationSettings generationSettings,
+        Biome fallbackBiome,
         System.Random random)
     {
         HexBiomeRegionSettings regionSettings = generationSettings?.regionSettings ?? new HexBiomeRegionSettings();
@@ -31,7 +32,7 @@ public sealed class HexBiomeMacroRegionPainter
             return;
         }
 
-        List<Biome> availableLandBiomes = BuildAvailableLandBiomes(generationSettings);
+        List<Biome> availableLandBiomes = BuildAvailableLandBiomes(generationSettings, fallbackBiome);
         if (availableLandBiomes.Count == 0)
         {
             return;
@@ -41,7 +42,7 @@ public sealed class HexBiomeMacroRegionPainter
             regionSettings.GetRegionCount(biomeMap.GetLength(0), biomeMap.GetLength(1), random),
             biomeMap.GetLength(0) * biomeMap.GetLength(1));
 
-        List<RegionSeed> regionSeeds = CreateSeeds(regionCount, gridLayout, availableLandBiomes, generationSettings, regionSettings, random);
+        List<RegionSeed> regionSeeds = CreateSeeds(regionCount, gridLayout, availableLandBiomes, generationSettings, regionSettings, fallbackBiome, random);
         if (regionSeeds.Count == 0)
         {
             return;
@@ -123,6 +124,7 @@ public sealed class HexBiomeMacroRegionPainter
         List<Biome> availableLandBiomes,
         HexBiomeGenerationSettings generationSettings,
         HexBiomeRegionSettings regionSettings,
+        Biome fallbackBiome,
         System.Random random)
     {
         List<HexCoordinates> candidates = new();
@@ -143,7 +145,7 @@ public sealed class HexBiomeMacroRegionPainter
         HexCoordinates firstCoordinates = candidates[random.Next(candidates.Count)];
         seeds.Add(new RegionSeed(
             firstCoordinates,
-            ChooseLandBiome(availableLandBiomes, generationSettings, random),
+            ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, random),
             (float)random.NextDouble() * regionSettings.boundaryNoiseStrength));
 
         while (seeds.Count < regionCount)
@@ -173,21 +175,21 @@ public sealed class HexBiomeMacroRegionPainter
 
             seeds.Add(new RegionSeed(
                 bestCandidate,
-                ChooseLandBiome(availableLandBiomes, generationSettings, random),
+                ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, random),
                 (float)random.NextDouble() * regionSettings.boundaryNoiseStrength));
         }
 
         return seeds;
     }
 
-    private static Biome ChooseLandBiome(List<Biome> availableLandBiomes, HexBiomeGenerationSettings generationSettings, System.Random random)
+    private static Biome ChooseLandBiome(List<Biome> availableLandBiomes, HexBiomeGenerationSettings generationSettings, Biome fallbackBiome, System.Random random)
     {
         float totalWeight = 0f;
         float[] weights = new float[availableLandBiomes.Count];
 
         for (int index = 0; index < availableLandBiomes.Count; index++)
         {
-            float weight = GetBiomeWeight(availableLandBiomes[index], generationSettings);
+            float weight = GetBiomeWeight(availableLandBiomes[index], generationSettings, fallbackBiome);
             weights[index] = weight;
             totalWeight += weight;
         }
@@ -212,9 +214,9 @@ public sealed class HexBiomeMacroRegionPainter
         return availableLandBiomes[^1];
     }
 
-    private static float GetBiomeWeight(Biome biome, HexBiomeGenerationSettings settings)
+    private static float GetBiomeWeight(Biome biome, HexBiomeGenerationSettings settings, Biome fallbackBiome)
     {
-        return biome switch
+        float weight = biome switch
         {
             Biome.forest => Mathf.Clamp(1.2f + ((0.65f - settings.forestMoistureThreshold) * 3.5f), 0.2f, 4f),
             Biome.desert => settings.enableDesert
@@ -222,11 +224,27 @@ public sealed class HexBiomeMacroRegionPainter
                 : 0f,
             _ => 1f
         };
+
+        if (biome == fallbackBiome && IsLandBiome(biome))
+        {
+            weight *= 3.5f;
+        }
+        else if (fallbackBiome != Biome.grass && biome == Biome.grass)
+        {
+            weight *= 0.2f;
+        }
+
+        return weight;
     }
 
-    private static List<Biome> BuildAvailableLandBiomes(HexBiomeGenerationSettings generationSettings)
+    private static List<Biome> BuildAvailableLandBiomes(HexBiomeGenerationSettings generationSettings, Biome fallbackBiome)
     {
-        List<Biome> available = new() { Biome.grass };
+        List<Biome> available = new();
+
+        if (generationSettings.enableGrass)
+        {
+            available.Add(Biome.grass);
+        }
 
         if (generationSettings.enableForest)
         {
@@ -236,6 +254,11 @@ public sealed class HexBiomeMacroRegionPainter
         if (generationSettings.enableDesert)
         {
             available.Add(Biome.desert);
+        }
+
+        if (available.Count == 0)
+        {
+            available.Add(fallbackBiome);
         }
 
         return available;

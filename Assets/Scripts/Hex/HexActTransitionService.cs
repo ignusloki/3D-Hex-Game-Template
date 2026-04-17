@@ -14,6 +14,19 @@ public readonly struct HexActTransitionDisplayData
     public string ContinueButtonLabel { get; }
 }
 
+public readonly struct HexActGenerationProfileSelection
+{
+    public HexActGenerationProfileSelection(int actNumber, HexActGenerationProfileAsset profile)
+    {
+        ActNumber = Mathf.Max(1, actNumber);
+        Profile = profile;
+    }
+
+    public int ActNumber { get; }
+    public HexActGenerationProfileAsset Profile { get; }
+    public bool HasProfile => Profile != null && Profile.isEnabled;
+}
+
 internal sealed class HexActRunSessionState
 {
     public int CurrentActNumber = 1;
@@ -25,15 +38,33 @@ public static class HexActTransitionService
     public const string DefaultConfigResourcePath = "Acts/DefaultActTransitionConfig";
 
     private static HexActRunSessionState currentSession;
+    private static HexActTransitionConfigAsset cachedSceneConfig;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStaticState()
     {
         currentSession = null;
+        cachedSceneConfig = null;
+    }
+
+    public static HexActTransitionController FindSceneController()
+    {
+        return Object.FindAnyObjectByType<HexActTransitionController>();
     }
 
     public static HexActTransitionConfigAsset LoadConfig()
     {
+        HexActTransitionController sceneController = FindSceneController();
+        if (sceneController != null && sceneController.isActiveAndEnabled)
+        {
+            cachedSceneConfig = sceneController.GetTransitionConfig();
+            if (cachedSceneConfig != null)
+            {
+                cachedSceneConfig.hideFlags &= ~HideFlags.DontUnloadUnusedAsset;
+                return cachedSceneConfig;
+            }
+        }
+
         HexActTransitionConfigAsset config = Resources.Load<HexActTransitionConfigAsset>(DefaultConfigResourcePath);
         if (config != null)
         {
@@ -92,6 +123,16 @@ public static class HexActTransitionService
             && config.enableActTransitions
             && config.disableNemesisInAct2
             && GetCurrentActNumber() == 2;
+    }
+
+    public static HexActGenerationProfileSelection GetCurrentActGenerationProfile()
+    {
+        int actNumber = GetCurrentActNumber();
+        HexActTransitionConfigAsset config = LoadConfig();
+        HexActGenerationProfileAsset profile = config != null && config.enableActTransitions
+            ? config.GetProfileForAct(actNumber)
+            : null;
+        return new HexActGenerationProfileSelection(actNumber, profile);
     }
 
     public static HexActTransitionDisplayData BuildTransitionDisplayData(CaravanResourceSnapshot currentResources)

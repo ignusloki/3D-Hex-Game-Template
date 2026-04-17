@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e29f95d563847318e1c656e276d81e0, type: 3}
+  m_Name: Act2DesertProfile
+  m_EditorClassIdentifier: 
+  displayName: Act 2 Desert Profile
+  description: Desert-dominant generation profile for the second act.
+  isEnabled: 1
+  overrideFallbackBiome: 1
+  fallbackBiome: 1
+  biomeGenerationSettings:
+    enableGrass: 1
+    enableForest: 0
+    enableMountain: 1
+    enableWater: 1
+    enableDesert: 1
+    useRandomSeed: 1
+    seed: 12345
+    elevationFrequency: 0.12
+    moistureFrequency: 0.095
+    heatFrequency: 0.09
+    noiseOctaves: 3
+    noisePersistence: 0.5
+    noiseLacunarity: 2
+    waterThreshold: 0.1
+    mountainThreshold: 0.88
+    forestMoistureThreshold: 0.9
+    desertMoistureThreshold: 0.78
+    desertHeatThreshold: 0.25
+    isolatedAnomalyChance: 0.005
+    microPatchChance: 0.01
+    microPatchMinSize: 1
+    microPatchMaxSize: 2
+    regionSettings:
+      enableMacroRegions: 1
+      restrictBaseToLandBiomes: 1
+      fiveByFiveMinRegions: 3
+      fiveByFiveMaxRegions: 4
+      tenByTenMinRegions: 6
+      tenByTenMaxRegions: 8
+      boundaryNoiseStrength: 0.22
+      localVariationChance: 0
+      seedSpacingBias: 0.85
+    featureSettings:
+      enableFeatureOverlays: 1
+      minForestFeatureCount: 0
+      maxForestFeatureCount: 0
+      forestFeatureMinRatio: 0
+      forestFeatureMaxRatio: 0.02
+      minWaterFeatureCount: 0
+      maxWaterFeatureCount: 1
+      waterFeatureMinRatio: 0.02
+      waterFeatureMaxRatio: 0.05
+      minMountainFeatureCount: 0
+      maxMountainFeatureCount: 1
+      mountainFeatureMinRatio: 0.03
+      mountainFeatureMaxRatio: 0.06
+      featureEdgePadding: 1
+      compactnessBias: 0.95
+      ridgeTurnChance: 0.25
+      ridgeBranchChance: 0.15
+    qualitySettings:
+      enableQualityRerolls: 1
+      maxGenerationAttempts: 12
+      maxDominantBiomeRatio: 0.96
+      minDistinctBiomeCount: 2
+      minSecondaryRegionRatio: 0.04
+      minMeaningfulRegionSize: 2
+      maxSmallSecondaryRegionRatio: 0.12
+  specialTileSettings:
+    enforceStartBiome: 1
+    startBiome: 3
+    enforceGoalBiome: 1
+    goalBiome: 3

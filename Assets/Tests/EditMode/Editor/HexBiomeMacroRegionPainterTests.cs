@@ -38,7 +38,7 @@ public class HexBiomeMacroRegionPainterTests
         settings.Validate();
 
         HexBiomeMacroRegionPainter painter = new();
-        painter.ApplyLandRegions(biomeMap, new HexGridData(10, 10), settings, new System.Random(12345));
+        painter.ApplyLandRegions(biomeMap, new HexGridData(10, 10), settings, Biome.grass, new System.Random(12345));
 
         int forestCount = CountBiome(biomeMap, Biome.forest);
         int waterCount = CountBiome(biomeMap, Biome.water);

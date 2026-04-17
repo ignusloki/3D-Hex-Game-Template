@@ -179,6 +179,42 @@ public sealed class HexFogOfWarState
             new HashSet<HexCoordinates>(alwaysKnownTiles));
     }
 
+    public HexFogUpdateResult RevealAll()
+    {
+        if (!IsInitialized)
+        {
+            return HexFogUpdateResult.Empty;
+        }
+
+        HashSet<HexCoordinates> nextVisible = new(tileKnowledge.Keys);
+        HashSet<HexCoordinates> enteredVisibility = new(nextVisible);
+        enteredVisibility.ExceptWith(currentVisible);
+        HashSet<HexCoordinates> discoveredThisUpdate = new();
+
+        foreach (HexFogTileKnowledge knowledge in tileKnowledge.Values)
+        {
+            if (!knowledge.HasDiscoveredTerrain)
+            {
+                knowledge.HasDiscoveredTerrain = true;
+                discoveredThisUpdate.Add(knowledge.Coordinates);
+            }
+
+            knowledge.KnowledgeState = HexFogKnowledgeState.Visible;
+        }
+
+        currentVisible.Clear();
+        currentVisible.UnionWith(nextVisible);
+
+        return new HexFogUpdateResult(
+            new HashSet<HexCoordinates>(currentVisible),
+            enteredVisibility,
+            new HashSet<HexCoordinates>(),
+            discoveredThisUpdate,
+            GatherDiscoveredTiles(),
+            new HashSet<HexCoordinates>(),
+            new HashSet<HexCoordinates>(alwaysKnownTiles));
+    }
+
     public HexFogKnowledgeState GetKnowledgeState(HexCoordinates coordinates)
     {
         return tileKnowledge.TryGetValue(coordinates, out HexFogTileKnowledge knowledge)

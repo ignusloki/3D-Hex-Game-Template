@@ -36,6 +36,7 @@ public sealed class HexBiomeMapGenerator
             1,
             new HexBiomeGenerationSettings(),
             new HexSpecialTileSettings(),
+            Biome.grass,
             HexMapGenerationModifiers.None);
 
         return GenerateInternal(context);
@@ -52,6 +53,7 @@ public sealed class HexBiomeMapGenerator
             columns,
             settings,
             specialTileSettings,
+            Biome.grass,
             HexMapGenerationModifiers.None));
     }
 
@@ -138,11 +140,11 @@ public sealed class HexBiomeMapGenerator
             {
                 HexCoordinates coordinates = new(row, column);
                 TerrainSample sample = SampleTerrain(coordinates, settings, offsets);
-                biomeMap[row, column] = ClassifyBiome(sample, settings);
+                biomeMap[row, column] = ClassifyBiome(sample, settings, context.FallbackBiome);
             }
         }
 
-        regionPainter.ApplyLandRegions(biomeMap, gridLayout, settings, random);
+        regionPainter.ApplyLandRegions(biomeMap, gridLayout, settings, context.FallbackBiome, random);
         featurePainter.ApplyFeatures(biomeMap, gridLayout, settings, random);
         ApplyMicroPatches(biomeMap, gridLayout, settings, random);
         ApplyIsolatedAnomalies(biomeMap, settings, random);
@@ -205,29 +207,41 @@ public sealed class HexBiomeMapGenerator
         };
     }
 
-    private static Biome ClassifyBiome(TerrainSample sample, HexBiomeGenerationSettings settings)
+    private static Biome ClassifyBiome(TerrainSample sample, HexBiomeGenerationSettings settings, Biome fallbackBiome)
     {
         if (sample.Elevation <= settings.waterThreshold)
         {
-            return ResolveAllowedBiome(Biome.water, sample, settings);
+            return ResolveAllowedBiome(Biome.water, sample, settings, fallbackBiome);
         }
 
         if (sample.Elevation >= settings.mountainThreshold)
         {
-            return ResolveAllowedBiome(Biome.mountain, sample, settings);
+            return ResolveAllowedBiome(Biome.mountain, sample, settings, fallbackBiome);
         }
 
         if (sample.Moisture <= settings.desertMoistureThreshold && sample.Heat >= settings.desertHeatThreshold)
         {
-            return ResolveAllowedBiome(Biome.desert, sample, settings);
+            return ResolveAllowedBiome(Biome.desert, sample, settings, fallbackBiome);
         }
 
         if (sample.Moisture >= settings.forestMoistureThreshold)
         {
-            return ResolveAllowedBiome(Biome.forest, sample, settings);
+            return ResolveAllowedBiome(Biome.forest, sample, settings, fallbackBiome);
         }
 
-        return Biome.grass;
+        return ResolveFallbackBiome(fallbackBiome, sample, settings);
+    }
+
+    private static Biome ResolveFallbackBiome(Biome fallbackBiome, TerrainSample sample, HexBiomeGenerationSettings settings)
+    {
+        return fallbackBiome switch
+        {
+            Biome.water => ResolveAllowedBiome(Biome.water, sample, settings, fallbackBiome),
+            Biome.mountain => ResolveAllowedBiome(Biome.mountain, sample, settings, fallbackBiome),
+            Biome.desert => ResolveAllowedBiome(Biome.desert, sample, settings, fallbackBiome),
+            Biome.forest => ResolveAllowedBiome(Biome.forest, sample, settings, fallbackBiome),
+            _ => ResolveAllowedBiome(Biome.grass, sample, settings, fallbackBiome)
+        };
     }
 
     private static void ApplyMicroPatches(Biome[,] biomeMap, HexGridData gridLayout, HexBiomeGenerationSettings settings, System.Random random)
@@ -367,7 +381,7 @@ public sealed class HexBiomeMapGenerator
         return preferredBiome;
     }
 
-    private static Biome ResolveAllowedBiome(Biome preferredBiome, TerrainSample sample, HexBiomeGenerationSettings settings)
+    private static Biome ResolveAllowedBiome(Biome preferredBiome, TerrainSample sample, HexBiomeGenerationSettings settings, Biome fallbackBiome)
     {
         if (IsBiomeEnabled(preferredBiome, settings))
         {
@@ -396,6 +410,7 @@ public sealed class HexBiomeMapGenerator
             fallbackCandidates.Add(Biome.desert);
         }
 
+        fallbackCandidates.Add(fallbackBiome);
         fallbackCandidates.Add(Biome.grass);
         fallbackCandidates.Add(Biome.forest);
         fallbackCandidates.Add(Biome.mountain);
@@ -410,7 +425,7 @@ public sealed class HexBiomeMapGenerator
             }
         }
 
-        return Biome.grass;
+        return IsBiomeEnabled(fallbackBiome, settings) ? fallbackBiome : Biome.grass;
     }
 
     private static bool IsBiomeEnabled(Biome biome, HexBiomeGenerationSettings settings)

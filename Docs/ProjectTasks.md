@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-04-16
+Last updated: 2026-04-17
 
 ## Current State
 
@@ -57,7 +57,7 @@ Supporting foundation already in place:
 Act-transition implementation status:
 
 - slice 1 is done: persistent multi-act run session, transition modal, scene reload between acts, resource carryover, configurable between-act grants, and Act 2 nemesis suppression
-- slice 2 is next: act-specific map generation profiles with desert-biased Act 2 generation
+- slice 2 is done: act-specific map generation profiles, scene-level act-transition configuration, and desert-fallback support for Act 2 generation
 - slice 3 is pending: transition boon choice UI, family lock, and multi-boon stacking
 - slice 4 is pending: Act 3 nemesis activation from the locked family
 

@@ -15,6 +15,9 @@ MonoBehaviour:
   enableActTransitions: 1
   totalActs: 3
   disableNemesisInAct2: 1
+  act1Profile: {fileID: 0}
+  act2Profile: {fileID: 11400000, guid: 81f40bb8121f428bb8c7f834099d4c4f, type: 2}
+  act3Profile: {fileID: 0}
   act1ToAct2:
     title: Act 1 Complete
     body: The caravan reaches the first goal. A harder road opens ahead.

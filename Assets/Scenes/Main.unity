@@ -250,6 +250,7 @@ Transform:
   - {fileID: 1822504961}
   - {fileID: 1822504944}
   - {fileID: 1900944117}
+  - {fileID: 2114172011}
   - {fileID: 2114172001}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1260,7 +1261,7 @@ MonoBehaviour:
     enforceGoalBiome: 1
     goalBiome: 1
   terrainLandmarkRequests:
-  - isEnabled: 1
+  - isEnabled: 0
     definition: {fileID: 11400000, guid: 6aa7d191ad4c4c5ca0de247c7a7e1280, type: 2}
     count: 1
     placementBand: 2
@@ -1723,7 +1724,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaravanMetricsController
   playerController: {fileID: 1822504938}
-  food: 20
+  food: 200
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
@@ -1772,7 +1773,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexNemesisController
   settings:
-    enableNemesis: 1
+    enableNemesis: 0
     activeArchetype: 1
     cornerChoice: 0
     enableDebugLogging: 1
@@ -1967,7 +1968,7 @@ MonoBehaviour:
     allowGrass: 1
     allowForest: 1
     allowMountain: 0
-    allowDesert: 0
+    allowDesert: 1
     minimumSpacingOnFiveByFive: 2
     minimumSpacingOnTenByTen: 4
     minimumSpacingOnTenByTenSeven: 3
@@ -2323,6 +2324,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexBoonSystemController
   applySelectedBoonAtRunStart: 1
   selectedBoon: {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}
+--- !u!1 &2114172010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2114172011}
+  - component: {fileID: 2114172012}
+  m_Layer: 0
+  m_Name: Act Transition System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2114172011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2114172010}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2114172012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2114172010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a469b2cfc6b4de89f40f0909cb0c29a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexActTransitionController
+  useSceneTransitionConfig: 1
+  transitionConfig: {fileID: 11400000, guid: 9602b2a76d44489ca77ef87db0870d1f, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

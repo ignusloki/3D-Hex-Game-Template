@@ -45,6 +45,11 @@ public sealed class HexActTransitionConfigAsset : ScriptableObject
     public bool enableActTransitions = true;
     [Min(1)] public int totalActs = 3;
     public bool disableNemesisInAct2 = true;
+    [Header("Act Profiles")]
+    public HexActGenerationProfileAsset act1Profile;
+    public HexActGenerationProfileAsset act2Profile;
+    public HexActGenerationProfileAsset act3Profile;
+    [Header("Transitions")]
     public HexActTransitionStepDefinition act1ToAct2 = new()
     {
         title = "Act 1 Complete",
@@ -72,9 +77,22 @@ public sealed class HexActTransitionConfigAsset : ScriptableObject
 
     private void OnValidate()
     {
+        ValidateInternal();
+    }
+
+    public void OnValidateFromSceneController()
+    {
+        ValidateInternal();
+    }
+
+    private void ValidateInternal()
+    {
         totalActs = Mathf.Max(1, totalActs);
         act1ToAct2 ??= new HexActTransitionStepDefinition();
         act2ToAct3 ??= new HexActTransitionStepDefinition();
+        act1Profile?.Validate();
+        act2Profile?.Validate();
+        act3Profile?.Validate();
         act1ToAct2.Validate();
         act2ToAct3.Validate();
     }
@@ -85,6 +103,17 @@ public sealed class HexActTransitionConfigAsset : ScriptableObject
         {
             1 => act1ToAct2,
             2 => act2ToAct3,
+            _ => null
+        };
+    }
+
+    public HexActGenerationProfileAsset GetProfileForAct(int actNumber)
+    {
+        return actNumber switch
+        {
+            1 => act1Profile,
+            2 => act2Profile,
+            3 => act3Profile,
             _ => null
         };
     }

@@ -5,8 +5,8 @@ using UnityEngine.UI;
 public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
     [Header("Layout")]
-    [Min(160f)] [SerializeField] private float panelWidth = 420f;
-    [Min(120f)] [SerializeField] private float panelHeight = 260f;
+    [Min(200f)] [SerializeField] private float panelWidth = 560f;
+    [Min(180f)] [SerializeField] private float panelHeight = 360f;
 
     [Header("Colors")]
     [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.9f);
@@ -99,31 +99,32 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         panelRect.anchoredPosition = Vector2.zero;
         panelRect.sizeDelta = new Vector2(panelWidth, panelHeight);
 
-        titleText = CreateText("Title", panelRect, 42, FontStyle.Bold, titleColor);
+        titleText = CreateText("Title", panelRect, 34, FontStyle.Bold, titleColor);
         RectTransform titleRect = titleText.rectTransform;
         titleRect.anchorMin = new Vector2(0.5f, 1f);
         titleRect.anchorMax = new Vector2(0.5f, 1f);
         titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.anchoredPosition = new Vector2(0f, -32f);
-        titleRect.sizeDelta = new Vector2(panelWidth, 60f);
+        titleRect.anchoredPosition = new Vector2(0f, -24f);
+        titleRect.sizeDelta = new Vector2(panelWidth - 48f, 64f);
         titleText.alignment = TextAnchor.MiddleCenter;
 
-        bodyText = CreateText("Body", panelRect, 24, FontStyle.Italic, bodyColor);
+        bodyText = CreateText("Body", panelRect, 22, FontStyle.Italic, bodyColor);
         RectTransform bodyRect = bodyText.rectTransform;
         bodyRect.anchorMin = Vector2.zero;
         bodyRect.anchorMax = Vector2.one;
         bodyRect.pivot = new Vector2(0.5f, 0.5f);
-        bodyRect.offsetMin = new Vector2(24f, 88f);
-        bodyRect.offsetMax = new Vector2(-24f, -88f);
-        bodyText.alignment = TextAnchor.MiddleCenter;
+        bodyRect.offsetMin = new Vector2(32f, 104f);
+        bodyRect.offsetMax = new Vector2(-32f, -104f);
+        bodyText.alignment = TextAnchor.UpperCenter;
+        bodyText.lineSpacing = 1.15f;
         bodyText.gameObject.SetActive(false);
 
         RectTransform buttonRect = CreateRectTransform("Action Button", panelRect);
         buttonRect.anchorMin = new Vector2(0.5f, 0f);
         buttonRect.anchorMax = new Vector2(0.5f, 0f);
         buttonRect.pivot = new Vector2(0.5f, 0f);
-        buttonRect.anchoredPosition = new Vector2(0f, 32f);
-        buttonRect.sizeDelta = new Vector2(220f, 56f);
+        buttonRect.anchoredPosition = new Vector2(0f, 28f);
+        buttonRect.sizeDelta = new Vector2(260f, 60f);
 
         Image buttonImage = buttonRect.gameObject.AddComponent<Image>();
         buttonImage.color = buttonColor;

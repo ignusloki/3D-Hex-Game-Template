@@ -25,11 +25,17 @@ public sealed class HexFogOfWarSettings
 public sealed class HexFogOfWarController : MonoBehaviour
 {
     [SerializeField] private HexFogOfWarSettings settings = new();
+    [Header("Debug")]
+    [SerializeField] private bool disableFogInEditor;
 
     private readonly HexFogOfWarState fogState = new();
     private readonly HexFogOfWarPresenter presenter = new();
     private MapGenerator mapGenerator;
     private int visionRadiusBonus;
+    private HexCoordinates lastCaravanCoordinates;
+    private HexCoordinates[] lastAlwaysKnownCoordinates = Array.Empty<HexCoordinates>();
+    private bool hasRefreshContext;
+    private bool pendingRuntimeRefreshFromValidate;
 
     public event Action<HexFogUpdateResult> VisibilityUpdated;
 
@@ -37,11 +43,29 @@ public sealed class HexFogOfWarController : MonoBehaviour
     public HexFogOfWarSettings Settings => settings;
     public int EffectiveVisionRadius => Mathf.Max(0, settings.visionRadius + visionRadiusBonus);
     public bool IsInitialized => fogState.IsInitialized && mapGenerator != null;
+    public bool DisableFogInEditor => disableFogInEditor;
+    public bool IsFogSuppressedForEditorInspection => disableFogInEditor && Application.isEditor;
 
     private void OnValidate()
     {
         settings ??= new HexFogOfWarSettings();
         settings.Validate();
+
+        if (Application.isPlaying && IsInitialized && hasRefreshContext)
+        {
+            pendingRuntimeRefreshFromValidate = true;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!pendingRuntimeRefreshFromValidate || !Application.isPlaying || !IsInitialized || !hasRefreshContext)
+        {
+            return;
+        }
+
+        pendingRuntimeRefreshFromValidate = false;
+        RefreshVisibility(lastCaravanCoordinates, lastAlwaysKnownCoordinates);
     }
 
     public void Initialize(MapGenerator mapGenerator, IEnumerable<HexCoordinates> alwaysKnownCoordinates)
@@ -59,8 +83,15 @@ public sealed class HexFogOfWarController : MonoBehaviour
             return HexFogUpdateResult.Empty;
         }
 
+        lastCaravanCoordinates = caravanCoordinates;
+        lastAlwaysKnownCoordinates = alwaysKnownCoordinates != null
+            ? new List<HexCoordinates>(alwaysKnownCoordinates).ToArray()
+            : Array.Empty<HexCoordinates>();
+        hasRefreshContext = true;
         fogState.SetAlwaysKnownTiles(alwaysKnownCoordinates);
-        LastUpdate = fogState.UpdateVisibility(caravanCoordinates, EffectiveVisionRadius);
+        LastUpdate = IsFogSuppressedForEditorInspection
+            ? fogState.RevealAll()
+            : fogState.UpdateVisibility(caravanCoordinates, EffectiveVisionRadius);
         presenter.Apply(mapGenerator, fogState, settings);
         VisibilityUpdated?.Invoke(LastUpdate);
         return LastUpdate;

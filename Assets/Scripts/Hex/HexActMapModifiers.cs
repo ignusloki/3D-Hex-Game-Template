@@ -291,6 +291,7 @@ public sealed class HexMapGenerationContext
         int columns,
         HexBiomeGenerationSettings biomeSettings,
         HexSpecialTileSettings specialTileSettings,
+        Biome fallbackBiome,
         HexMapGenerationModifiers modifiers,
         int? fixedSeedOverride = null,
         bool enableDebugLogging = false,
@@ -301,6 +302,7 @@ public sealed class HexMapGenerationContext
         Modifiers = modifiers;
         EnableDebugLogging = enableDebugLogging;
         EnableVerbosePhaseLogging = enableVerbosePhaseLogging;
+        FallbackBiome = fallbackBiome;
 
         BiomeSettings = biomeSettings?.Clone() ?? new HexBiomeGenerationSettings();
         if (fixedSeedOverride.HasValue && !BiomeSettings.useRandomSeed)
@@ -318,13 +320,14 @@ public sealed class HexMapGenerationContext
     public HexBiomeGenerationSettings BiomeSettings { get; }
     public HexBiomeGenerationSettings ResolvedBiomeSettings { get; }
     public HexSpecialTileSettings SpecialTileSettings { get; }
+    public Biome FallbackBiome { get; }
     public HexMapGenerationModifiers Modifiers { get; }
     public bool EnableDebugLogging { get; }
     public bool EnableVerbosePhaseLogging { get; }
 
     public string GetDebugSummary()
     {
-        return $"size={Rows}x{Columns}, seedMode={(ResolvedBiomeSettings.useRandomSeed ? "random" : ResolvedBiomeSettings.seed.ToString())}, modifiers={Modifiers.GetDebugSummary()}";
+        return $"size={Rows}x{Columns}, seedMode={(ResolvedBiomeSettings.useRandomSeed ? "random" : ResolvedBiomeSettings.seed.ToString())}, fallback={FallbackBiome}, modifiers={Modifiers.GetDebugSummary()}";
     }
 
     private static HexBiomeGenerationSettings CreateResolvedBiomeSettings(

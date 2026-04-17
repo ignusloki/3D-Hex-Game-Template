@@ -1,6 +1,6 @@
 # Hex Game
 
-Snapshot date: 2026-04-16  
+Snapshot date: 2026-04-17  
 Scope of this document: current playable prototype plus the documented target for the next multi-act transition feature.  
 Audience: another chat session focused on game design decisions, not implementation details only.
 
@@ -82,7 +82,7 @@ The first runtime slice of the act-transition system now exists:
 - resources can carry between acts with configurable grants
 - the run still reloads the same gameplay scene between acts for now
 
-But the full intended act flow is still incomplete because boon selection, act-profile generation, and Act 3 family-locked nemesis activation are not implemented yet.
+But the full intended act flow is still incomplete because boon selection / stacking and Act 3 family-locked nemesis activation are not implemented yet.
 
 The next target production flow is:
 

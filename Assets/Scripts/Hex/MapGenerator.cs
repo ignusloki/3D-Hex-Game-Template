@@ -35,6 +35,8 @@ public class MapGenerator : MonoBehaviour
     private HexGridData gridData;
     private HexPathfinder pathfinder;
     private int runtimeGenerationVariant;
+    private HexActGenerationProfileAsset activeActGenerationProfile;
+    private Biome activeFallbackBiome = Biome.grass;
 
     public int Rows => (int)mapSize;
     public int Columns => (int)mapSize;
@@ -45,6 +47,7 @@ public class MapGenerator : MonoBehaviour
     public HexMapPlacementReservations PlacementReservations { get; private set; } = new();
     public HexMapObjectPlacementCollection MapObjectPlacements { get; private set; } = new();
     public HexMapGenerationModifiers ActiveGenerationModifiers { get; private set; } = HexMapGenerationModifiers.None;
+    public HexActGenerationProfileAsset ActiveActGenerationProfile => activeActGenerationProfile;
 
     void Start() {
         if (!GenerateMap())
@@ -160,13 +163,16 @@ public class MapGenerator : MonoBehaviour
         int? fixedSeedOverride = shouldOffsetFixedSeed
             ? unchecked(originalSeed + (runtimeGenerationVariant * 7919))
             : null;
+        HexBiomeGenerationSettings resolvedBiomeGenerationSettings = ResolveBiomeGenerationSettings();
+        HexSpecialTileSettings resolvedSpecialTileSettings = ResolveSpecialTileSettings();
         HexMapGenerationModifiers generationModifiers = ResolveGenerationModifiers();
         ActiveGenerationModifiers = generationModifiers;
         HexMapGenerationContext generationContext = new(
             Rows,
             Columns,
-            biomeGenerationSettings,
-            specialTileSettings,
+            resolvedBiomeGenerationSettings,
+            resolvedSpecialTileSettings,
+            activeFallbackBiome,
             generationModifiers,
             fixedSeedOverride,
             enableGenerationDebugLogging,
@@ -205,7 +211,8 @@ public class MapGenerator : MonoBehaviour
             Debug.Log(
                 $"Generated biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
                 $"Dominant biome: {biomeMapGenerator.LastQualityReport?.DominantBiome} ({biomeMapGenerator.LastQualityReport?.DominantBiomeRatio:P0}). " +
-                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}.",
+                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}. " +
+                $"{BuildActProfileDebugSummary()}",
                 this);
         }
         else
@@ -213,7 +220,8 @@ public class MapGenerator : MonoBehaviour
             Debug.LogWarning(
                 $"Generated best-effort biome map with seed {biomeMapGenerator.LastResolvedSeed} after {biomeMapGenerator.LastGenerationAttempts} attempt(s). " +
                 $"Quality score: {biomeMapGenerator.LastQualityReport?.Score:F2}. " +
-                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}.",
+                $"Modifiers: {generationContext.Modifiers.GetDebugSummary()}. " +
+                $"{BuildActProfileDebugSummary()}",
                 this);
         }
     }
@@ -227,6 +235,41 @@ public class MapGenerator : MonoBehaviour
             terrainLandmarkRequests: terrainLandmarkRequests,
             mapObjectPlacementRequests: mapObjectPlacementRequests);
         return boonModifiers.Combine(sceneLandmarkModifiers);
+    }
+
+    private HexBiomeGenerationSettings ResolveBiomeGenerationSettings()
+    {
+        biomeGenerationSettings ??= new HexBiomeGenerationSettings();
+        biomeGenerationSettings.Validate();
+        HexActGenerationProfileSelection profileSelection = HexActTransitionService.GetCurrentActGenerationProfile();
+        activeActGenerationProfile = profileSelection.Profile;
+        activeFallbackBiome = activeActGenerationProfile != null
+            ? activeActGenerationProfile.GetResolvedFallbackBiome()
+            : Biome.grass;
+        if (activeActGenerationProfile == null)
+        {
+            return biomeGenerationSettings.Clone();
+        }
+
+        return activeActGenerationProfile.CreateGenerationSettings(biomeGenerationSettings);
+    }
+
+    private HexSpecialTileSettings ResolveSpecialTileSettings()
+    {
+        specialTileSettings ??= new HexSpecialTileSettings();
+        HexActGenerationProfileAsset profile = activeActGenerationProfile;
+        return profile != null
+            ? profile.CreateSpecialTileSettings(specialTileSettings)
+            : specialTileSettings.Clone();
+    }
+
+    private string BuildActProfileDebugSummary()
+    {
+        HexActGenerationProfileSelection profileSelection = HexActTransitionService.GetCurrentActGenerationProfile();
+        string profileName = profileSelection.HasProfile
+            ? profileSelection.Profile.GetResolvedDisplayName()
+            : "Scene Defaults";
+        return $"Act={profileSelection.ActNumber}, Profile={profileName}, Fallback={activeFallbackBiome}";
     }
 
     private void ClearGeneratedMap()
@@ -256,6 +299,8 @@ public class MapGenerator : MonoBehaviour
         PlacementReservations = new HexMapPlacementReservations();
         MapObjectPlacements = new HexMapObjectPlacementCollection();
         ActiveGenerationModifiers = HexMapGenerationModifiers.None;
+        activeActGenerationProfile = null;
+        activeFallbackBiome = Biome.grass;
     }
 
     public void ApplyMapObjectPlacementPlan(HexMapObjectPlacementPlanResult placementPlan)
