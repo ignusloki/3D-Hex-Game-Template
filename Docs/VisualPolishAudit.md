@@ -183,7 +183,13 @@ Main art sources already present:
 - `Assets/Prefabs/Kay/*`
 - `Assets/Prefabs/Kenny/*`
 
-Current gameplay terrain, however, is still driven by only five simple tile prefabs:
+Important correction after scene inspection:
+
+- the active `Map Generator` in `Assets/Scenes/Main.unity` is already configured to use the higher-quality Kenny biome prefabs for runtime terrain visuals
+- the older simple tile prefabs still exist, but they are not the main live terrain presentation path in the active scene
+- the current live terrain visuals pull their materials from the imported Kenny FBX assets, not from a cohesive custom terrain-shader setup
+
+The five simple terrain prefabs are still present:
 
 - `Assets/Prefabs/Grass_Tile.prefab`
 - `Assets/Prefabs/Forest_TIle.prefab`
@@ -191,7 +197,7 @@ Current gameplay terrain, however, is still driven by only five simple tile pref
 - `Assets/Prefabs/Mountain_Tile.prefab`
 - `Assets/Prefabs/Water_Tile.prefab`
 
-Those prefabs currently use:
+Those fallback prefabs currently use:
 
 - one mesh each
 - one renderer each
@@ -211,7 +217,12 @@ They are all simple `Standard` shader materials with flat color-driven identity.
 Important implication:
 
 - there is enough existing model inventory to improve visuals without importing a new asset pack immediately
-- but that inventory is not yet being used in a cohesive art direction pass
+- the terrain baseline is stronger than it first appeared
+- the bigger presentation gap is now the layer above terrain:
+  - HUD and modal UI
+  - camera / lighting mood
+  - caravan / goal / nemesis presentation
+  - feedback, VFX, and motion
 
 ## 3. Current Visual Read
 
@@ -346,6 +357,8 @@ These are the first files another AI should inspect before changing presentation
 - `Assets/Scripts/Hex/MapGenerator.cs`
 - `Assets/Art/Materials/*.mat`
 - `Assets/Prefabs/*_Tile.prefab`
+- `Assets/Prefabs/Kenny/Used/*`
+- `Assets/Prefabs/Kenny/FBX format/*`
 
 ### 5.4 Runtime Visual Actors
 
@@ -374,6 +387,43 @@ That means:
 
 - map-object presentation can be improved without redesigning map generation
 
+### 5.6 External Style Reference Evaluation
+
+The project was compared against this external reference:
+
+- `https://github.com/bababuyyy/unity-isometric-pixel-pipeline`
+
+That reference is useful as inspiration, but it should **not** be treated as a direct integration target for this project.
+
+Why it does not fit directly:
+
+- it is built for `Unity 6` + `URP`
+- it depends on a custom `ScriptableRendererFeature` low-resolution 5-pass pipeline
+- it assumes an orthographic isometric camera with pixel snapping
+- it assumes custom flat toon materials instead of the current mixed Standard / imported FBX material path
+- it is optimized for a low-resolution pixel-art look, which creates board-readability risk for a hex survival / route-planning game
+
+Specific incompatibilities with this project:
+
+- current project render setup is still built-in, Gamma, and perspective
+- current camera behavior allows free pan, yaw rotation, and zoom around a perspective board
+- current runtime presentation code often relies on `renderer.material.color` and Standard-style material assumptions
+- current tile-highlighting logic uses `_EmissionColor` and duplicated highlight materials
+- active terrain uses imported Kenny FBX materials rather than a unified toon-shader material family
+
+Conclusion:
+
+- do not migrate this project to that pipeline as part of the current polish phase
+- do not switch the core game camera to a full orthographic isometric presentation at this stage
+- do borrow selected ideas that are compatible with the current project structure
+
+Approved selective borrow list for this project:
+
+- flatter palette-driven lighting
+- restrained outlines on key actors only
+- cloud shadow mood treatment
+- low-frequency palette variation on terrain
+
 ## 6. Recommended Art Direction Direction
 
 The game fantasy should not look like generic clean fantasy tactics.
@@ -395,9 +445,30 @@ That suggests the visual direction should favor:
 - ceremonial presentation for boon and act transition moments
 - subtle ritual / omen / fate motifs rather than loud high-fantasy spectacle everywhere
 
+That direction should now borrow a **small subset** of the isometric pixel-pipeline reference without importing its whole rendering stack.
+
+Use these influences:
+
+- flatter palette-driven lighting instead of richer physically based shading
+- selective outline treatment for the caravan, goal, nemesis, and possibly quest / boon-critical objects
+- slow cloud-shadow movement to give the board atmosphere and pressure
+- low-frequency terrain color variation so biomes feel authored instead of flat
+
+Do **not** copy these parts of the reference into the main game:
+
+- full low-resolution pixel render pipeline
+- full-scene outline pass on every object
+- orthographic isometric camera conversion
+- mandatory URP migration just to match the demo visually
+
 ## 7. Recommended Improvement Roadmap
 
 This is the order I would recommend for a future AI session.
+
+Current scope decision:
+
+- audio is intentionally deferred to a later project stage
+- current work should stay focused on visual identity, atmosphere, readability, and feedback
 
 ### Pass 1: UI Foundation
 
@@ -422,7 +493,7 @@ Important caution:
 - do not break current gameplay flow while reworking the visuals
 - if possible, keep existing presenters but let them drive prefab-based UI
 
-### Pass 2: Lighting And Camera Foundation
+### Pass 2: Lighting And Stylization Foundation
 
 Do this second because it will improve every screenshot immediately.
 
@@ -430,6 +501,8 @@ Tasks:
 
 - enable and tune directional-light shadows
 - replace default skybox or camera background with a deliberate horizon solution
+- push the scene toward flatter palette-driven lighting while preserving readability
+- prototype cloud-shadow mood treatment that can run on the current board without a full pipeline swap
 - add act-sensitive ambient and fog settings
 - tune camera framing and zoom so the board feels more deliberate and less accidental
 - consider mild camera easing for pan/zoom/reset
@@ -443,13 +516,34 @@ Recommendation:
 
 - for a polish-first pass, stay on built-in first and exhaust the easy wins before migrating pipeline
 
-### Pass 3: Board Readability And Terrain Identity
+### Pass 3: Key Actor Readability
 
-Do this third because it improves gameplay clarity and atmosphere at the same time.
+Do this third because the caravan, goal, nemesis, and hazards are still the weakest live presentation layer.
+
+Tasks:
+
+- replace fallback caravan and goal presentation with authored visuals from the existing repo inventory
+- replace nemesis fallback primitives with stronger silhouettes and deliberate placement treatment
+- test restrained outline treatment on key actors only:
+  - caravan
+  - goal
+  - nemesis
+  - optionally quest-critical markers
+- improve hazard and obstacle readability without outlining the entire board
+
+Important caution:
+
+- outline treatment should stay selective
+- a full-screen edge-detect outline pass is high-risk for this game because it can clutter the board
+
+### Pass 4: Board Readability And Terrain Identity
+
+Do this fourth because it improves gameplay clarity and atmosphere at the same time.
 
 Tasks:
 
 - give each biome stronger shape language, not just different colors
+- add low-frequency palette variation to terrain so repeated tiles do not feel flat or copy-pasted
 - integrate more of the existing Kay/Kenny low-poly environment assets into terrain and landmark presentation
 - make start, goal, pitstops, quest markers, and nemesis tiles visually unmistakable
 - add better edge-of-world treatment so the board feels framed
@@ -460,9 +554,23 @@ Specific high-value targets:
 - stronger final-journey tone for Act 3
 - better fog-of-war visual treatment
 
-### Pass 4: Motion And VFX
+### Pass 5: Transition And Modal Presentation
 
-Do this fourth because the game currently lacks audiovisual punctuation.
+Do this fifth once the core world mood and actor readability are stronger.
+
+Tasks:
+
+- make act transitions feel like meaningful chapter breaks
+- give each boon card stronger visual identity
+- give Act 3 start more gravity
+- give final victory more payoff
+- keep the HUD and modal language visually cohesive with the new world palette direction
+
+This pass should align with the game’s mythic tone rather than generic sci-fi or RPG menu language.
+
+### Pass 6: Motion And VFX
+
+Do this sixth because the game currently lacks presentation punctuation even after the static look improves.
 
 Tasks:
 
@@ -484,9 +592,9 @@ Important caution:
 - obstacle visuals currently disable animators in `HexObstaclePresenter.cs`
 - that file must be updated if animated obstacle prefabs are desired
 
-### Pass 5: Audio Foundation
+### Deferred: Audio Foundation
 
-Do this fifth because the project currently has no sound language at all.
+This work is still valid, but it is intentionally deferred by current scope.
 
 Tasks:
 
@@ -502,19 +610,6 @@ Priority rule:
 - first add feedback SFX
 - then add ambient / music
 - then add layered pressure cues
-
-### Pass 6: Transition And Finale Presentation
-
-Do this once the base presentation stack is stronger.
-
-Tasks:
-
-- make act transitions feel like meaningful chapter breaks
-- give each boon card stronger visual identity
-- give Act 3 start more gravity
-- give final victory more payoff
-
-This pass should align with the game’s mythic tone rather than generic sci-fi or RPG menu language.
 
 ## 8. Concrete Improvement Ideas By Domain
 
@@ -541,6 +636,8 @@ This pass should align with the game’s mythic tone rather than generic sci-fi 
 - Warm, hopeful daylight in Act 1.
 - Dry, high-contrast, harsh sun in Act 2.
 - Cooler or more ominous mythic-final lighting in Act 3.
+- Push toward flatter palette-driven lighting rather than richer physically based shading.
+- Use cloud shadows as a slow-moving mood layer rather than a heavy simulation feature.
 - Use soft fog or atmospheric haze to break the empty-background look.
 - Add stronger specular and contrast separation only where it helps readability.
 
@@ -548,10 +645,13 @@ This pass should align with the game’s mythic tone rather than generic sci-fi 
 
 - Keep the low-poly style rather than mixing incompatible realism.
 - Reuse the existing Kay/Kenny asset libraries before importing new packs.
+- Treat the active Kenny terrain as the base and build variation on top of it instead of discarding it.
 - Add small biome dressing clusters rather than huge clutter fields.
+- Add low-frequency terrain color variation so repeated biome pieces read as intentional regions.
 - Give the goal a stronger landmark treatment.
 - Give the caravan a more authored silhouette than a generic placeholder.
 - Replace the hunter capsule / fallback actor with a deliberate profile prefab.
+- If outlines are used, keep them on key actors only instead of the whole board.
 
 ### 8.4 VFX Improvement Ideas
 
@@ -582,19 +682,24 @@ This pass should align with the game’s mythic tone rather than generic sci-fi 
 - shadows on the current light
 - better skybox / background
 - replacing placeholder prefabs with existing art assets
-- adding simple SFX
+- adding low-frequency terrain palette variation
+- adding restrained outlines on key actors only
+- adding cloud-shadow mood treatment in a controlled way
 - adding simple particles
 
 ### 9.2 Medium-Risk Improvements
 
 - changing fog-of-war visual rules
 - changing camera behavior significantly
+- introducing selective outline rendering if it requires custom replacement materials or extra render layers
 - introducing many animated prefabs without checking runtime presenters
 - large-scale scene hierarchy rework
 
 ### 9.3 High-Risk Improvements
 
 - migrating the whole project to URP without a controlled plan
+- attempting to copy the full `unity-isometric-pixel-pipeline` renderer into the main project
+- converting the main game camera to a full orthographic isometric presentation without readability validation
 - changing color space from Gamma to Linear without testing materials and UI
 - replacing UI logic and visual logic simultaneously in one pass
 
@@ -608,7 +713,9 @@ A good first polish milestone would mean:
 - each biome reads instantly
 - the Hunter is visually memorable
 - start, goal, pitstops, quest markers, and hazards are unmistakable
-- there is at least a minimal SFX layer for feedback
+- the board lighting feels flatter and more deliberate without losing gameplay readability
+- cloud-shadow mood treatment adds atmosphere without obscuring tile information
+- any outline treatment improves key-actor readability without cluttering the board
 - there is at least a minimal motion / VFX layer for actions and pressure
 - Act 2 clearly feels desert-biased visually
 - Act 3 clearly feels like the final crossing
@@ -623,7 +730,14 @@ If another AI session is going to implement polish work, it should be told:
 - inspect `Main.unity`, the modal presenters, the HUD presenter, the tile system, and the nemesis presenter first
 - keep changes testable in small slices
 - preserve editor configurability where possible
+- audio is intentionally deferred for now
 - explicitly ask before attempting a full render-pipeline migration
+- do not copy the full `unity-isometric-pixel-pipeline` into the project
+- only borrow these ideas from that reference unless the user later approves a separate rendering spike:
+  - flatter palette-driven lighting
+  - restrained outlines on key actors only
+  - cloud shadow mood treatment
+  - low-frequency palette variation on terrain
 
 ## 12. Short Summary
 
@@ -635,16 +749,18 @@ They are:
 
 - visual language
 - lighting
-- audio
 - motion
 - stronger use of the art already present in the project
 
 The fastest path to a better-looking game is:
 
 - better UI kit
-- better lighting and background treatment
+- flatter palette-driven lighting and better background treatment
+- selective atmosphere borrowing from the pixel/isometric reference without copying its whole renderer
 - stronger board readability
 - minimal but effective VFX
-- foundational SFX
+- stronger presentation for caravan / goal / nemesis
+
+Audio should be handled later in a separate stage.
 
 That should happen before any risky rendering migration.
