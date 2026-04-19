@@ -82,7 +82,9 @@ The first runtime slice of the act-transition system now exists:
 - resources can carry between acts with configurable grants
 - the run still reloads the same gameplay scene between acts for now
 
-But the full intended act flow is still incomplete because boon selection / stacking and Act 3 family-locked nemesis activation are not implemented yet.
+The multi-act transition flow now includes boon selection and stacking between acts.
+
+The remaining missing production piece is the final Act 3 nemesis family lock / activation handoff.
 
 The next target production flow is:
 
@@ -182,6 +184,8 @@ The transition screen is expected to handle:
 - story / omen text
 - boon selection
 - act handoff to the next map
+
+The current implementation now does all three with a temporary runtime-built modal UI.
 
 The first production slice does not require final cinematic presentation.
 
@@ -892,7 +896,8 @@ These are important context points for future design discussion:
 - movement animation is not done
 - some board-state readability still needs polish
 - the game currently ends after the first map even though the long-term structure is 3 acts
-- the multi-act transition flow now has a first runtime slice, but boon selection, act-profile generation, and Act 3 family-locked nemesis activation are still missing
+- the multi-act transition flow now has act handoff, act-profile generation, boon selection, and stacked-boon runtime in place
+- the remaining missing act-transition feature is Act 3 nemesis activation from the locked family
 - some map-generation visuals still need cleanup
 - the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, scene-level map-object requests, and a shared map-object placement pass that can plan pitstops, outposts, and quest markers together
 - quest markers can now be placed and spawned through the shared map-object pipeline, and they currently use a prototype-only mock interaction that shows placeholder dialog text on arrival; a real quest system does not exist yet

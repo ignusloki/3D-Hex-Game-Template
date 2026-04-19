@@ -21,16 +21,27 @@ MonoBehaviour:
   act1ToAct2:
     title: Act 1 Complete
     body: The caravan reaches the first goal. A harder road opens ahead.
+    boonSelectionPrompt: Choose one boon for Act 2. This choice also locks the
+      Act 3 family.
     continueButtonLabel: Begin Act 2
     betweenActGrant:
       food: 6
       morale: 1
       gold: 2
+    boonOptions:
+    - {fileID: 11400000, guid: 46518f2c8a6734201a29608c7077a92d, type: 2}
+    - {fileID: 11400000, guid: 0c07eaea0438b4f2496a32e538e13bfc, type: 2}
+    - {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}
   act2ToAct3:
     title: Act 2 Complete
     body: The crossing continues. The last stretch of the journey is near.
+    boonSelectionPrompt: Choose one final boon from the locked family for Act 3.
     continueButtonLabel: Begin Act 3
     betweenActGrant:
       food: 8
       morale: 1
       gold: 3
+    boonOptions:
+    - {fileID: 11400000, guid: 46518f2c8a6734201a29608c7077a92d, type: 2}
+    - {fileID: 11400000, guid: 0c07eaea0438b4f2496a32e538e13bfc, type: 2}
+    - {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}

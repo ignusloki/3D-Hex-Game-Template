@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
     [Header("Layout")]
-    [Min(200f)] [SerializeField] private float panelWidth = 560f;
-    [Min(180f)] [SerializeField] private float panelHeight = 360f;
+    [Min(260f)] [SerializeField] private float panelWidth = 680f;
+    [Min(320f)] [SerializeField] private float panelHeight = 620f;
+    [Min(52f)] [SerializeField] private float transitionOptionHeight = 70f;
 
     [Header("Colors")]
     [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.9f);
@@ -16,14 +18,27 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     [SerializeField] private Color buttonHighlightColor = new(0.19f, 0.24f, 0.31f, 0.98f);
     [SerializeField] private Color buttonPressedColor = new(0.28f, 0.34f, 0.42f, 1f);
     [SerializeField] private Color buttonTextColor = new(0.96f, 0.96f, 0.96f, 1f);
+    [SerializeField] private Color optionSelectedColor = new(0.24f, 0.31f, 0.4f, 1f);
 
     private GameObject overlayRoot;
+    private RectTransform panelRect;
+    private RectTransform bodyRect;
+    private RectTransform selectionPromptRect;
+    private RectTransform optionsContainerRect;
     private Text titleText;
     private Text bodyText;
+    private Text selectionPromptText;
     private Button actionButton;
     private Text actionButtonText;
     private Font uiFont;
     private Action actionCallback;
+    private Action<HexBoonDefinition> transitionActionCallback;
+    private readonly List<Button> transitionOptionButtons = new();
+    private readonly List<Image> transitionOptionButtonImages = new();
+    private readonly List<Text> transitionOptionButtonTexts = new();
+    private HexBoonDefinition[] transitionBoonOptions = Array.Empty<HexBoonDefinition>();
+    private HexBoonDefinition selectedTransitionBoon;
+    private bool isTransitionSelectionMode;
 
     public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
 
@@ -39,12 +54,55 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     public void ShowTransition(string title, string body, string continueButtonLabel, Action onContinueRequested)
     {
-        Show(title, body, continueButtonLabel, onContinueRequested);
+        ShowTransition(
+            new HexActTransitionDisplayData(
+                title,
+                body,
+                string.Empty,
+                continueButtonLabel,
+                Array.Empty<HexBoonDefinition>()),
+            _ => onContinueRequested?.Invoke());
+    }
+
+    public void ShowTransition(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
+    {
+        EnsureUi();
+        if (overlayRoot == null)
+        {
+            return;
+        }
+
+        transitionActionCallback = onContinueRequested;
+        actionCallback = null;
+        isTransitionSelectionMode = displayData.RequiresBoonSelection;
+        transitionBoonOptions = displayData.BoonOptions ?? Array.Empty<HexBoonDefinition>();
+        selectedTransitionBoon = null;
+
+        overlayRoot.SetActive(true);
+        titleText.text = displayData.Title;
+        bodyText.text = string.IsNullOrWhiteSpace(displayData.Body) ? string.Empty : displayData.Body.Trim();
+        bodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(bodyText.text));
+        selectionPromptText.text = string.IsNullOrWhiteSpace(displayData.SelectionPrompt)
+            ? "Choose one boon for the next act."
+            : displayData.SelectionPrompt.Trim();
+        selectionPromptText.gameObject.SetActive(isTransitionSelectionMode && !string.IsNullOrWhiteSpace(selectionPromptText.text));
+        actionButtonText.text = string.IsNullOrWhiteSpace(displayData.ContinueButtonLabel)
+            ? "Continue"
+            : displayData.ContinueButtonLabel.Trim();
+        actionButton.interactable = !displayData.RequiresBoonSelection;
+
+        ApplyBodyLayout(displayData.RequiresBoonSelection);
+        EnsureTransitionOptionButtonCount(transitionBoonOptions.Length);
+        RefreshTransitionOptionButtons();
     }
 
     public void Hide()
     {
         actionCallback = null;
+        transitionActionCallback = null;
+        transitionBoonOptions = Array.Empty<HexBoonDefinition>();
+        selectedTransitionBoon = null;
+        isTransitionSelectionMode = false;
         if (overlayRoot != null)
         {
             overlayRoot.SetActive(false);
@@ -60,11 +118,19 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
 
         actionCallback = onActionRequested;
+        transitionActionCallback = null;
+        transitionBoonOptions = Array.Empty<HexBoonDefinition>();
+        selectedTransitionBoon = null;
+        isTransitionSelectionMode = false;
         overlayRoot.SetActive(true);
         titleText.text = title;
         bodyText.text = string.IsNullOrWhiteSpace(body) ? string.Empty : body.Trim();
         bodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(bodyText.text));
+        selectionPromptText.gameObject.SetActive(false);
         actionButtonText.text = string.IsNullOrWhiteSpace(buttonLabel) ? "Continue" : buttonLabel.Trim();
+        actionButton.interactable = true;
+        ApplyBodyLayout(false);
+        RefreshTransitionOptionButtons();
     }
 
     private void EnsureUi()
@@ -92,7 +158,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         overlayImage.raycastTarget = true;
         overlayRoot.SetActive(false);
 
-        RectTransform panelRect = CreateRectTransform("Run State Panel", overlayRect);
+        panelRect = CreateRectTransform("Run State Panel", overlayRect);
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
@@ -104,20 +170,44 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         titleRect.anchorMin = new Vector2(0.5f, 1f);
         titleRect.anchorMax = new Vector2(0.5f, 1f);
         titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.anchoredPosition = new Vector2(0f, -24f);
+        titleRect.anchoredPosition = new Vector2(0f, -26f);
         titleRect.sizeDelta = new Vector2(panelWidth - 48f, 64f);
         titleText.alignment = TextAnchor.MiddleCenter;
 
         bodyText = CreateText("Body", panelRect, 22, FontStyle.Italic, bodyColor);
-        RectTransform bodyRect = bodyText.rectTransform;
+        bodyRect = bodyText.rectTransform;
         bodyRect.anchorMin = Vector2.zero;
         bodyRect.anchorMax = Vector2.one;
         bodyRect.pivot = new Vector2(0.5f, 0.5f);
-        bodyRect.offsetMin = new Vector2(32f, 104f);
-        bodyRect.offsetMax = new Vector2(-32f, -104f);
         bodyText.alignment = TextAnchor.UpperCenter;
         bodyText.lineSpacing = 1.15f;
         bodyText.gameObject.SetActive(false);
+
+        selectionPromptText = CreateText("Selection Prompt", panelRect, 20, FontStyle.Bold, bodyColor);
+        selectionPromptRect = selectionPromptText.rectTransform;
+        selectionPromptRect.anchorMin = new Vector2(0.5f, 0f);
+        selectionPromptRect.anchorMax = new Vector2(0.5f, 0f);
+        selectionPromptRect.pivot = new Vector2(0.5f, 0f);
+        selectionPromptRect.anchoredPosition = new Vector2(0f, 360f);
+        selectionPromptRect.sizeDelta = new Vector2(panelWidth - 64f, 58f);
+        selectionPromptText.alignment = TextAnchor.MiddleCenter;
+        selectionPromptText.gameObject.SetActive(false);
+
+        optionsContainerRect = CreateRectTransform("Transition Options", panelRect);
+        optionsContainerRect.anchorMin = new Vector2(0f, 0f);
+        optionsContainerRect.anchorMax = new Vector2(1f, 0f);
+        optionsContainerRect.pivot = new Vector2(0.5f, 0f);
+        optionsContainerRect.anchoredPosition = new Vector2(0f, 108f);
+        optionsContainerRect.sizeDelta = new Vector2(-56f, 224f);
+        VerticalLayoutGroup optionsLayout = optionsContainerRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        optionsLayout.padding = new RectOffset(0, 0, 0, 0);
+        optionsLayout.spacing = 10f;
+        optionsLayout.childAlignment = TextAnchor.UpperCenter;
+        optionsLayout.childControlHeight = true;
+        optionsLayout.childControlWidth = true;
+        optionsLayout.childForceExpandHeight = false;
+        optionsLayout.childForceExpandWidth = true;
+        optionsContainerRect.gameObject.SetActive(false);
 
         RectTransform buttonRect = CreateRectTransform("Action Button", panelRect);
         buttonRect.anchorMin = new Vector2(0.5f, 0f);
@@ -145,9 +235,23 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     private void HandleActionClicked()
     {
-        Action callback = actionCallback;
+        if (isTransitionSelectionMode)
+        {
+            if (selectedTransitionBoon == null)
+            {
+                return;
+            }
+
+            Action<HexBoonDefinition> callback = transitionActionCallback;
+            HexBoonDefinition selectedBoon = selectedTransitionBoon;
+            Hide();
+            callback?.Invoke(selectedBoon);
+            return;
+        }
+
+        Action standardCallback = actionCallback;
         Hide();
-        callback?.Invoke();
+        standardCallback?.Invoke();
     }
 
     private Font ResolveFont()
@@ -174,6 +278,153 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.raycastTarget = false;
         return text;
+    }
+
+    private void EnsureTransitionOptionButtonCount(int count)
+    {
+        if (optionsContainerRect == null)
+        {
+            return;
+        }
+
+        while (transitionOptionButtons.Count < count)
+        {
+            int optionIndex = transitionOptionButtons.Count;
+            RectTransform optionRect = CreateRectTransform($"Transition Option {optionIndex + 1}", optionsContainerRect);
+            LayoutElement layoutElement = optionRect.gameObject.AddComponent<LayoutElement>();
+            layoutElement.preferredHeight = transitionOptionHeight;
+            layoutElement.minHeight = transitionOptionHeight;
+
+            Image optionImage = optionRect.gameObject.AddComponent<Image>();
+            optionImage.color = buttonColor;
+
+            Button optionButton = optionRect.gameObject.AddComponent<Button>();
+            ColorBlock optionColors = optionButton.colors;
+            optionColors.normalColor = buttonColor;
+            optionColors.highlightedColor = buttonHighlightColor;
+            optionColors.pressedColor = buttonPressedColor;
+            optionColors.selectedColor = buttonHighlightColor;
+            optionColors.disabledColor = buttonColor * 0.6f;
+            optionButton.colors = optionColors;
+            optionButton.onClick.AddListener(() => HandleTransitionOptionClicked(optionIndex));
+
+            Text optionText = CreateText("Label", optionRect, 20, FontStyle.Normal, buttonTextColor);
+            StretchToParent(optionText.rectTransform, 16f, 12f);
+            optionText.alignment = TextAnchor.MiddleLeft;
+            optionText.supportRichText = true;
+            optionText.lineSpacing = 1.05f;
+
+            transitionOptionButtons.Add(optionButton);
+            transitionOptionButtonImages.Add(optionImage);
+            transitionOptionButtonTexts.Add(optionText);
+        }
+    }
+
+    private void RefreshTransitionOptionButtons()
+    {
+        bool hasOptions = transitionBoonOptions != null && transitionBoonOptions.Length > 0;
+        if (optionsContainerRect != null)
+        {
+            optionsContainerRect.gameObject.SetActive(hasOptions);
+        }
+
+        for (int index = 0; index < transitionOptionButtons.Count; index++)
+        {
+            bool shouldBeVisible = hasOptions && index < transitionBoonOptions.Length;
+            transitionOptionButtons[index].gameObject.SetActive(shouldBeVisible);
+            if (!shouldBeVisible)
+            {
+                continue;
+            }
+
+            HexBoonDefinition boon = transitionBoonOptions[index];
+            transitionOptionButtonTexts[index].text = FormatTransitionOptionLabel(boon);
+        }
+
+        ApplyTransitionSelectionVisuals();
+    }
+
+    private void HandleTransitionOptionClicked(int optionIndex)
+    {
+        if (transitionBoonOptions == null || optionIndex < 0 || optionIndex >= transitionBoonOptions.Length)
+        {
+            return;
+        }
+
+        selectedTransitionBoon = transitionBoonOptions[optionIndex];
+        actionButton.interactable = selectedTransitionBoon != null;
+        ApplyTransitionSelectionVisuals();
+    }
+
+    private void ApplyTransitionSelectionVisuals()
+    {
+        for (int index = 0; index < transitionOptionButtonImages.Count; index++)
+        {
+            if (!transitionOptionButtons[index].gameObject.activeSelf)
+            {
+                continue;
+            }
+
+            HexBoonDefinition option = transitionBoonOptions != null && index < transitionBoonOptions.Length
+                ? transitionBoonOptions[index]
+                : null;
+            bool isSelected = selectedTransitionBoon != null
+                && option != null
+                && string.Equals(option.id, selectedTransitionBoon.id, StringComparison.OrdinalIgnoreCase);
+            transitionOptionButtonImages[index].color = isSelected ? optionSelectedColor : buttonColor;
+        }
+    }
+
+    private void ApplyBodyLayout(bool showTransitionOptions)
+    {
+        if (bodyRect == null)
+        {
+            return;
+        }
+
+        if (showTransitionOptions)
+        {
+            int optionCount = transitionBoonOptions != null ? transitionBoonOptions.Length : 0;
+            float spacing = optionCount > 1 ? (optionCount - 1) * 10f : 0f;
+            float optionsHeight = (optionCount * transitionOptionHeight) + spacing;
+            float promptBottom = 108f + optionsHeight + 20f;
+            optionsContainerRect.sizeDelta = new Vector2(-56f, optionsHeight);
+            selectionPromptRect.anchoredPosition = new Vector2(0f, promptBottom);
+            bodyRect.offsetMin = new Vector2(32f, promptBottom + 72f);
+            bodyRect.offsetMax = new Vector2(-32f, -92f);
+        }
+        else
+        {
+            optionsContainerRect.sizeDelta = new Vector2(-56f, 224f);
+            selectionPromptRect.anchoredPosition = new Vector2(0f, 360f);
+            bodyRect.offsetMin = new Vector2(32f, 112f);
+            bodyRect.offsetMax = new Vector2(-32f, -104f);
+        }
+    }
+
+    private static string FormatTransitionOptionLabel(HexBoonDefinition boon)
+    {
+        if (boon == null)
+        {
+            return "<b>Missing Boon</b>";
+        }
+
+        boon.Validate();
+        string description = string.IsNullOrWhiteSpace(boon.description)
+            ? "No description available."
+            : boon.description.Trim();
+        return $"<b>{boon.GetResolvedDisplayName()}</b>\n<size=18>{description}</size>\n<size=16>Family: {FormatArchetype(boon.archetypeFamily)}</size>";
+    }
+
+    private static string FormatArchetype(HexNemesisArchetype archetype)
+    {
+        return archetype switch
+        {
+            HexNemesisArchetype.Hunter => "Hunter",
+            HexNemesisArchetype.Echo => "Echo",
+            HexNemesisArchetype.Corruptor => "Corruptor",
+            _ => "None"
+        };
     }
 
     private static RectTransform CreateRectTransform(string name, Transform parent)

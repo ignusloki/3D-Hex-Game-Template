@@ -1,17 +1,29 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public readonly struct HexActTransitionDisplayData
 {
-    public HexActTransitionDisplayData(string title, string body, string continueButtonLabel)
+    public HexActTransitionDisplayData(
+        string title,
+        string body,
+        string selectionPrompt,
+        string continueButtonLabel,
+        HexBoonDefinition[] boonOptions)
     {
         Title = title ?? string.Empty;
         Body = body ?? string.Empty;
+        SelectionPrompt = selectionPrompt ?? string.Empty;
         ContinueButtonLabel = string.IsNullOrWhiteSpace(continueButtonLabel) ? "Continue" : continueButtonLabel.Trim();
+        BoonOptions = boonOptions ?? Array.Empty<HexBoonDefinition>();
     }
 
     public string Title { get; }
     public string Body { get; }
+    public string SelectionPrompt { get; }
     public string ContinueButtonLabel { get; }
+    public HexBoonDefinition[] BoonOptions { get; }
+    public bool RequiresBoonSelection => BoonOptions != null && BoonOptions.Length > 0;
 }
 
 public readonly struct HexActGenerationProfileSelection
@@ -31,6 +43,8 @@ internal sealed class HexActRunSessionState
 {
     public int CurrentActNumber = 1;
     public CaravanResourceSnapshot CurrentResources;
+    public HexNemesisArchetype LockedBoonFamily = HexNemesisArchetype.None;
+    public readonly List<HexBoonDefinition> SelectedBoons = new();
 }
 
 public static class HexActTransitionService
@@ -49,7 +63,7 @@ public static class HexActTransitionService
 
     public static HexActTransitionController FindSceneController()
     {
-        return Object.FindAnyObjectByType<HexActTransitionController>();
+        return UnityEngine.Object.FindAnyObjectByType<HexActTransitionController>();
     }
 
     public static HexActTransitionConfigAsset LoadConfig()
@@ -93,9 +107,51 @@ public static class HexActTransitionService
         currentSession = null;
     }
 
+    public static bool UsesActTransitionBoonState()
+    {
+        HexActTransitionConfigAsset config = LoadConfig();
+        return config != null && config.enableActTransitions;
+    }
+
     public static int GetCurrentActNumber()
     {
         return currentSession?.CurrentActNumber ?? 1;
+    }
+
+    public static HexNemesisArchetype GetLockedBoonFamily()
+    {
+        return currentSession?.LockedBoonFamily ?? HexNemesisArchetype.None;
+    }
+
+    public static IReadOnlyList<HexBoonDefinition> GetSelectedBoons()
+    {
+        if (!UsesActTransitionBoonState())
+        {
+            return Array.Empty<HexBoonDefinition>();
+        }
+
+        if (currentSession == null || currentSession.SelectedBoons.Count == 0)
+        {
+            return Array.Empty<HexBoonDefinition>();
+        }
+
+        List<HexBoonDefinition> activeBoons = new(currentSession.SelectedBoons.Count);
+        for (int index = 0; index < currentSession.SelectedBoons.Count; index++)
+        {
+            HexBoonDefinition boon = currentSession.SelectedBoons[index];
+            if (boon == null)
+            {
+                continue;
+            }
+
+            boon.Validate();
+            if (boon.isEnabled)
+            {
+                activeBoons.Add(boon);
+            }
+        }
+
+        return activeBoons.Count == 0 ? Array.Empty<HexBoonDefinition>() : activeBoons;
     }
 
     public static CaravanResourceSnapshot GetStartingResources(CaravanResourceSnapshot defaultResources)
@@ -156,22 +212,90 @@ public static class HexActTransitionService
             body = $"{body}\n\n{FormatGrant(step.betweenActGrant)}";
         }
 
+        HexBoonDefinition[] boonOptions = config != null
+            ? config.GetBoonOptionsForCompletedAct(currentAct, GetLockedBoonFamily(), GetSelectedBoons())
+            : Array.Empty<HexBoonDefinition>();
+
+        string selectionPrompt = boonOptions.Length > 0
+            ? BuildSelectionPrompt(step, currentAct)
+            : string.Empty;
+
         string buttonLabel = step != null ? step.continueButtonLabel : "Continue";
-        return new HexActTransitionDisplayData(title, body, buttonLabel);
+        return new HexActTransitionDisplayData(title, body, selectionPrompt, buttonLabel, boonOptions);
     }
 
-    public static void AdvanceToNextAct(CaravanResourceSnapshot currentResources)
+    public static bool TryAdvanceToNextAct(CaravanResourceSnapshot currentResources, HexBoonDefinition selectedBoon = null)
     {
         EnsureRunSession(currentResources);
         if (currentSession == null)
         {
-            return;
+            return false;
         }
 
         HexActTransitionConfigAsset config = LoadConfig();
+        int completedAct = currentSession.CurrentActNumber;
         HexActTransitionStepDefinition step = config != null
-            ? config.GetTransitionForCompletedAct(currentSession.CurrentActNumber)
+            ? config.GetTransitionForCompletedAct(completedAct)
             : null;
+
+        HexBoonDefinition[] availableBoons = config != null
+            ? config.GetBoonOptionsForCompletedAct(completedAct, currentSession.LockedBoonFamily, currentSession.SelectedBoons)
+            : Array.Empty<HexBoonDefinition>();
+
+        if (availableBoons.Length > 0)
+        {
+            if (selectedBoon == null)
+            {
+                Debug.LogError("[ActTransition] Cannot advance without a selected boon.");
+                return false;
+            }
+
+            selectedBoon.Validate();
+            if (!selectedBoon.isEnabled)
+            {
+                Debug.LogError($"[ActTransition] Cannot advance with disabled boon '{selectedBoon.GetResolvedDisplayName()}'.");
+                return false;
+            }
+
+            bool isAvailable = false;
+            for (int index = 0; index < availableBoons.Length; index++)
+            {
+                HexBoonDefinition availableBoon = availableBoons[index];
+                if (availableBoon == null)
+                {
+                    continue;
+                }
+
+                availableBoon.Validate();
+                if (string.Equals(availableBoon.id, selectedBoon.id, StringComparison.OrdinalIgnoreCase))
+                {
+                    isAvailable = true;
+                    break;
+                }
+            }
+
+            if (!isAvailable)
+            {
+                Debug.LogError($"[ActTransition] Boon '{selectedBoon.GetResolvedDisplayName()}' is not valid for Act {completedAct}.");
+                return false;
+            }
+
+            if (completedAct == 1 && currentSession.LockedBoonFamily == HexNemesisArchetype.None)
+            {
+                currentSession.LockedBoonFamily = selectedBoon.archetypeFamily;
+            }
+
+            if (currentSession.LockedBoonFamily != HexNemesisArchetype.None
+                && completedAct >= 2
+                && selectedBoon.archetypeFamily != currentSession.LockedBoonFamily)
+            {
+                Debug.LogError(
+                    $"[ActTransition] Boon '{selectedBoon.GetResolvedDisplayName()}' does not match locked family {FormatArchetype(currentSession.LockedBoonFamily)}.");
+                return false;
+            }
+
+            StoreSelectedBoon(selectedBoon);
+        }
 
         CaravanResourceSnapshot nextResources = currentResources;
         if (step?.betweenActGrant != null)
@@ -181,7 +305,13 @@ public static class HexActTransitionService
 
         currentSession.CurrentActNumber++;
         currentSession.CurrentResources = nextResources;
-        Debug.Log($"[ActTransition] Advanced to Act {currentSession.CurrentActNumber}. Resources: Food={nextResources.Food}, Morale={nextResources.Morale}, Gold={nextResources.Gold}.");
+        string lockedFamilySummary = currentSession.LockedBoonFamily != HexNemesisArchetype.None
+            ? $", LockedFamily={FormatArchetype(currentSession.LockedBoonFamily)}"
+            : string.Empty;
+        Debug.Log(
+            $"[ActTransition] Advanced to Act {currentSession.CurrentActNumber}. Resources: Food={nextResources.Food}, Morale={nextResources.Morale}, Gold={nextResources.Gold}. " +
+            $"SelectedBoons={currentSession.SelectedBoons.Count}{lockedFamilySummary}.");
+        return true;
     }
 
     private static string FormatGrant(HexActResourceGrant grant)
@@ -210,5 +340,55 @@ public static class HexActTransitionService
     private static string FormatSigned(int value)
     {
         return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private static void StoreSelectedBoon(HexBoonDefinition selectedBoon)
+    {
+        if (currentSession == null || selectedBoon == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < currentSession.SelectedBoons.Count; index++)
+        {
+            HexBoonDefinition existingBoon = currentSession.SelectedBoons[index];
+            if (existingBoon == null)
+            {
+                continue;
+            }
+
+            existingBoon.Validate();
+            if (string.Equals(existingBoon.id, selectedBoon.id, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        currentSession.SelectedBoons.Add(selectedBoon);
+    }
+
+    private static string BuildSelectionPrompt(HexActTransitionStepDefinition step, int completedAct)
+    {
+        string prompt = step != null && !string.IsNullOrWhiteSpace(step.boonSelectionPrompt)
+            ? step.boonSelectionPrompt.Trim()
+            : "Choose one boon to carry into the next act.";
+
+        if (completedAct >= 2 && GetLockedBoonFamily() != HexNemesisArchetype.None)
+        {
+            prompt = $"{prompt}\n\nLocked family: {FormatArchetype(GetLockedBoonFamily())}.";
+        }
+
+        return prompt;
+    }
+
+    private static string FormatArchetype(HexNemesisArchetype archetype)
+    {
+        return archetype switch
+        {
+            HexNemesisArchetype.Hunter => "Hunter",
+            HexNemesisArchetype.Echo => "Echo",
+            HexNemesisArchetype.Corruptor => "Corruptor",
+            _ => "None"
+        };
     }
 }

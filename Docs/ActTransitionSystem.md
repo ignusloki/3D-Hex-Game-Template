@@ -46,13 +46,16 @@ Delivered:
 
 ### Slice 3: Transition boon selection and stacking
 
-Status: pending
+Status: implemented, pending editor validation
 
-Target:
+Delivered:
 
 - real boon choice in both transitions
 - family lock from the first choice
 - stacked boon runtime by Act 3
+- transition-authored boon pools in the act transition config
+- family filtering plus duplicate-avoidance for the second transition
+- session-owned boon state so Act 1 starts without a legacy preselected boon when act transitions are enabled
 
 ### Slice 4: Act 3 nemesis family lock
 

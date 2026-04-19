@@ -59,6 +59,23 @@ public class HexBoonRuntimeStateTests
         Assert.That(runtime.GetStatusLine(), Does.Contain("modifies terrain generation"));
     }
 
+    [Test]
+    public void MultipleBoons_StackVisibilityAndMapGenerationModifiers()
+    {
+        HexBoonDefinition passiveDefinition = CreatePassiveBoon();
+        HexBoonDefinition mapDefinition = CreateMapModifierBoon();
+
+        HexBoonRuntimeState runtime = new(new[] { passiveDefinition, mapDefinition });
+        HexMapGenerationModifiers modifiers = runtime.GetMapGenerationModifiers();
+
+        Assert.That(runtime.HasActiveBoons, Is.True);
+        Assert.That(runtime.GetVisibilityRadiusBonus(), Is.EqualTo(1));
+        Assert.That(modifiers.ExtraPitstopCount, Is.EqualTo(1));
+        Assert.That(runtime.GetStatusLine(), Does.StartWith("Boons:"));
+        Assert.That(runtime.GetStatusLine(), Does.Contain("Pillar of Fire"));
+        Assert.That(runtime.GetStatusLine(), Does.Contain("Stations of the March"));
+    }
+
     private static HexBoonDefinition CreatePassiveBoon()
     {
         HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();

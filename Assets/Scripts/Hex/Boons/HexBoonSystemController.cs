@@ -33,6 +33,11 @@ public sealed class HexBoonSystemController : MonoBehaviour
 
     public string GetSelectionSummary()
     {
+        if (HexActTransitionService.UsesActTransitionBoonState())
+        {
+            return "Act transitions are enabled. Run-start boon selection is ignored until a transition boon is chosen.";
+        }
+
         if (!applySelectedBoonAtRunStart)
         {
             return "Boons are disabled for this run.";

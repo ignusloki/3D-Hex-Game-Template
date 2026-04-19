@@ -630,7 +630,7 @@ public class PlayerController : MonoBehaviour
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
-        runStateModalPresenter?.ShowTransition(displayData.Title, displayData.Body, displayData.ContinueButtonLabel, ContinueToNextAct);
+        runStateModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
         return true;
     }
 
@@ -958,9 +958,13 @@ public class PlayerController : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    private void ContinueToNextAct()
+    private void ContinueToNextAct(HexBoonDefinition selectedBoon)
     {
-        HexActTransitionService.AdvanceToNextAct(caravanResources.ToSnapshot());
+        if (!HexActTransitionService.TryAdvanceToNextAct(caravanResources.ToSnapshot(), selectedBoon))
+        {
+            return;
+        }
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
