@@ -54,23 +54,26 @@ public readonly struct PitstopEncounterSelectionContext
 public sealed class PitstopEncounterSelectionRules
 {
     public bool requireFirstVisit = true;
-    public bool allowRepeatSelectionInRun;
+    public bool allowRepeatSelectionInRun = true;
     [Min(0)] public int minimumVisitedPitstops;
     public int maximumVisitedPitstops = -1;
-    public int minimumFood = -1;
-    public int maximumFood = -1;
-    public int minimumMorale = -1;
-    public int maximumMorale = -1;
-    public int minimumGold = -1;
-    public int maximumGold = -1;
+    public int minimumFood;
+    public int maximumFood;
+    public int minimumMorale;
+    public int maximumMorale;
+    public int minimumGold;
+    public int maximumGold;
 
     public void Validate()
     {
         minimumVisitedPitstops = Mathf.Max(0, minimumVisitedPitstops);
         maximumVisitedPitstops = NormalizeMaximum(maximumVisitedPitstops, minimumVisitedPitstops);
-        maximumFood = NormalizeMaximum(maximumFood, minimumFood);
-        maximumMorale = NormalizeMaximum(maximumMorale, minimumMorale);
-        maximumGold = NormalizeMaximum(maximumGold, minimumGold);
+        minimumFood = NormalizeResourceMinimum(minimumFood);
+        maximumFood = NormalizeResourceMaximum(maximumFood);
+        minimumMorale = NormalizeResourceMinimum(minimumMorale);
+        maximumMorale = NormalizeResourceMaximum(maximumMorale);
+        minimumGold = NormalizeResourceMinimum(minimumGold);
+        maximumGold = NormalizeResourceMaximum(maximumGold);
     }
 
     public bool Matches(PitstopEncounterSelectionContext context, string eventId)
@@ -90,17 +93,17 @@ public sealed class PitstopEncounterSelectionRules
             return false;
         }
 
-        if (!MatchesRange(context.Resources.Food, minimumFood, maximumFood))
+        if (!MatchesResourceRange(context.Resources.Food, minimumFood, maximumFood))
         {
             return false;
         }
 
-        if (!MatchesRange(context.Resources.Morale, minimumMorale, maximumMorale))
+        if (!MatchesResourceRange(context.Resources.Morale, minimumMorale, maximumMorale))
         {
             return false;
         }
 
-        if (!MatchesRange(context.Resources.Gold, minimumGold, maximumGold))
+        if (!MatchesResourceRange(context.Resources.Gold, minimumGold, maximumGold))
         {
             return false;
         }
@@ -123,6 +126,16 @@ public sealed class PitstopEncounterSelectionRules
         return maximumValue;
     }
 
+    private static int NormalizeResourceMinimum(int minimumValue)
+    {
+        return Mathf.Max(0, minimumValue);
+    }
+
+    private static int NormalizeResourceMaximum(int maximumValue)
+    {
+        return Mathf.Max(0, maximumValue);
+    }
+
     private static bool MatchesRange(int value, int minimumValue, int maximumValue)
     {
         if (minimumValue >= 0 && value < minimumValue)
@@ -131,6 +144,21 @@ public sealed class PitstopEncounterSelectionRules
         }
 
         if (maximumValue >= 0 && value > maximumValue)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool MatchesResourceRange(int value, int minimumValue, int maximumValue)
+    {
+        if (minimumValue > 0 && value < minimumValue)
+        {
+            return false;
+        }
+
+        if (maximumValue > 0 && value > maximumValue)
         {
             return false;
         }

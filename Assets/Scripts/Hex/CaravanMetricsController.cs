@@ -2,11 +2,15 @@ using UnityEngine;
 
 public sealed class CaravanMetricsController : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private PlayerController playerController;
+    [Header("Resources")]
     [Min(0)] [SerializeField] private int food = 20;
     [Min(0)] [SerializeField] private int morale = 3;
     [Min(0)] [SerializeField] private int gold = 3;
     [Min(0.05f)] [SerializeField] private float applyDelaySeconds = 0.3f;
+    [Header("Runtime Selection")]
+    [TextArea(3, 8)] [SerializeField] private string selectedBoonsSummary = "Boons: None";
 
     private bool hasPresentedValues;
     private bool hasPendingInspectorApply;
@@ -14,6 +18,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
     private int lastPresentedMorale;
     private int lastPresentedGold;
     private float lastInspectorEditTime;
+    private string lastPresentedSelectedBoonsSummary = string.Empty;
 
     public CaravanResourceSnapshot GetConfiguredSnapshot()
     {
@@ -26,6 +31,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
     public void InitializeRuntimeSnapshot(CaravanResourceSnapshot snapshot)
     {
         ApplySnapshot(snapshot);
+        RefreshSelectedBoonsSummary();
     }
 
     private void Awake()
@@ -45,6 +51,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
         morale = Mathf.Max(0, morale);
         gold = Mathf.Max(0, gold);
         applyDelaySeconds = Mathf.Max(0.05f, applyDelaySeconds);
+        RefreshSelectedBoonsSummary();
 
         if (Application.isPlaying && playerController != null && playerController.HasInitializedCaravanResources)
         {
@@ -57,14 +64,18 @@ public sealed class CaravanMetricsController : MonoBehaviour
     {
         if (!Application.isPlaying)
         {
+            RefreshSelectedBoonsSummary();
             return;
         }
 
         ResolvePlayerController();
         if (playerController == null || !playerController.HasInitializedCaravanResources)
         {
+            RefreshSelectedBoonsSummary();
             return;
         }
+
+        RefreshSelectedBoonsSummary();
 
         CaravanResourceSnapshot currentSnapshot = playerController.GetCurrentResources();
         if (!hasPresentedValues)
@@ -112,5 +123,52 @@ public sealed class CaravanMetricsController : MonoBehaviour
         lastPresentedMorale = morale;
         lastPresentedGold = gold;
         hasPresentedValues = true;
+    }
+
+    private void RefreshSelectedBoonsSummary()
+    {
+        string nextSummary = BuildSelectedBoonsSummary();
+        if (string.Equals(nextSummary, lastPresentedSelectedBoonsSummary, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        selectedBoonsSummary = nextSummary;
+        lastPresentedSelectedBoonsSummary = nextSummary;
+    }
+
+    private static string BuildSelectedBoonsSummary()
+    {
+        System.Collections.Generic.IReadOnlyList<HexBoonDefinition> selectedBoons = HexBoonSelectionService.GetSelectedBoonDefinitions();
+        int currentAct = HexActTransitionService.GetCurrentActNumber();
+        HexNemesisArchetype lockedFamily = HexActTransitionService.GetLockedBoonFamily();
+
+        System.Text.StringBuilder summary = new();
+        summary.Append($"Act: {currentAct}");
+        if (lockedFamily != HexNemesisArchetype.None)
+        {
+            summary.Append($"\nLocked Family: {lockedFamily}");
+        }
+
+        summary.Append("\nBoons:");
+        if (selectedBoons == null || selectedBoons.Count == 0)
+        {
+            summary.Append("\n- None");
+            return summary.ToString();
+        }
+
+        for (int index = 0; index < selectedBoons.Count; index++)
+        {
+            HexBoonDefinition boon = selectedBoons[index];
+            if (boon == null)
+            {
+                continue;
+            }
+
+            boon.Validate();
+            summary.Append($"\n- {boon.GetResolvedDisplayName()} [{boon.archetypeFamily}]");
+        }
+
+        return summary.ToString();
     }
 }

@@ -268,6 +268,7 @@ public class HexBiomeMapGeneratorTests
             20,
             settings,
             specialTileSettings,
+            Biome.grass,
             new HexMapGenerationModifiers(
                 0,
                 HexBoonMapPlacementBand.Default,
@@ -299,6 +300,7 @@ public class HexBiomeMapGeneratorTests
             10,
             settings,
             new HexSpecialTileSettings(),
+            Biome.grass,
             new HexMapGenerationModifiers(
                 0,
                 HexBoonMapPlacementBand.Default,
@@ -317,6 +319,109 @@ public class HexBiomeMapGeneratorTests
         Assert.That(settings.featureSettings.maxWaterFeatureCount, Is.EqualTo(2));
         Assert.That(settings.featureSettings.waterFeatureMinRatio, Is.EqualTo(0.05f).Within(0.0001f));
         Assert.That(settings.featureSettings.waterFeatureMaxRatio, Is.EqualTo(0.08f).Within(0.0001f));
+    }
+
+    [Test]
+    public void Generate_WithDesertFallbackBiome_UsesDesertInsteadOfGrassForNeutralTiles()
+    {
+        HexBiomeGenerationSettings settings = new()
+        {
+            useRandomSeed = false,
+            seed = 112233,
+            enableForest = false,
+            enableDesert = true,
+            enableMountain = false,
+            enableWater = false,
+            waterThreshold = 0f,
+            mountainThreshold = 1f,
+            forestMoistureThreshold = 1f,
+            desertMoistureThreshold = 0f,
+            desertHeatThreshold = 1f,
+            isolatedAnomalyChance = 0f,
+            microPatchChance = 0f,
+            regionSettings = new HexBiomeRegionSettings
+            {
+                enableMacroRegions = false
+            },
+            featureSettings = new HexBiomeFeatureSettings
+            {
+                enableFeatureOverlays = false
+            },
+            qualitySettings = new HexBiomeMapQualitySettings
+            {
+                enableQualityRerolls = false,
+                maxGenerationAttempts = 1,
+                maxDominantBiomeRatio = 0.95f,
+                minDistinctBiomeCount = 1
+            }
+        };
+        settings.Validate();
+
+        HexBiomeMapGenerator generator = new();
+        HexBiomeMapResult result = generator.Generate(new HexMapGenerationContext(
+            8,
+            8,
+            settings,
+            CreateSpecialTileSettings(),
+            Biome.desert,
+            HexMapGenerationModifiers.None));
+
+        Assert.That(CountBiome(result.BiomeMap, Biome.grass), Is.EqualTo(0));
+        Assert.That(CountBiome(result.BiomeMap, Biome.desert), Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void Generate_WithDesertFallbackAndMacroRegions_RemainsDesertDominant()
+    {
+        HexBiomeGenerationSettings settings = new()
+        {
+            useRandomSeed = false,
+            seed = 998877,
+            enableForest = false,
+            enableDesert = true,
+            enableMountain = false,
+            enableWater = false,
+            waterThreshold = 0f,
+            mountainThreshold = 1f,
+            forestMoistureThreshold = 1f,
+            desertMoistureThreshold = 0f,
+            desertHeatThreshold = 1f,
+            isolatedAnomalyChance = 0f,
+            microPatchChance = 0f,
+            regionSettings = new HexBiomeRegionSettings
+            {
+                enableMacroRegions = true,
+                restrictBaseToLandBiomes = true,
+                tenByTenMinRegions = 6,
+                tenByTenMaxRegions = 6,
+                boundaryNoiseStrength = 0.25f,
+                localVariationChance = 0f,
+                seedSpacingBias = 0.85f
+            },
+            featureSettings = new HexBiomeFeatureSettings
+            {
+                enableFeatureOverlays = false
+            },
+            qualitySettings = new HexBiomeMapQualitySettings
+            {
+                enableQualityRerolls = false,
+                maxGenerationAttempts = 1,
+                maxDominantBiomeRatio = 0.95f,
+                minDistinctBiomeCount = 1
+            }
+        };
+        settings.Validate();
+
+        HexBiomeMapGenerator generator = new();
+        HexBiomeMapResult result = generator.Generate(new HexMapGenerationContext(
+            10,
+            10,
+            settings,
+            CreateSpecialTileSettings(),
+            Biome.desert,
+            HexMapGenerationModifiers.None));
+
+        Assert.That(CountBiome(result.BiomeMap, Biome.desert), Is.GreaterThan(CountBiome(result.BiomeMap, Biome.grass)));
     }
 
     [Test]
@@ -352,6 +457,7 @@ public class HexBiomeMapGeneratorTests
             10,
             settings,
             specialTileSettings,
+            Biome.grass,
             new HexMapGenerationModifiers(
                 0,
                 HexBoonMapPlacementBand.Default,

@@ -13,7 +13,8 @@ public sealed class HexNemesisPresenter
         HexNemesisArchetype archetype,
         HexNemesisArchetypeProfile profile,
         HexCoordinates? actorCoordinates,
-        IReadOnlyCollection<HexCoordinates> corruptedHexes)
+        IReadOnlyCollection<HexCoordinates> corruptedHexes,
+        HexBoonNemesisVisibilityMode visibilityMode)
     {
         if (mapGenerator == null || profile == null || archetype == HexNemesisArchetype.None)
         {
@@ -21,7 +22,7 @@ public sealed class HexNemesisPresenter
             return;
         }
 
-        ApplyActor(mapGenerator, archetype, profile, actorCoordinates);
+        ApplyActor(mapGenerator, archetype, profile, actorCoordinates, visibilityMode);
         ApplyCorruption(mapGenerator, profile, corruptedHexes);
     }
 
@@ -43,7 +44,12 @@ public sealed class HexNemesisPresenter
         corruptionVisuals.Clear();
     }
 
-    private void ApplyActor(MapGenerator mapGenerator, HexNemesisArchetype archetype, HexNemesisArchetypeProfile profile, HexCoordinates? actorCoordinates)
+    private void ApplyActor(
+        MapGenerator mapGenerator,
+        HexNemesisArchetype archetype,
+        HexNemesisArchetypeProfile profile,
+        HexCoordinates? actorCoordinates,
+        HexBoonNemesisVisibilityMode visibilityMode)
     {
         if (!actorCoordinates.HasValue || !mapGenerator.TryGetTileView(actorCoordinates.Value, out HexagonTile tileView) || tileView == null)
         {
@@ -73,7 +79,8 @@ public sealed class HexNemesisPresenter
             actorVisualSourcePrefab = profile.actorPrefab;
         }
 
-        ApplyActorStyle(actorVisual, profile);
+        ApplyActorStyle(actorVisual, profile, visibilityMode);
+        actorVisual.gameObject.SetActive(visibilityMode != HexBoonNemesisVisibilityMode.Hidden);
     }
 
     private void ApplyCorruption(MapGenerator mapGenerator, HexNemesisArchetypeProfile profile, IReadOnlyCollection<HexCoordinates> corruptedHexes)
@@ -141,7 +148,10 @@ public sealed class HexNemesisPresenter
         return visualObject.transform;
     }
 
-    private static void ApplyActorStyle(Transform visual, HexNemesisArchetypeProfile profile)
+    private static void ApplyActorStyle(
+        Transform visual,
+        HexNemesisArchetypeProfile profile,
+        HexBoonNemesisVisibilityMode visibilityMode)
     {
         if (visual == null || profile == null)
         {
@@ -150,11 +160,18 @@ public sealed class HexNemesisPresenter
 
         visual.localPosition = new Vector3(0f, profile.actorHeight, 0f);
         visual.localRotation = Quaternion.identity;
-        visual.localScale = Vector3.one * profile.actorScale;
+        float scaleMultiplier = visibilityMode == HexBoonNemesisVisibilityMode.Obscured ? 0.85f : 1f;
+        visual.localScale = Vector3.one * (profile.actorScale * scaleMultiplier);
+
+        Color actorColor = profile.actorColor;
+        if (visibilityMode == HexBoonNemesisVisibilityMode.Obscured)
+        {
+            actorColor = Color.Lerp(actorColor, Color.black, 0.45f);
+        }
 
         foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
         {
-            renderer.material.color = profile.actorColor;
+            renderer.material.color = actorColor;
         }
     }
 

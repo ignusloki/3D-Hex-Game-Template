@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728726f6547df40f09315fc392fae122, type: 3}
+  m_Name: TheGreenVeil
+  m_EditorClassIdentifier: Assembly-CSharp::HexBoonDefinition
+  id: the-green-veil
+  displayName: The Green Veil
+  description: Grass grows more freely in Act 3, but the Hunter vanishes from sight while standing within it.
+  flavorText: The last road is covered in mercy and concealment. What shelters the caravan also hides the pursuer.
+  icon: {fileID: 0}
+  archetypeFamily: 1
+  category: 2
+  isEnabled: 1
+  passive:
+    effectType: 0
+    magnitude: 0
+  rechargeable:
+    effectType: 0
+    maxCharges: 0
+    startingCharges: 0
+    rechargeTrigger: 0
+  mapModifier:
+    effectType: 0
+    magnitude: 0
+    placementBand: 0
+    waterThresholdDelta: 0
+    forestFeatureCountMultiplier: 1
+    waterFeatureCountMultiplier: 1
+    mountainFeatureCountMultiplier: 1
+    forestFeatureSizeMultiplier: 1
+    waterFeatureSizeMultiplier: 1
+    mountainFeatureSizeMultiplier: 1
+    grassRegionWeightMultiplier: 1.3
+    forestRegionWeightMultiplier: 1
+    desertRegionWeightMultiplier: 1
+    terrainLandmarkRequests: []
+    mapObjectPlacementRequests: []
+  nemesisModifier:
+    caravanMovesPerActivationOverride: 0
+    stepsPerActivationOverride: 0
+    startLocationOverride: 0
+    startStepsTowardCaravanSpawn: 0
+    visibilityRules:
+    - visibilityMode: 1
+      affectedBiomes:
+      - 3
+  actStartGrant:
+    food: 0
+    morale: 0
+    gold: 0

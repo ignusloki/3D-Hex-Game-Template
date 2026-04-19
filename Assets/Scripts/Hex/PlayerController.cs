@@ -113,9 +113,10 @@ public class PlayerController : MonoBehaviour
         InitializeNemesisSystem();
         InitializeMockQuestMarkerSystem();
 
-        CaravanResourceSnapshot startingResources = caravanMetricsController != null
+        CaravanResourceSnapshot configuredStartingResources = caravanMetricsController != null
             ? caravanMetricsController.GetConfiguredSnapshot()
             : new CaravanResourceSnapshot(startingFood, startingMorale, startingGold);
+        CaravanResourceSnapshot startingResources = HexActTransitionService.GetStartingResources(configuredStartingResources);
 
         caravanResources.Initialize(startingResources.Food, startingResources.Morale, startingResources.Gold);
         resourcesInitialized = true;
@@ -132,6 +133,7 @@ public class PlayerController : MonoBehaviour
 
         if (!isReady
             || isRunOver
+            || (runStateModalPresenter != null && runStateModalPresenter.IsOpen)
             || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
             || (mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen))
         {
@@ -281,6 +283,13 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
+        if (nemesisController != null && nemesisController.TryResolveImmediateCaravanContact(currentTile.Coordinates, out string immediateContactDefeatReason))
+        {
+            RefreshTileDetails(currentTile);
+            EndRunAsDefeat(immediateContactDefeatReason);
+            return;
+        }
+
         HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
         HexNemesisTurnResult nemesisTurnResult = ProcessNemesisTurn(previousCoordinates, currentTile.Coordinates);
         RefreshTileDetails(currentTile);
@@ -591,6 +600,12 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (TryBeginActTransition())
+        {
+            return;
+        }
+
+        HexActTransitionService.ResetRunSession();
         isRunOver = true;
         ClearHighlights();
         selectedTile = null;
@@ -604,6 +619,28 @@ public class PlayerController : MonoBehaviour
         runStateModalPresenter?.ShowVictory(RetryCurrentScene);
     }
 
+    private bool TryBeginActTransition()
+    {
+        if (!HexActTransitionService.CanAdvanceFromCurrentAct())
+        {
+            return false;
+        }
+
+        HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(caravanResources.ToSnapshot());
+        isRunOver = true;
+        ClearHighlights();
+        selectedTile = null;
+        previewPath = null;
+        caravanSelectionActive = false;
+        travelTimePresenter.Reset();
+        pitstopEventController?.HideActiveModal();
+        mockQuestMarkerController?.HideActiveModal();
+        RefreshTileDetails(currentTile);
+        hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
+        runStateModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
+        return true;
+    }
+
     private void EndRunAsDefeat(string defeatReason)
     {
         if (isRunOver)
@@ -611,6 +648,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        HexActTransitionService.ResetRunSession();
         isRunOver = true;
         ClearHighlights();
         selectedTile = null;
@@ -803,6 +841,18 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        HexNemesisArchetype sceneArchetype = nemesisController.ActiveArchetype;
+        bool sceneNemesisEnabled = nemesisController.IsEnabled;
+        HexNemesisArchetype resolvedArchetype = HexActTransitionService.ResolveNemesisArchetypeForCurrentAct(
+            sceneArchetype == HexNemesisArchetype.None ? HexNemesisArchetype.Hunter : sceneArchetype);
+        bool enableNemesis = HexActTransitionService.ResolveNemesisEnabledForCurrentAct(sceneNemesisEnabled);
+
+        nemesisController.ConfigureArchetype(resolvedArchetype, enableNemesis);
+        nemesisController.ConfigureRuntimeModifiers(
+            boonRuntime != null
+                ? boonRuntime.GetNemesisRuntimeModifiers(resolvedArchetype)
+                : HexNemesisRuntimeModifiers.None);
+
         nemesisController.Initialize(mapGenerator, pitstopSpawner, obstacleController, currentTile.Coordinates);
     }
 
@@ -916,6 +966,17 @@ public class PlayerController : MonoBehaviour
 
     private void RetryCurrentScene()
     {
+        HexActTransitionService.ResetRunSession();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    private void ContinueToNextAct(HexBoonDefinition selectedBoon)
+    {
+        if (!HexActTransitionService.TryAdvanceToNextAct(caravanResources.ToSnapshot(), selectedBoon))
+        {
+            return;
+        }
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
@@ -957,7 +1018,6 @@ public sealed class HexMockQuestMarkerController : MonoBehaviour
             ResolveTitle(placement),
             ResolveBody(placement),
             HandleDialogClosed);
-        Debug.Log($"[QuestMock] Opened placeholder quest marker at {coordinates}.", this);
         return true;
     }
 
@@ -972,7 +1032,6 @@ public sealed class HexMockQuestMarkerController : MonoBehaviour
         if (activeQuestMarker.HasValue)
         {
             resolvedQuestMarkers.Add(activeQuestMarker.Value);
-            Debug.Log($"[QuestMock] Resolved placeholder quest marker at {activeQuestMarker.Value}.", this);
         }
 
         activeQuestMarker = null;

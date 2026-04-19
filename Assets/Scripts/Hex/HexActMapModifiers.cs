@@ -14,6 +14,9 @@ public readonly struct HexMapGenerationModifiers
         1f,
         1f,
         1f,
+        1f,
+        1f,
+        1f,
         null,
         null);
 
@@ -27,6 +30,9 @@ public readonly struct HexMapGenerationModifiers
         float forestFeatureSizeMultiplier = 1f,
         float waterFeatureSizeMultiplier = 1f,
         float mountainFeatureSizeMultiplier = 1f,
+        float grassRegionWeightMultiplier = 1f,
+        float forestRegionWeightMultiplier = 1f,
+        float desertRegionWeightMultiplier = 1f,
         HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = null,
         HexMapObjectPlacementRequest[] mapObjectPlacementRequests = null)
     {
@@ -39,6 +45,9 @@ public readonly struct HexMapGenerationModifiers
         ForestFeatureSizeMultiplier = SanitizeMultiplier(forestFeatureSizeMultiplier);
         WaterFeatureSizeMultiplier = SanitizeMultiplier(waterFeatureSizeMultiplier);
         MountainFeatureSizeMultiplier = SanitizeMultiplier(mountainFeatureSizeMultiplier);
+        GrassRegionWeightMultiplier = SanitizeMultiplier(grassRegionWeightMultiplier);
+        ForestRegionWeightMultiplier = SanitizeMultiplier(forestRegionWeightMultiplier);
+        DesertRegionWeightMultiplier = SanitizeMultiplier(desertRegionWeightMultiplier);
         TerrainLandmarkRequests = SanitizeRequests(terrainLandmarkRequests);
         MapObjectPlacementRequests = SanitizeObjectRequests(mapObjectPlacementRequests);
     }
@@ -52,6 +61,9 @@ public readonly struct HexMapGenerationModifiers
     public float ForestFeatureSizeMultiplier { get; }
     public float WaterFeatureSizeMultiplier { get; }
     public float MountainFeatureSizeMultiplier { get; }
+    public float GrassRegionWeightMultiplier { get; }
+    public float ForestRegionWeightMultiplier { get; }
+    public float DesertRegionWeightMultiplier { get; }
     public HexTerrainLandmarkPlacementRequest[] TerrainLandmarkRequests { get; }
     public HexMapObjectPlacementRequest[] MapObjectPlacementRequests { get; }
 
@@ -66,7 +78,10 @@ public readonly struct HexMapGenerationModifiers
         || !Mathf.Approximately(MountainFeatureCountMultiplier, 1f)
         || !Mathf.Approximately(ForestFeatureSizeMultiplier, 1f)
         || !Mathf.Approximately(WaterFeatureSizeMultiplier, 1f)
-        || !Mathf.Approximately(MountainFeatureSizeMultiplier, 1f);
+        || !Mathf.Approximately(MountainFeatureSizeMultiplier, 1f)
+        || !Mathf.Approximately(GrassRegionWeightMultiplier, 1f)
+        || !Mathf.Approximately(ForestRegionWeightMultiplier, 1f)
+        || !Mathf.Approximately(DesertRegionWeightMultiplier, 1f);
 
     public bool HasAny => HasPitstopModifiers || HasTerrainModifiers || HasLandmarkRequests || HasMapObjectRequests;
 
@@ -93,6 +108,7 @@ public readonly struct HexMapGenerationModifiers
             summary.Append($"waterThresholdDelta={WaterThresholdDelta:+0.###;-0.###;0}");
             summary.Append($", featureCount x[{ForestFeatureCountMultiplier:0.##}, {WaterFeatureCountMultiplier:0.##}, {MountainFeatureCountMultiplier:0.##}]");
             summary.Append($", featureSize x[{ForestFeatureSizeMultiplier:0.##}, {WaterFeatureSizeMultiplier:0.##}, {MountainFeatureSizeMultiplier:0.##}]");
+            summary.Append($", landWeights x[{GrassRegionWeightMultiplier:0.##}, {ForestRegionWeightMultiplier:0.##}, {DesertRegionWeightMultiplier:0.##}]");
         }
 
         if (HasLandmarkRequests)
@@ -164,6 +180,9 @@ public readonly struct HexMapGenerationModifiers
             ForestFeatureSizeMultiplier * other.ForestFeatureSizeMultiplier,
             WaterFeatureSizeMultiplier * other.WaterFeatureSizeMultiplier,
             MountainFeatureSizeMultiplier * other.MountainFeatureSizeMultiplier,
+            GrassRegionWeightMultiplier * other.GrassRegionWeightMultiplier,
+            ForestRegionWeightMultiplier * other.ForestRegionWeightMultiplier,
+            DesertRegionWeightMultiplier * other.DesertRegionWeightMultiplier,
             CombineRequests(TerrainLandmarkRequests, other.TerrainLandmarkRequests),
             CombineObjectRequests(MapObjectPlacementRequests, other.MapObjectPlacementRequests));
     }
@@ -291,6 +310,7 @@ public sealed class HexMapGenerationContext
         int columns,
         HexBiomeGenerationSettings biomeSettings,
         HexSpecialTileSettings specialTileSettings,
+        Biome fallbackBiome,
         HexMapGenerationModifiers modifiers,
         int? fixedSeedOverride = null,
         bool enableDebugLogging = false,
@@ -301,6 +321,7 @@ public sealed class HexMapGenerationContext
         Modifiers = modifiers;
         EnableDebugLogging = enableDebugLogging;
         EnableVerbosePhaseLogging = enableVerbosePhaseLogging;
+        FallbackBiome = fallbackBiome;
 
         BiomeSettings = biomeSettings?.Clone() ?? new HexBiomeGenerationSettings();
         if (fixedSeedOverride.HasValue && !BiomeSettings.useRandomSeed)
@@ -318,13 +339,14 @@ public sealed class HexMapGenerationContext
     public HexBiomeGenerationSettings BiomeSettings { get; }
     public HexBiomeGenerationSettings ResolvedBiomeSettings { get; }
     public HexSpecialTileSettings SpecialTileSettings { get; }
+    public Biome FallbackBiome { get; }
     public HexMapGenerationModifiers Modifiers { get; }
     public bool EnableDebugLogging { get; }
     public bool EnableVerbosePhaseLogging { get; }
 
     public string GetDebugSummary()
     {
-        return $"size={Rows}x{Columns}, seedMode={(ResolvedBiomeSettings.useRandomSeed ? "random" : ResolvedBiomeSettings.seed.ToString())}, modifiers={Modifiers.GetDebugSummary()}";
+        return $"size={Rows}x{Columns}, seedMode={(ResolvedBiomeSettings.useRandomSeed ? "random" : ResolvedBiomeSettings.seed.ToString())}, fallback={FallbackBiome}, modifiers={Modifiers.GetDebugSummary()}";
     }
 
     private static HexBiomeGenerationSettings CreateResolvedBiomeSettings(

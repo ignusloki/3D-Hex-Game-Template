@@ -31,6 +31,19 @@ public enum HexBoonMapModifierType
     AdditionalPitstops
 }
 
+public enum HexBoonNemesisStartLocationOverride
+{
+    None,
+    GoalHex
+}
+
+public enum HexBoonNemesisVisibilityMode
+{
+    None,
+    Hidden,
+    Obscured
+}
+
 public enum HexBoonMapPlacementBand
 {
     Default,
@@ -82,6 +95,10 @@ public sealed class HexBoonMapModifierData
     [Min(0f)] public float forestFeatureSizeMultiplier = 1f;
     [Min(0f)] public float waterFeatureSizeMultiplier = 1f;
     [Min(0f)] public float mountainFeatureSizeMultiplier = 1f;
+    [Header("Land Biome Weight Multipliers")]
+    [Min(0f)] public float grassRegionWeightMultiplier = 1f;
+    [Min(0f)] public float forestRegionWeightMultiplier = 1f;
+    [Min(0f)] public float desertRegionWeightMultiplier = 1f;
     [Header("Terrain Landmarks")]
     public HexTerrainLandmarkPlacementRequest[] terrainLandmarkRequests = System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
     [Header("Map Objects")]
@@ -97,6 +114,9 @@ public sealed class HexBoonMapModifierData
         forestFeatureSizeMultiplier = Mathf.Max(0f, forestFeatureSizeMultiplier);
         waterFeatureSizeMultiplier = Mathf.Max(0f, waterFeatureSizeMultiplier);
         mountainFeatureSizeMultiplier = Mathf.Max(0f, mountainFeatureSizeMultiplier);
+        grassRegionWeightMultiplier = Mathf.Max(0f, grassRegionWeightMultiplier);
+        forestRegionWeightMultiplier = Mathf.Max(0f, forestRegionWeightMultiplier);
+        desertRegionWeightMultiplier = Mathf.Max(0f, desertRegionWeightMultiplier);
         terrainLandmarkRequests ??= System.Array.Empty<HexTerrainLandmarkPlacementRequest>();
         mapObjectPlacementRequests ??= System.Array.Empty<HexMapObjectPlacementRequest>();
 
@@ -109,6 +129,93 @@ public sealed class HexBoonMapModifierData
         {
             mapObjectPlacementRequests[index]?.Validate();
         }
+    }
+}
+
+[System.Serializable]
+public sealed class HexBoonNemesisVisibilityRuleData
+{
+    public HexBoonNemesisVisibilityMode visibilityMode = HexBoonNemesisVisibilityMode.None;
+    public Biome[] affectedBiomes = System.Array.Empty<Biome>();
+
+    public void Validate()
+    {
+        affectedBiomes ??= System.Array.Empty<Biome>();
+    }
+
+    public bool IsUsable =>
+        visibilityMode != HexBoonNemesisVisibilityMode.None
+        && affectedBiomes != null
+        && affectedBiomes.Length > 0;
+}
+
+[System.Serializable]
+public sealed class HexBoonNemesisModifierData
+{
+    [Header("Pace Overrides")]
+    [Min(0)] public int caravanMovesPerActivationOverride;
+    [Min(0)] public int stepsPerActivationOverride;
+    [Header("Position Overrides")]
+    public HexBoonNemesisStartLocationOverride startLocationOverride = HexBoonNemesisStartLocationOverride.None;
+    [Min(0)] public int startStepsTowardCaravanSpawn;
+    [Header("Visibility Overrides")]
+    public HexBoonNemesisVisibilityRuleData[] visibilityRules = System.Array.Empty<HexBoonNemesisVisibilityRuleData>();
+
+    public void Validate()
+    {
+        caravanMovesPerActivationOverride = Mathf.Max(0, caravanMovesPerActivationOverride);
+        stepsPerActivationOverride = Mathf.Max(0, stepsPerActivationOverride);
+        startStepsTowardCaravanSpawn = Mathf.Max(0, startStepsTowardCaravanSpawn);
+        visibilityRules ??= System.Array.Empty<HexBoonNemesisVisibilityRuleData>();
+
+        for (int index = 0; index < visibilityRules.Length; index++)
+        {
+            visibilityRules[index]?.Validate();
+        }
+    }
+
+    public HexNemesisVisibilityRule[] GetRuntimeVisibilityRules()
+    {
+        if (visibilityRules == null || visibilityRules.Length == 0)
+        {
+            return System.Array.Empty<HexNemesisVisibilityRule>();
+        }
+
+        System.Collections.Generic.List<HexNemesisVisibilityRule> rules = new(visibilityRules.Length);
+        for (int index = 0; index < visibilityRules.Length; index++)
+        {
+            HexBoonNemesisVisibilityRuleData rule = visibilityRules[index];
+            if (rule == null || !rule.IsUsable)
+            {
+                continue;
+            }
+
+            rules.Add(new HexNemesisVisibilityRule(rule.visibilityMode, rule.affectedBiomes));
+        }
+
+        return rules.Count == 0 ? System.Array.Empty<HexNemesisVisibilityRule>() : rules.ToArray();
+    }
+}
+
+[System.Serializable]
+public sealed class HexBoonActStartGrantData
+{
+    public int food;
+    public int morale;
+    public int gold;
+
+    public void Validate()
+    {
+    }
+
+    public bool HasAny => food != 0 || morale != 0 || gold != 0;
+
+    public CaravanResourceSnapshot ApplyTo(CaravanResourceSnapshot snapshot)
+    {
+        return new CaravanResourceSnapshot(
+            snapshot.Food + food,
+            snapshot.Morale + morale,
+            snapshot.Gold + gold);
     }
 }
 
@@ -135,6 +242,12 @@ public sealed class HexBoonDefinition : ScriptableObject
     [Header("Map Modifiers")]
     public HexBoonMapModifierData mapModifier = new();
 
+    [Header("Nemesis Modifiers")]
+    public HexBoonNemesisModifierData nemesisModifier = new();
+
+    [Header("Act Start Grant")]
+    public HexBoonActStartGrantData actStartGrant = new();
+
     private void OnValidate()
     {
         Validate();
@@ -149,9 +262,13 @@ public sealed class HexBoonDefinition : ScriptableObject
         passive ??= new HexBoonPassiveEffectData();
         rechargeable ??= new HexBoonRechargeableEffectData();
         mapModifier ??= new HexBoonMapModifierData();
+        nemesisModifier ??= new HexBoonNemesisModifierData();
+        actStartGrant ??= new HexBoonActStartGrantData();
         passive.Validate();
         rechargeable.Validate();
         mapModifier.Validate();
+        nemesisModifier.Validate();
+        actStartGrant.Validate();
     }
 
     public string GetResolvedDisplayName()
@@ -239,8 +356,42 @@ public sealed class HexBoonDefinition : ScriptableObject
             mapModifier.forestFeatureSizeMultiplier,
             mapModifier.waterFeatureSizeMultiplier,
             mapModifier.mountainFeatureSizeMultiplier,
+            mapModifier.grassRegionWeightMultiplier,
+            mapModifier.forestRegionWeightMultiplier,
+            mapModifier.desertRegionWeightMultiplier,
             mapModifier.terrainLandmarkRequests,
             mapModifier.mapObjectPlacementRequests);
+    }
+
+    public HexNemesisRuntimeModifiers GetNemesisRuntimeModifiers()
+    {
+        if (!isEnabled || nemesisModifier == null)
+        {
+            return HexNemesisRuntimeModifiers.None;
+        }
+
+        return new HexNemesisRuntimeModifiers(
+            archetypeFamily,
+            nemesisModifier.caravanMovesPerActivationOverride,
+            nemesisModifier.stepsPerActivationOverride,
+            nemesisModifier.startLocationOverride,
+            nemesisModifier.startStepsTowardCaravanSpawn,
+            nemesisModifier.GetRuntimeVisibilityRules());
+    }
+
+    public bool HasActStartGrant()
+    {
+        return isEnabled && actStartGrant != null && actStartGrant.HasAny;
+    }
+
+    public CaravanResourceSnapshot ApplyActStartGrant(CaravanResourceSnapshot snapshot)
+    {
+        if (!HasActStartGrant())
+        {
+            return snapshot;
+        }
+
+        return actStartGrant.ApplyTo(snapshot);
     }
 
     private static string SanitizeId(string rawValue)

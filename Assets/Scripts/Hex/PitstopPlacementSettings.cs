@@ -90,7 +90,7 @@ public sealed class PitstopPlacementSettings
     public bool allowGrass = true;
     public bool allowForest = true;
     public bool allowMountain = false;
-    public bool allowDesert = false;
+    public bool allowDesert = true;
 
     [Header("Spacing")]
     [Min(0)] public int minimumSpacingOnFiveByFive = 2;
