@@ -283,6 +283,13 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
+        if (nemesisController != null && nemesisController.TryResolveImmediateCaravanContact(currentTile.Coordinates, out string immediateContactDefeatReason))
+        {
+            RefreshTileDetails(currentTile);
+            EndRunAsDefeat(immediateContactDefeatReason);
+            return;
+        }
+
         HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
         HexNemesisTurnResult nemesisTurnResult = ProcessNemesisTurn(previousCoordinates, currentTile.Coordinates);
         RefreshTileDetails(currentTile);
@@ -834,12 +841,17 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        bool enableNemesis = !HexActTransitionService.ShouldDisableNemesisForCurrentAct();
-        HexNemesisArchetype configuredArchetype = nemesisController.ActiveArchetype;
-        if (!enableNemesis)
-        {
-            nemesisController.ConfigureArchetype(configuredArchetype == HexNemesisArchetype.None ? HexNemesisArchetype.Hunter : configuredArchetype, false);
-        }
+        HexNemesisArchetype sceneArchetype = nemesisController.ActiveArchetype;
+        bool sceneNemesisEnabled = nemesisController.IsEnabled;
+        HexNemesisArchetype resolvedArchetype = HexActTransitionService.ResolveNemesisArchetypeForCurrentAct(
+            sceneArchetype == HexNemesisArchetype.None ? HexNemesisArchetype.Hunter : sceneArchetype);
+        bool enableNemesis = HexActTransitionService.ResolveNemesisEnabledForCurrentAct(sceneNemesisEnabled);
+
+        nemesisController.ConfigureArchetype(resolvedArchetype, enableNemesis);
+        nemesisController.ConfigureRuntimeModifiers(
+            boonRuntime != null
+                ? boonRuntime.GetNemesisRuntimeModifiers(resolvedArchetype)
+                : HexNemesisRuntimeModifiers.None);
 
         nemesisController.Initialize(mapGenerator, pitstopSpawner, obstacleController, currentTile.Coordinates);
     }
@@ -1006,7 +1018,6 @@ public sealed class HexMockQuestMarkerController : MonoBehaviour
             ResolveTitle(placement),
             ResolveBody(placement),
             HandleDialogClosed);
-        Debug.Log($"[QuestMock] Opened placeholder quest marker at {coordinates}.", this);
         return true;
     }
 
@@ -1021,7 +1032,6 @@ public sealed class HexMockQuestMarkerController : MonoBehaviour
         if (activeQuestMarker.HasValue)
         {
             resolvedQuestMarkers.Add(activeQuestMarker.Value);
-            Debug.Log($"[QuestMock] Resolved placeholder quest marker at {activeQuestMarker.Value}.", this);
         }
 
         activeQuestMarker = null;

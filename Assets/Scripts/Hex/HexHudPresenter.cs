@@ -223,7 +223,19 @@ public sealed class HexHudPresenter
 
         if (turnResult.CurrentCoordinates.HasValue)
         {
-            SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} advances to {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+            if (turnResult.CurrentCoordinatesVisibilityMode == HexBoonNemesisVisibilityMode.Hidden)
+            {
+                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} slips out of sight.");
+            }
+            else if (turnResult.CurrentCoordinatesVisibilityMode == HexBoonNemesisVisibilityMode.Obscured)
+            {
+                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} is obscured at {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+            }
+            else
+            {
+                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} advances to {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+            }
+
             ClearHintText();
             return;
         }

@@ -22,6 +22,7 @@ public sealed class HexBiomeMacroRegionPainter
         HexGridData gridLayout,
         HexBiomeGenerationSettings generationSettings,
         Biome fallbackBiome,
+        HexMapGenerationModifiers modifiers,
         System.Random random)
     {
         HexBiomeRegionSettings regionSettings = generationSettings?.regionSettings ?? new HexBiomeRegionSettings();
@@ -42,7 +43,15 @@ public sealed class HexBiomeMacroRegionPainter
             regionSettings.GetRegionCount(biomeMap.GetLength(0), biomeMap.GetLength(1), random),
             biomeMap.GetLength(0) * biomeMap.GetLength(1));
 
-        List<RegionSeed> regionSeeds = CreateSeeds(regionCount, gridLayout, availableLandBiomes, generationSettings, regionSettings, fallbackBiome, random);
+        List<RegionSeed> regionSeeds = CreateSeeds(
+            regionCount,
+            gridLayout,
+            availableLandBiomes,
+            generationSettings,
+            regionSettings,
+            fallbackBiome,
+            modifiers,
+            random);
         if (regionSeeds.Count == 0)
         {
             return;
@@ -125,6 +134,7 @@ public sealed class HexBiomeMacroRegionPainter
         HexBiomeGenerationSettings generationSettings,
         HexBiomeRegionSettings regionSettings,
         Biome fallbackBiome,
+        HexMapGenerationModifiers modifiers,
         System.Random random)
     {
         List<HexCoordinates> candidates = new();
@@ -145,7 +155,7 @@ public sealed class HexBiomeMacroRegionPainter
         HexCoordinates firstCoordinates = candidates[random.Next(candidates.Count)];
         seeds.Add(new RegionSeed(
             firstCoordinates,
-            ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, random),
+            ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, modifiers, random),
             (float)random.NextDouble() * regionSettings.boundaryNoiseStrength));
 
         while (seeds.Count < regionCount)
@@ -175,21 +185,26 @@ public sealed class HexBiomeMacroRegionPainter
 
             seeds.Add(new RegionSeed(
                 bestCandidate,
-                ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, random),
+                ChooseLandBiome(availableLandBiomes, generationSettings, fallbackBiome, modifiers, random),
                 (float)random.NextDouble() * regionSettings.boundaryNoiseStrength));
         }
 
         return seeds;
     }
 
-    private static Biome ChooseLandBiome(List<Biome> availableLandBiomes, HexBiomeGenerationSettings generationSettings, Biome fallbackBiome, System.Random random)
+    private static Biome ChooseLandBiome(
+        List<Biome> availableLandBiomes,
+        HexBiomeGenerationSettings generationSettings,
+        Biome fallbackBiome,
+        HexMapGenerationModifiers modifiers,
+        System.Random random)
     {
         float totalWeight = 0f;
         float[] weights = new float[availableLandBiomes.Count];
 
         for (int index = 0; index < availableLandBiomes.Count; index++)
         {
-            float weight = GetBiomeWeight(availableLandBiomes[index], generationSettings, fallbackBiome);
+            float weight = GetBiomeWeight(availableLandBiomes[index], generationSettings, fallbackBiome, modifiers);
             weights[index] = weight;
             totalWeight += weight;
         }
@@ -214,7 +229,11 @@ public sealed class HexBiomeMacroRegionPainter
         return availableLandBiomes[^1];
     }
 
-    private static float GetBiomeWeight(Biome biome, HexBiomeGenerationSettings settings, Biome fallbackBiome)
+    private static float GetBiomeWeight(
+        Biome biome,
+        HexBiomeGenerationSettings settings,
+        Biome fallbackBiome,
+        HexMapGenerationModifiers modifiers)
     {
         float weight = biome switch
         {
@@ -233,6 +252,14 @@ public sealed class HexBiomeMacroRegionPainter
         {
             weight *= 0.2f;
         }
+
+        weight *= biome switch
+        {
+            Biome.grass => modifiers.GrassRegionWeightMultiplier,
+            Biome.forest => modifiers.ForestRegionWeightMultiplier,
+            Biome.desert => modifiers.DesertRegionWeightMultiplier,
+            _ => 1f
+        };
 
         return weight;
     }

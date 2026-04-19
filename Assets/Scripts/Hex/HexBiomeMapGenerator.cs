@@ -144,7 +144,7 @@ public sealed class HexBiomeMapGenerator
             }
         }
 
-        regionPainter.ApplyLandRegions(biomeMap, gridLayout, settings, context.FallbackBiome, random);
+        regionPainter.ApplyLandRegions(biomeMap, gridLayout, settings, context.FallbackBiome, context.Modifiers, random);
         featurePainter.ApplyFeatures(biomeMap, gridLayout, settings, random);
         ApplyMicroPatches(biomeMap, gridLayout, settings, random);
         ApplyIsolatedAnomalies(biomeMap, settings, random);

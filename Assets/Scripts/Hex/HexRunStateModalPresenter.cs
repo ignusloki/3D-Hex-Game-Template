@@ -7,8 +7,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
     [Header("Layout")]
     [Min(260f)] [SerializeField] private float panelWidth = 680f;
-    [Min(320f)] [SerializeField] private float panelHeight = 620f;
-    [Min(52f)] [SerializeField] private float transitionOptionHeight = 70f;
+    [Min(320f)] [SerializeField] private float panelHeight = 760f;
+    [Min(88f)] [SerializeField] private float transitionOptionHeight = 96f;
 
     [Header("Colors")]
     [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.9f);
@@ -25,11 +25,14 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private RectTransform bodyRect;
     private RectTransform selectionPromptRect;
     private RectTransform optionsContainerRect;
+    private RectTransform optionsViewportRect;
+    private RectTransform optionsContentRect;
     private Text titleText;
     private Text bodyText;
     private Text selectionPromptText;
     private Button actionButton;
     private Text actionButtonText;
+    private ScrollRect optionsScrollRect;
     private Font uiFont;
     private Action actionCallback;
     private Action<HexBoonDefinition> transitionActionCallback;
@@ -185,28 +188,54 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         selectionPromptText = CreateText("Selection Prompt", panelRect, 20, FontStyle.Bold, bodyColor);
         selectionPromptRect = selectionPromptText.rectTransform;
-        selectionPromptRect.anchorMin = new Vector2(0.5f, 0f);
-        selectionPromptRect.anchorMax = new Vector2(0.5f, 0f);
-        selectionPromptRect.pivot = new Vector2(0.5f, 0f);
-        selectionPromptRect.anchoredPosition = new Vector2(0f, 360f);
-        selectionPromptRect.sizeDelta = new Vector2(panelWidth - 64f, 58f);
+        selectionPromptRect.anchorMin = new Vector2(0.5f, 1f);
+        selectionPromptRect.anchorMax = new Vector2(0.5f, 1f);
+        selectionPromptRect.pivot = new Vector2(0.5f, 1f);
+        selectionPromptRect.anchoredPosition = new Vector2(0f, -234f);
+        selectionPromptRect.sizeDelta = new Vector2(panelWidth - 64f, 64f);
         selectionPromptText.alignment = TextAnchor.MiddleCenter;
         selectionPromptText.gameObject.SetActive(false);
 
         optionsContainerRect = CreateRectTransform("Transition Options", panelRect);
-        optionsContainerRect.anchorMin = new Vector2(0f, 0f);
-        optionsContainerRect.anchorMax = new Vector2(1f, 0f);
-        optionsContainerRect.pivot = new Vector2(0.5f, 0f);
-        optionsContainerRect.anchoredPosition = new Vector2(0f, 108f);
-        optionsContainerRect.sizeDelta = new Vector2(-56f, 224f);
-        VerticalLayoutGroup optionsLayout = optionsContainerRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        optionsContainerRect.anchorMin = new Vector2(0.5f, 1f);
+        optionsContainerRect.anchorMax = new Vector2(0.5f, 1f);
+        optionsContainerRect.pivot = new Vector2(0.5f, 1f);
+        optionsContainerRect.anchoredPosition = new Vector2(0f, -306f);
+        optionsContainerRect.sizeDelta = new Vector2(panelWidth - 56f, Mathf.Max(220f, panelHeight - 330f));
+        Image optionsBackground = optionsContainerRect.gameObject.AddComponent<Image>();
+        optionsBackground.color = new Color(0f, 0f, 0f, 0.08f);
+        optionsScrollRect = optionsContainerRect.gameObject.AddComponent<ScrollRect>();
+        optionsScrollRect.horizontal = false;
+        optionsScrollRect.movementType = ScrollRect.MovementType.Clamped;
+        optionsScrollRect.scrollSensitivity = 30f;
+
+        optionsViewportRect = CreateRectTransform("Viewport", optionsContainerRect);
+        StretchToParent(optionsViewportRect);
+        Image viewportImage = optionsViewportRect.gameObject.AddComponent<Image>();
+        viewportImage.color = new Color(1f, 1f, 1f, 0.002f);
+        Mask viewportMask = optionsViewportRect.gameObject.AddComponent<Mask>();
+        viewportMask.showMaskGraphic = false;
+
+        optionsContentRect = CreateRectTransform("Content", optionsViewportRect);
+        optionsContentRect.anchorMin = new Vector2(0f, 1f);
+        optionsContentRect.anchorMax = new Vector2(1f, 1f);
+        optionsContentRect.pivot = new Vector2(0.5f, 1f);
+        optionsContentRect.anchoredPosition = Vector2.zero;
+        optionsContentRect.sizeDelta = Vector2.zero;
+        optionsScrollRect.viewport = optionsViewportRect;
+        optionsScrollRect.content = optionsContentRect;
+
+        VerticalLayoutGroup optionsLayout = optionsContentRect.gameObject.AddComponent<VerticalLayoutGroup>();
         optionsLayout.padding = new RectOffset(0, 0, 0, 0);
-        optionsLayout.spacing = 10f;
+        optionsLayout.spacing = 12f;
         optionsLayout.childAlignment = TextAnchor.UpperCenter;
         optionsLayout.childControlHeight = true;
         optionsLayout.childControlWidth = true;
         optionsLayout.childForceExpandHeight = false;
         optionsLayout.childForceExpandWidth = true;
+        ContentSizeFitter optionsContentSizeFitter = optionsContentRect.gameObject.AddComponent<ContentSizeFitter>();
+        optionsContentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        optionsContentSizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         optionsContainerRect.gameObject.SetActive(false);
 
         RectTransform buttonRect = CreateRectTransform("Action Button", panelRect);
@@ -290,10 +319,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         while (transitionOptionButtons.Count < count)
         {
             int optionIndex = transitionOptionButtons.Count;
-            RectTransform optionRect = CreateRectTransform($"Transition Option {optionIndex + 1}", optionsContainerRect);
+            RectTransform optionRect = CreateRectTransform($"Transition Option {optionIndex + 1}", optionsContentRect);
+            float optionHeight = Mathf.Max(96f, transitionOptionHeight);
             LayoutElement layoutElement = optionRect.gameObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = transitionOptionHeight;
-            layoutElement.minHeight = transitionOptionHeight;
+            layoutElement.preferredHeight = optionHeight;
+            layoutElement.minHeight = optionHeight;
 
             Image optionImage = optionRect.gameObject.AddComponent<Image>();
             optionImage.color = buttonColor;
@@ -308,11 +338,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             optionButton.colors = optionColors;
             optionButton.onClick.AddListener(() => HandleTransitionOptionClicked(optionIndex));
 
-            Text optionText = CreateText("Label", optionRect, 20, FontStyle.Normal, buttonTextColor);
+            Text optionText = CreateText("Label", optionRect, 18, FontStyle.Normal, buttonTextColor);
             StretchToParent(optionText.rectTransform, 16f, 12f);
-            optionText.alignment = TextAnchor.MiddleLeft;
+            optionText.alignment = TextAnchor.UpperLeft;
             optionText.supportRichText = true;
-            optionText.lineSpacing = 1.05f;
+            optionText.lineSpacing = 1.1f;
 
             transitionOptionButtons.Add(optionButton);
             transitionOptionButtonImages.Add(optionImage);
@@ -342,6 +372,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
 
         ApplyTransitionSelectionVisuals();
+        if (optionsScrollRect != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            optionsScrollRect.verticalNormalizedPosition = 1f;
+        }
     }
 
     private void HandleTransitionOptionClicked(int optionIndex)
@@ -384,21 +419,46 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         if (showTransitionOptions)
         {
-            int optionCount = transitionBoonOptions != null ? transitionBoonOptions.Length : 0;
-            float spacing = optionCount > 1 ? (optionCount - 1) * 10f : 0f;
-            float optionsHeight = (optionCount * transitionOptionHeight) + spacing;
-            float promptBottom = 108f + optionsHeight + 20f;
-            optionsContainerRect.sizeDelta = new Vector2(-56f, optionsHeight);
-            selectionPromptRect.anchoredPosition = new Vector2(0f, promptBottom);
-            bodyRect.offsetMin = new Vector2(32f, promptBottom + 72f);
-            bodyRect.offsetMax = new Vector2(-32f, -92f);
+            bodyRect.anchorMin = new Vector2(0.5f, 1f);
+            bodyRect.anchorMax = new Vector2(0.5f, 1f);
+            bodyRect.pivot = new Vector2(0.5f, 1f);
+            bodyRect.anchoredPosition = new Vector2(0f, -108f);
+            bodyRect.sizeDelta = new Vector2(panelWidth - 72f, 108f);
+            bodyText.alignment = TextAnchor.UpperCenter;
+            bodyText.verticalOverflow = VerticalWrapMode.Truncate;
+
+            selectionPromptRect.anchorMin = new Vector2(0.5f, 1f);
+            selectionPromptRect.anchorMax = new Vector2(0.5f, 1f);
+            selectionPromptRect.pivot = new Vector2(0.5f, 1f);
+            selectionPromptRect.anchoredPosition = new Vector2(0f, -234f);
+            selectionPromptRect.sizeDelta = new Vector2(panelWidth - 64f, 64f);
+
+            optionsContainerRect.anchorMin = new Vector2(0.5f, 1f);
+            optionsContainerRect.anchorMax = new Vector2(0.5f, 1f);
+            optionsContainerRect.pivot = new Vector2(0.5f, 1f);
+            optionsContainerRect.anchoredPosition = new Vector2(0f, -306f);
+            optionsContainerRect.sizeDelta = new Vector2(panelWidth - 56f, Mathf.Max(220f, panelHeight - 330f));
         }
         else
         {
-            optionsContainerRect.sizeDelta = new Vector2(-56f, 224f);
-            selectionPromptRect.anchoredPosition = new Vector2(0f, 360f);
+            bodyRect.anchorMin = Vector2.zero;
+            bodyRect.anchorMax = Vector2.one;
+            bodyRect.pivot = new Vector2(0.5f, 0.5f);
             bodyRect.offsetMin = new Vector2(32f, 112f);
             bodyRect.offsetMax = new Vector2(-32f, -104f);
+            bodyText.verticalOverflow = VerticalWrapMode.Overflow;
+
+            selectionPromptRect.anchorMin = new Vector2(0.5f, 1f);
+            selectionPromptRect.anchorMax = new Vector2(0.5f, 1f);
+            selectionPromptRect.pivot = new Vector2(0.5f, 1f);
+            selectionPromptRect.anchoredPosition = new Vector2(0f, -234f);
+            selectionPromptRect.sizeDelta = new Vector2(panelWidth - 64f, 64f);
+
+            optionsContainerRect.anchorMin = new Vector2(0.5f, 1f);
+            optionsContainerRect.anchorMax = new Vector2(0.5f, 1f);
+            optionsContainerRect.pivot = new Vector2(0.5f, 1f);
+            optionsContainerRect.anchoredPosition = new Vector2(0f, -306f);
+            optionsContainerRect.sizeDelta = new Vector2(panelWidth - 56f, Mathf.Max(220f, panelHeight - 330f));
         }
     }
 
@@ -413,7 +473,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         string description = string.IsNullOrWhiteSpace(boon.description)
             ? "No description available."
             : boon.description.Trim();
-        return $"<b>{boon.GetResolvedDisplayName()}</b>\n<size=18>{description}</size>\n<size=16>Family: {FormatArchetype(boon.archetypeFamily)}</size>";
+        return $"<b>{boon.GetResolvedDisplayName()}</b>\n<size=16>{description}</size>\n<size=14>Family: {FormatArchetype(boon.archetypeFamily)}</size>";
     }
 
     private static string FormatArchetype(HexNemesisArchetype archetype)

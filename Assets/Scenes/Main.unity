@@ -1265,12 +1265,12 @@ MonoBehaviour:
     definition: {fileID: 11400000, guid: 6aa7d191ad4c4c5ca0de247c7a7e1280, type: 2}
     count: 1
     placementBand: 2
-  - isEnabled: 1
+  - isEnabled: 0
     definition: {fileID: 11400000, guid: d6e9eec2dc7745e7bfeb8724a79dca4f, type: 2}
     count: 1
     placementBand: 3
   mapObjectPlacementRequests:
-  - isEnabled: 1
+  - isEnabled: 0
     definition: {fileID: 11400000, guid: 8bfba660f0818434694b964228c94113, type: 2}
     count: 1
     placementBand: 1
@@ -1489,6 +1489,7 @@ MonoBehaviour:
     unseenOverlayAlpha: 0.92
     overlayHeight: 0.03
     overlayScale: 1.02
+  disableFogInEditor: 0
 --- !u!114 &1822504940
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1728,6 +1729,16 @@ MonoBehaviour:
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
+  selectedBoonsSummary: 'Act: 3
+
+    Locked Family: Hunter
+
+    Boons:
+
+    - Staff
+    of the Guide [Hunter]
+
+    - The Green Veil [Hunter]'
 --- !u!1 &1822504960
 GameObject:
   m_ObjectHideFlags: 0
@@ -1776,6 +1787,7 @@ MonoBehaviour:
     enableNemesis: 0
     activeArchetype: 1
     cornerChoice: 0
+    enableHunterVisibilityModifiers: 1
     enableDebugLogging: 1
     hunterProfile: {fileID: 11400000, guid: 2f44c8ba3d7d4f46b92ca78c4cd81fd8, type: 2}
     echoProfile: {fileID: 11400000, guid: 7a2dbfdd12d84ab1be2f856d3db3fd2d, type: 2}

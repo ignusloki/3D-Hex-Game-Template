@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-04-17
+Last updated: 2026-04-19
 
 ## Current State
 
@@ -28,7 +28,7 @@ The movement animation task is intentionally deferred for later.
 
 ### 1. Act Transition System
 
-This is the next active feature to build.
+This foundation is now in place and has moved into content-expansion / validation mode.
 
 Scope:
 
@@ -58,8 +58,9 @@ Act-transition implementation status:
 
 - slice 1 is done: persistent multi-act run session, transition modal, scene reload between acts, resource carryover, configurable between-act grants, and Act 2 nemesis suppression
 - slice 2 is done: act-specific map generation profiles, scene-level act-transition configuration, and desert-fallback support for Act 2 generation
-- slice 3 is implemented and ready for validation: transition boon choice UI, family lock, and multi-boon stacking
-- slice 4 is pending: Act 3 nemesis activation from the locked family
+- slice 3 is done: transition boon choice UI, family lock, and multi-boon stacking
+- slice 4 is done: Act 3 nemesis activation from the locked family, boon-driven nemesis runtime modifiers, and the first authored Hunter Act 3 boon pool
+- current follow-up: author Echo and Corruptor final boon pools, replace the mock quest-marker flow with real quest content, and balance the Hunter Act 3 boon set through playtesting
 
 ### 2. Map Generation Follow-Up
 

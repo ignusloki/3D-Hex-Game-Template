@@ -7,6 +7,8 @@ public sealed class PitstopEventController : MonoBehaviour
     [Header("Encounter Pool")]
     [SerializeField] private List<PitstopEncounterAsset> encounterPool = new();
     [SerializeField] private string encounterResourcesPath = "PitstopEvents";
+    [Header("Debug")]
+    [SerializeField] private bool enableDebugLogging = true;
 
     private readonly Dictionary<PitstopKind, PitstopEventDefinition> definitionsByKind = new();
     private readonly Dictionary<PitstopKind, List<PitstopEncounterAsset>> encountersByKind = new();
@@ -31,6 +33,7 @@ public sealed class PitstopEventController : MonoBehaviour
         EnsureEncounters();
         EnsureModalPresenter();
         SyncSiteMetadata();
+        LogDebug($"Initialized controller. Definitions={definitionsByKind.Count}, encounterAssets={encounterPool?.Count ?? 0}, kindsWithChoicePools={encountersByKind.Count}.");
     }
 
     public PitstopEventResult ProcessArrival(HexCoordinates coordinates, CaravanResourceState resources)
@@ -42,20 +45,32 @@ public sealed class PitstopEventController : MonoBehaviour
 
         if (site.IsDestroyed)
         {
+            LogDebug($"Skipped arrival at {coordinates}: site is destroyed.");
             return PitstopEventResult.Empty;
         }
 
         if (!definitionsByKind.TryGetValue(site.Kind, out PitstopEventDefinition definition) || definition == null)
         {
+            Debug.LogWarning($"[PitstopEvent] No event definition configured for pitstop kind '{site.Kind}' at {coordinates}.", this);
             return PitstopEventResult.Empty;
         }
 
         PitstopEventResult result = PitstopEventResolver.ResolveArrival(site, definition, resources);
+        if (!result.Triggered)
+        {
+            LogDebug($"No pitstop event triggered at {coordinates} ({site.Kind}). Reason: revisit of non-repeatable definition '{definition.title}'.");
+        }
+
         if (result.Triggered && TryChooseEncounter(site, result, resources.ToSnapshot(), out PitstopEncounterAsset encounter))
         {
             result.Encounter = encounter;
             result.RequiresChoice = encounter.options != null && encounter.options.Count > 0;
             seenEncounterIds.Add(encounter.eventId);
+            LogDebug($"Selected encounter '{encounter.eventId}' for {site.Kind} at {coordinates}. RequiresChoice={result.RequiresChoice}, FirstVisit={result.IsFirstVisit}.");
+        }
+        else if (result.Triggered)
+        {
+            LogDebug($"No encounter modal for {site.Kind} at {coordinates}. {BuildEncounterSelectionDiagnostics(site, result, resources.ToSnapshot())}");
         }
 
         ApplyMetadata(site, definition);
@@ -66,6 +81,10 @@ public sealed class PitstopEventController : MonoBehaviour
     {
         if (eventResult == null || !eventResult.RequiresChoice || eventResult.Encounter == null)
         {
+            if (eventResult != null)
+            {
+                LogDebug($"Skipped modal presentation for pitstop '{eventResult.Title}' at {eventResult.Site?.Coordinates.ToString() ?? "unknown"} because no choice encounter is active.");
+            }
             onResolved?.Invoke(eventResult ?? PitstopEventResult.Empty);
             return;
         }
@@ -73,19 +92,23 @@ public sealed class PitstopEventController : MonoBehaviour
         EnsureModalPresenter();
         if (modalPresenter == null)
         {
+            Debug.LogError($"[PitstopEvent] Could not present pitstop event modal for '{eventResult.Encounter.eventId}' because no modal presenter is available.", this);
             onResolved?.Invoke(eventResult);
             return;
         }
 
         CaravanResourceSnapshot resourceSnapshot = resources.ToSnapshot();
+        LogDebug($"Presenting encounter '{eventResult.Encounter.eventId}' at {eventResult.Site?.Coordinates.ToString() ?? "unknown"} with {eventResult.Encounter.options.Count} option(s).");
         modalPresenter.ShowChoice(eventResult, resourceSnapshot, optionIndex =>
         {
             if (!eventResult.Encounter.options[optionIndex].CanAfford(resources.ToSnapshot()))
             {
+                LogDebug($"Rejected option {optionIndex} for encounter '{eventResult.Encounter.eventId}' because the caravan cannot afford it.");
                 return;
             }
 
             PitstopEventResult resolvedResult = ResolveChoice(eventResult, optionIndex, resources);
+            LogDebug($"Resolved encounter '{eventResult.Encounter.eventId}' with option '{resolvedResult.SelectedOption?.label ?? "unknown"}'.");
             onResolved?.Invoke(resolvedResult);
 
             if (modalPresenter == null || !modalPresenter.IsOpen)
@@ -237,5 +260,170 @@ public sealed class PitstopEventController : MonoBehaviour
         }
 
         return visitedCount;
+    }
+
+    private string BuildEncounterSelectionDiagnostics(PitstopSite site, PitstopEventResult eventResult, CaravanResourceSnapshot resources)
+    {
+        if (site == null || eventResult == null)
+        {
+            return "Encounter diagnostics unavailable.";
+        }
+
+        int totalForKind = 0;
+        int withChoices = 0;
+        int eligible = 0;
+        int blockedRepeatVisit = 0;
+        int blockedSeen = 0;
+        int blockedVisitedCount = 0;
+        int blockedResourceBounds = 0;
+        int blockedNoAffordableOptions = 0;
+        List<string> exampleReasons = new();
+
+        PitstopEncounterSelectionContext context = new(
+            site,
+            eventResult.IsFirstVisit,
+            GetVisitedPitstopCount(),
+            resources,
+            seenEncounterIds);
+
+        if (encounterPool != null)
+        {
+            for (int index = 0; index < encounterPool.Count; index++)
+            {
+                PitstopEncounterAsset encounter = encounterPool[index];
+                if (encounter == null || encounter.pitstopKind != site.Kind)
+                {
+                    continue;
+                }
+
+                totalForKind++;
+                encounter.Validate();
+                if (encounter.options == null || encounter.options.Count == 0)
+                {
+                    continue;
+                }
+
+                withChoices++;
+                if (!TryGetEncounterRejectionReason(encounter, context, out string rejectionReason))
+                {
+                    eligible++;
+                    continue;
+                }
+
+                switch (rejectionReason)
+                {
+                    case "repeatVisit":
+                        blockedRepeatVisit++;
+                        break;
+
+                    case "alreadySeen":
+                        blockedSeen++;
+                        break;
+
+                    case "visitedCount":
+                        blockedVisitedCount++;
+                        break;
+
+                    case "resourceBounds":
+                        blockedResourceBounds++;
+                        break;
+
+                    case "noAffordableOptions":
+                        blockedNoAffordableOptions++;
+                        break;
+                }
+
+                if (exampleReasons.Count < 3)
+                {
+                    exampleReasons.Add($"{encounter.eventId}:{rejectionReason}");
+                }
+            }
+        }
+
+        System.Text.StringBuilder summary = new();
+        summary.Append($"Encounter diagnostics: totalForKind={totalForKind}, withChoices={withChoices}, eligible={eligible}");
+        summary.Append($", repeatVisit={blockedRepeatVisit}, alreadySeen={blockedSeen}, visitedCount={blockedVisitedCount}, resourceBounds={blockedResourceBounds}, noAffordableOptions={blockedNoAffordableOptions}");
+        summary.Append($", firstVisit={eventResult.IsFirstVisit}, visitedPitstops={context.VisitedPitstopCount}, seenInRun={seenEncounterIds.Count}");
+        if (exampleReasons.Count > 0)
+        {
+            summary.Append($", examples=[{string.Join(", ", exampleReasons)}]");
+        }
+
+        return summary.ToString();
+    }
+
+    private static bool TryGetEncounterRejectionReason(
+        PitstopEncounterAsset encounter,
+        PitstopEncounterSelectionContext context,
+        out string rejectionReason)
+    {
+        rejectionReason = string.Empty;
+        if (encounter == null)
+        {
+            rejectionReason = "missingEncounter";
+            return true;
+        }
+
+        PitstopEncounterSelectionRules rules = encounter.selectionRules ?? new PitstopEncounterSelectionRules();
+        rules.Validate();
+
+        if (rules.requireFirstVisit && !context.IsFirstVisit)
+        {
+            rejectionReason = "repeatVisit";
+            return true;
+        }
+
+        if (!rules.allowRepeatSelectionInRun && context.HasSeenEncounter(encounter.eventId))
+        {
+            rejectionReason = "alreadySeen";
+            return true;
+        }
+
+        if (!MatchesRange(context.VisitedPitstopCount, rules.minimumVisitedPitstops, rules.maximumVisitedPitstops))
+        {
+            rejectionReason = "visitedCount";
+            return true;
+        }
+
+        if (!MatchesRange(context.Resources.Food, rules.minimumFood, rules.maximumFood)
+            || !MatchesRange(context.Resources.Morale, rules.minimumMorale, rules.maximumMorale)
+            || !MatchesRange(context.Resources.Gold, rules.minimumGold, rules.maximumGold))
+        {
+            rejectionReason = "resourceBounds";
+            return true;
+        }
+
+        if (!encounter.HasAffordableOption(context.Resources))
+        {
+            rejectionReason = "noAffordableOptions";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool MatchesRange(int value, int minimumValue, int maximumValue)
+    {
+        if (minimumValue >= 0 && value < minimumValue)
+        {
+            return false;
+        }
+
+        if (maximumValue >= 0 && value > maximumValue)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void LogDebug(string message)
+    {
+        if (!enableDebugLogging || string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        Debug.Log($"[PitstopEvent] {message}", this);
     }
 }

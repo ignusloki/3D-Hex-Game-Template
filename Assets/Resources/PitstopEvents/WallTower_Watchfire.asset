@@ -15,6 +15,17 @@ MonoBehaviour:
   eventId: walltower-watchfire
   pitstopKind: 1
   selectionWeight: 1
+  selectionRules:
+    requireFirstVisit: 1
+    allowRepeatSelectionInRun: 1
+    minimumVisitedPitstops: 0
+    maximumVisitedPitstops: -1
+    minimumFood: 0
+    maximumFood: 0
+    minimumMorale: 0
+    maximumMorale: 0
+    minimumGold: 0
+    maximumGold: 0
   title: Watchfire Rumors
   description: The guards wave you toward their fire and offer news from the road if you linger a little longer.
   options:

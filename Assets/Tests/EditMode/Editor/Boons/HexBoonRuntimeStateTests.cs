@@ -76,6 +76,66 @@ public class HexBoonRuntimeStateTests
         Assert.That(runtime.GetStatusLine(), Does.Contain("Stations of the March"));
     }
 
+    [Test]
+    public void HunterBoon_ExposesBiomeVisibilityRules()
+    {
+        HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();
+        definition.displayName = "The Green Veil";
+        definition.category = HexBoonCategory.MapModifying;
+        definition.archetypeFamily = HexNemesisArchetype.Hunter;
+        definition.mapModifier.grassRegionWeightMultiplier = 1.3f;
+        definition.nemesisModifier.visibilityRules = new[]
+        {
+            new HexBoonNemesisVisibilityRuleData
+            {
+                visibilityMode = HexBoonNemesisVisibilityMode.Hidden,
+                affectedBiomes = new[] { Biome.grass }
+            }
+        };
+        definition.Validate();
+
+        HexBoonRuntimeState runtime = new(definition);
+        HexNemesisRuntimeModifiers modifiers = runtime.GetNemesisRuntimeModifiers(HexNemesisArchetype.Hunter);
+
+        Assert.That(modifiers.GetVisibilityModeForBiome(Biome.grass), Is.EqualTo(HexBoonNemesisVisibilityMode.Hidden));
+        Assert.That(modifiers.GetVisibilityModeForBiome(Biome.desert), Is.EqualTo(HexBoonNemesisVisibilityMode.None));
+        Assert.That(runtime.GetMapGenerationModifiers().GrassRegionWeightMultiplier, Is.EqualTo(1.3f).Within(0.0001f));
+    }
+
+    [Test]
+    public void Boon_ActStartGrantAppliesOnceToSnapshot()
+    {
+        HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();
+        definition.displayName = "Ember Under Ash";
+        definition.archetypeFamily = HexNemesisArchetype.Hunter;
+        definition.actStartGrant.food = 5;
+        definition.actStartGrant.morale = 3;
+        definition.actStartGrant.gold = 3;
+        definition.Validate();
+
+        CaravanResourceSnapshot result = definition.ApplyActStartGrant(new CaravanResourceSnapshot(10, 2, 1));
+
+        Assert.That(definition.HasActStartGrant(), Is.True);
+        Assert.That(result.Food, Is.EqualTo(15));
+        Assert.That(result.Morale, Is.EqualTo(5));
+        Assert.That(result.Gold, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void HunterBoon_ExposesStartPressureModifier()
+    {
+        HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();
+        definition.displayName = "Ember Under Ash";
+        definition.archetypeFamily = HexNemesisArchetype.Hunter;
+        definition.nemesisModifier.startStepsTowardCaravanSpawn = 2;
+        definition.Validate();
+
+        HexBoonRuntimeState runtime = new(definition);
+        HexNemesisRuntimeModifiers modifiers = runtime.GetNemesisRuntimeModifiers(HexNemesisArchetype.Hunter);
+
+        Assert.That(modifiers.ResolveStartStepsTowardCaravanSpawn(), Is.EqualTo(2));
+    }
+
     private static HexBoonDefinition CreatePassiveBoon()
     {
         HexBoonDefinition definition = ScriptableObject.CreateInstance<HexBoonDefinition>();

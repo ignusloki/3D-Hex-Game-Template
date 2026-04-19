@@ -1,6 +1,6 @@
 # Act Transition System
 
-Last updated: 2026-04-17
+Last updated: 2026-04-19
 
 ## Purpose
 
@@ -46,7 +46,7 @@ Delivered:
 
 ### Slice 3: Transition boon selection and stacking
 
-Status: implemented, pending editor validation
+Status: done
 
 Delivered:
 
@@ -56,15 +56,26 @@ Delivered:
 - transition-authored boon pools in the act transition config
 - family filtering plus duplicate-avoidance for the second transition
 - session-owned boon state so Act 1 starts without a legacy preselected boon when act transitions are enabled
+- Act 2 -> Act 3 boon pools now authored independently from Act 1 -> Act 2 boon pools
 
 ### Slice 4: Act 3 nemesis family lock
 
-Status: pending
+Status: done
 
-Target:
+Delivered:
 
-- Act 3 nemesis archetype driven by the family locked after Act 1
-- removal of the current temporary dependence on scene nemesis setup
+- Act 3 nemesis archetype is now driven by the family locked after Act 1
+- Act 3 nemesis enablement is resolved from persistent act-transition state instead of scene-only setup
+- boon-driven nemesis runtime modifiers now support:
+  - movement cadence overrides
+  - steps-per-activation overrides
+  - goal-hex spawn override
+  - biome-based visibility rules with reusable `Hidden` and `Obscured` modes
+- stepping onto a Hunter-occupied hex now causes defeat immediately, including the goal hex
+- Act 2 -> Act 3 Hunter boon content is now authored through data assets:
+  - `The Green Veil`
+  - `The Guarded Promise`
+  - `Ember Under Ash`
 
 ## High-Level Run Structure
 
@@ -146,6 +157,24 @@ It does:
 - add the Act 3 boon from the already locked family
 - finalize the player's stacked boon loadout for the last act
 
+### Current Hunter Act 3 boon set
+
+The current Act 2 -> Act 3 content pass only authors Hunter-family boons.
+
+The three current final Hunter boons are:
+
+- `The Green Veil`
+  - increases Act 3 grass-region weighting
+  - hides the Hunter while it stands on grass
+- `The Guarded Promise`
+  - reduces Hunter movement to `1` hex per activation
+  - starts the Hunter on the goal hex
+- `Ember Under Ash`
+  - grants `+5 Food`, `+3 Morale`, and `+3 Gold` at the start of Act 3
+  - starts the Hunter `2` hexes closer to the caravan spawn point
+
+The architecture is still expected to support Echo and Corruptor content later, but that content is not authored yet.
+
 ### Act 3
 
 - Uses a general procedural map profile again
@@ -153,6 +182,7 @@ It does:
 - accumulated boon effects still apply
 - the Act 3 nemesis is enabled
 - the nemesis archetype must match the family locked by the first boon choice
+- Act 3 boons can now also modify the nemesis directly through data-driven runtime modifiers
 
 Act 3 is the final act.
 

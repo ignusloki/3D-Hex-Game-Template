@@ -42,6 +42,6 @@ MonoBehaviour:
       morale: 1
       gold: 3
     boonOptions:
-    - {fileID: 11400000, guid: 46518f2c8a6734201a29608c7077a92d, type: 2}
-    - {fileID: 11400000, guid: 0c07eaea0438b4f2496a32e538e13bfc, type: 2}
-    - {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}
+    - {fileID: 11400000, guid: c07c4d6c66d74ad58d6cac4cb81a3546, type: 2}
+    - {fileID: 11400000, guid: 38e82eae9afd48a4ad71505b657649bb, type: 2}
+    - {fileID: 11400000, guid: 80c8aad5b3e947e989adc019b27bb765, type: 2}

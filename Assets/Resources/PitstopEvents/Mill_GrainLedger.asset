@@ -15,6 +15,17 @@ MonoBehaviour:
   eventId: mill-grain-ledger
   pitstopKind: 0
   selectionWeight: 1
+  selectionRules:
+    requireFirstVisit: 1
+    allowRepeatSelectionInRun: 1
+    minimumVisitedPitstops: 0
+    maximumVisitedPitstops: -1
+    minimumFood: 0
+    maximumFood: 0
+    minimumMorale: 0
+    maximumMorale: 0
+    minimumGold: 0
+    maximumGold: 0
   title: The Miller's Ledger
   description: The miller counts sacks by lantern light and offers a quiet bargain before the road calls the caravan onward.
   options:

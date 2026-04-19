@@ -159,6 +159,23 @@ public sealed class HexBoonRuntimeState
         return modifiers;
     }
 
+    public HexNemesisRuntimeModifiers GetNemesisRuntimeModifiers(HexNemesisArchetype archetype)
+    {
+        HexNemesisRuntimeModifiers modifiers = HexNemesisRuntimeModifiers.None;
+        for (int index = 0; index < activeBoons.Count; index++)
+        {
+            HexBoonDefinition definition = activeBoons[index].Definition;
+            if (definition == null || definition.archetypeFamily != archetype)
+            {
+                continue;
+            }
+
+            modifiers = modifiers.Combine(definition.GetNemesisRuntimeModifiers());
+        }
+
+        return modifiers;
+    }
+
     public bool TryConsumeObstacleIgnore(out HexBoonChargeChangeResult chargeChange)
     {
         chargeChange = HexBoonChargeChangeResult.None;

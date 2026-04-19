@@ -16,6 +16,7 @@ public sealed class HexNemesisController : MonoBehaviour
     private HexNemesisPhase currentPhase = HexNemesisPhase.Inactive;
     private int caravanMovesSinceLastAction;
     private HexNemesisArchetypeProfile activeProfile;
+    private HexNemesisRuntimeModifiers runtimeModifiers = HexNemesisRuntimeModifiers.None;
 
     public bool IsInitialized => mapGenerator != null;
     public bool IsEnabled => settings != null
@@ -62,7 +63,7 @@ public sealed class HexNemesisController : MonoBehaviour
             switch (settings.activeArchetype)
             {
                 case HexNemesisArchetype.Hunter:
-                    actorCoordinates = ResolveUnusedCornerCoordinates();
+                    actorCoordinates = ResolveHunterStartCoordinates(caravanStartCoordinates);
                     currentPhase = HexNemesisPhase.HunterPursuit;
                     break;
 
@@ -92,12 +93,32 @@ public sealed class HexNemesisController : MonoBehaviour
         activeProfile = settings.GetProfile(archetype);
     }
 
+    public void ConfigureRuntimeModifiers(HexNemesisRuntimeModifiers modifiers)
+    {
+        runtimeModifiers = modifiers;
+    }
+
     public bool IsBlockedDestination(HexCoordinates coordinates)
     {
         return IsEnabled
             && settings.activeArchetype == HexNemesisArchetype.Echo
             && echoBlockedCoordinates.HasValue
             && echoBlockedCoordinates.Value.Equals(coordinates);
+    }
+
+    public bool TryResolveImmediateCaravanContact(HexCoordinates caravanCoordinates, out string defeatReason)
+    {
+        defeatReason = string.Empty;
+        if (!IsEnabled
+            || settings.activeArchetype != HexNemesisArchetype.Hunter
+            || !actorCoordinates.HasValue
+            || !actorCoordinates.Value.Equals(caravanCoordinates))
+        {
+            return false;
+        }
+
+        defeatReason = "The Hunter was already waiting on that hex.";
+        return true;
     }
 
     public string GetTileDetails(HexCoordinates coordinates)
@@ -110,7 +131,15 @@ public sealed class HexNemesisController : MonoBehaviour
         List<string> lines = new();
         if (actorCoordinates.HasValue && actorCoordinates.Value.Equals(coordinates))
         {
-            lines.Add($"Nemesis: {FormatArchetype(settings.activeArchetype)}");
+            HexBoonNemesisVisibilityMode visibilityMode = GetActorVisibilityModeAt(coordinates);
+            if (visibilityMode == HexBoonNemesisVisibilityMode.Obscured)
+            {
+                lines.Add($"Nemesis: {FormatArchetype(settings.activeArchetype)} (obscured)");
+            }
+            else if (visibilityMode == HexBoonNemesisVisibilityMode.None)
+            {
+                lines.Add($"Nemesis: {FormatArchetype(settings.activeArchetype)}");
+            }
         }
 
         if (settings.activeArchetype == HexNemesisArchetype.Echo
@@ -164,6 +193,9 @@ public sealed class HexNemesisController : MonoBehaviour
 
         turnResult.Phase = currentPhase;
         turnResult.CurrentCoordinates = actorCoordinates;
+        turnResult.CurrentCoordinatesVisibilityMode = actorCoordinates.HasValue
+            ? GetActorVisibilityModeAt(actorCoordinates.Value)
+            : HexBoonNemesisVisibilityMode.None;
         turnResult.EchoBlockedCoordinates = echoBlockedCoordinates;
 
         ApplyObstaclePressureContext();
@@ -174,7 +206,9 @@ public sealed class HexNemesisController : MonoBehaviour
 
     private void ProcessHunter(HexCoordinates caravanCoordinates, HexNemesisTurnResult turnResult)
     {
-        if (!actorCoordinates.HasValue || activeProfile == null || !AdvanceActivationCadenceAndShouldAct(activeProfile.caravanMovesPerActivation))
+        if (!actorCoordinates.HasValue
+            || activeProfile == null
+            || !AdvanceActivationCadenceAndShouldAct(runtimeModifiers.ResolveCaravanMovesPerActivation(activeProfile.caravanMovesPerActivation)))
         {
             return;
         }
@@ -183,7 +217,7 @@ public sealed class HexNemesisController : MonoBehaviour
         HexCoordinates previousCoordinates = actorCoordinates.Value;
         turnResult.PreviousCoordinates = previousCoordinates;
 
-        int stepCount = Mathf.Max(1, activeProfile.stepsPerActivation);
+        int stepCount = runtimeModifiers.ResolveStepsPerActivation(activeProfile.stepsPerActivation);
         for (int stepIndex = 0; stepIndex < stepCount; stepIndex++)
         {
             HexCoordinates nextCoordinates = GetNextStepTowards(actorCoordinates.Value, caravanCoordinates);
@@ -441,6 +475,98 @@ public sealed class HexNemesisController : MonoBehaviour
         return corners[index];
     }
 
+    private HexCoordinates ResolveHunterStartCoordinates(HexCoordinates caravanStartCoordinates)
+    {
+        if (runtimeModifiers.StartLocationOverride == HexBoonNemesisStartLocationOverride.GoalHex && mapGenerator != null)
+        {
+            return mapGenerator.GoalCoordinates;
+        }
+
+        HexCoordinates startingCoordinates = ResolveUnusedCornerCoordinates();
+        int closerSteps = runtimeModifiers.ResolveStartStepsTowardCaravanSpawn();
+        if (closerSteps <= 0)
+        {
+            return startingCoordinates;
+        }
+
+        return ResolveCoordinatesCloserToTarget(startingCoordinates, caravanStartCoordinates, closerSteps);
+    }
+
+    private HexCoordinates ResolveCoordinatesCloserToTarget(HexCoordinates origin, HexCoordinates target, int maxSteps)
+    {
+        if (mapGenerator?.GridData == null || maxSteps <= 0)
+        {
+            return origin;
+        }
+
+        HexCoordinates current = origin;
+        for (int stepIndex = 0; stepIndex < maxSteps; stepIndex++)
+        {
+            List<HexCoordinates> bestCandidates = GetBestNextStepCandidatesTowards(current, target);
+            if (bestCandidates.Count == 0)
+            {
+                break;
+            }
+
+            current = bestCandidates[UnityEngine.Random.Range(0, bestCandidates.Count)];
+        }
+
+        return current;
+    }
+
+    private List<HexCoordinates> GetBestNextStepCandidatesTowards(HexCoordinates origin, HexCoordinates target)
+    {
+        List<HexCoordinates> candidates = new();
+        if (mapGenerator?.GridData == null)
+        {
+            return candidates;
+        }
+
+        int currentDistance = origin.DistanceTo(target);
+        int bestDistance = currentDistance;
+        foreach (HexCoordinates neighborCoordinates in mapGenerator.GridData.GetNeighborCoordinates(origin))
+        {
+            int distance = neighborCoordinates.DistanceTo(target);
+            if (distance >= currentDistance)
+            {
+                continue;
+            }
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                candidates.Clear();
+            }
+
+            if (distance == bestDistance)
+            {
+                candidates.Add(neighborCoordinates);
+            }
+        }
+
+        return candidates;
+    }
+
+    private HexBoonNemesisVisibilityMode GetActorVisibilityModeAt(HexCoordinates coordinates)
+    {
+        if (settings == null
+            || settings.activeArchetype != HexNemesisArchetype.Hunter
+            || !settings.enableHunterVisibilityModifiers)
+        {
+            return HexBoonNemesisVisibilityMode.None;
+        }
+
+        if (!runtimeModifiers.HasAny
+            || mapGenerator == null
+            || !mapGenerator.TryGetTileData(coordinates, out HexTileData tileData)
+            || tileData == null)
+        {
+            return HexBoonNemesisVisibilityMode.None;
+        }
+
+        return runtimeModifiers.GetVisibilityModeForBiome(tileData.Biome);
+    }
+
     private void ApplyObstaclePressureContext()
     {
         if (obstacleController == null)
@@ -481,7 +607,15 @@ public sealed class HexNemesisController : MonoBehaviour
 
     private void RefreshPresentation()
     {
-        presenter.Apply(mapGenerator, ActiveArchetype, activeProfile, actorCoordinates, corruptedHexes);
+        presenter.Apply(
+            mapGenerator,
+            ActiveArchetype,
+            activeProfile,
+            actorCoordinates,
+            corruptedHexes,
+            actorCoordinates.HasValue
+                ? GetActorVisibilityModeAt(actorCoordinates.Value)
+                : HexBoonNemesisVisibilityMode.None);
     }
 
     private void LogTurnResult(HexNemesisTurnResult turnResult)
@@ -493,7 +627,8 @@ public sealed class HexNemesisController : MonoBehaviour
 
         Debug.Log(
             $"[Nemesis] Archetype={turnResult.Archetype}, Phase={turnResult.Phase}, Acted={turnResult.Acted}, " +
-            $"Current={turnResult.CurrentCoordinates?.ToString() ?? "none"}, Corrupted+={turnResult.NewlyCorruptedHexes.Count}, " +
+            $"Current={turnResult.CurrentCoordinates?.ToString() ?? "none"}, Visibility={turnResult.CurrentCoordinatesVisibilityMode}, " +
+            $"Corrupted+={turnResult.NewlyCorruptedHexes.Count}, " +
             $"DestroyedPitstops={turnResult.DestroyedPitstops.Count}, Defeat={turnResult.CausedDefeat}.",
             this);
     }

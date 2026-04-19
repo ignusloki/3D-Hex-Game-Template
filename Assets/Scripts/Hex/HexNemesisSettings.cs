@@ -6,6 +6,9 @@ public sealed class HexNemesisSettings
     public bool enableNemesis;
     public HexNemesisArchetype activeArchetype = HexNemesisArchetype.Hunter;
     public HexNemesisUnusedCornerChoice cornerChoice = HexNemesisUnusedCornerChoice.FirstUnusedCorner;
+    [Header("Hunter")]
+    public bool enableHunterVisibilityModifiers = true;
+    [Header("Debug")]
     public bool enableDebugLogging;
     public HexNemesisArchetypeProfile hunterProfile;
     public HexNemesisArchetypeProfile echoProfile;

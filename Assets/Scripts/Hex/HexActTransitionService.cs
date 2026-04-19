@@ -181,6 +181,43 @@ public static class HexActTransitionService
             && GetCurrentActNumber() == 2;
     }
 
+    public static HexNemesisArchetype ResolveNemesisArchetypeForCurrentAct(HexNemesisArchetype defaultArchetype)
+    {
+        if (!UsesActTransitionBoonState())
+        {
+            return defaultArchetype;
+        }
+
+        int currentAct = GetCurrentActNumber();
+        if (currentAct >= 3 && GetLockedBoonFamily() != HexNemesisArchetype.None)
+        {
+            return GetLockedBoonFamily();
+        }
+
+        return defaultArchetype;
+    }
+
+    public static bool ResolveNemesisEnabledForCurrentAct(bool defaultEnabled)
+    {
+        if (!UsesActTransitionBoonState())
+        {
+            return defaultEnabled;
+        }
+
+        if (ShouldDisableNemesisForCurrentAct())
+        {
+            return false;
+        }
+
+        int currentAct = GetCurrentActNumber();
+        if (currentAct >= 3 && GetLockedBoonFamily() != HexNemesisArchetype.None)
+        {
+            return true;
+        }
+
+        return defaultEnabled;
+    }
+
     public static HexActGenerationProfileSelection GetCurrentActGenerationProfile()
     {
         int actNumber = GetCurrentActNumber();
@@ -303,14 +340,13 @@ public static class HexActTransitionService
             nextResources = step.betweenActGrant.ApplyTo(nextResources);
         }
 
+        if (selectedBoon != null)
+        {
+            nextResources = selectedBoon.ApplyActStartGrant(nextResources);
+        }
+
         currentSession.CurrentActNumber++;
         currentSession.CurrentResources = nextResources;
-        string lockedFamilySummary = currentSession.LockedBoonFamily != HexNemesisArchetype.None
-            ? $", LockedFamily={FormatArchetype(currentSession.LockedBoonFamily)}"
-            : string.Empty;
-        Debug.Log(
-            $"[ActTransition] Advanced to Act {currentSession.CurrentActNumber}. Resources: Food={nextResources.Food}, Morale={nextResources.Morale}, Gold={nextResources.Gold}. " +
-            $"SelectedBoons={currentSession.SelectedBoons.Count}{lockedFamilySummary}.");
         return true;
     }
 

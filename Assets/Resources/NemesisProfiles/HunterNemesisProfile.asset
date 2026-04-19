@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: HunterNemesisProfile
   m_EditorClassIdentifier: 
   archetype: 1
-  caravanMovesPerActivation: 1
-  stepsPerActivation: 1
+  caravanMovesPerActivation: 3
+  stepsPerActivation: 2
   minimumMaxActiveObstacles: 3
   corruptionInfluenceRadius: 1
   corruptionSpawnChanceBonus: 0.12

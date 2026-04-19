@@ -1,7 +1,7 @@
 # Hex Game
 
-Snapshot date: 2026-04-17  
-Scope of this document: current playable prototype plus the documented target for the next multi-act transition feature.  
+Snapshot date: 2026-04-19
+Scope of this document: current playable prototype with the implemented multi-act transition foundation and current Hunter Act 3 boon content.
 Audience: another chat session focused on game design decisions, not implementation details only.
 
 ## 1. Game Summary
@@ -31,12 +31,13 @@ The current playable prototype already supports a full run from spawn to goal, i
 
 The next production step is no longer just "reach the goal once."
 
-The intended run is a 3-act structure with:
+The intended run is now implemented as a 3-act structure with:
 
 - transition screens between acts
 - boon selection after Act 1 and Act 2
 - stacked boons by Act 3
 - Act 3 nemesis activation based on the family locked by the first boon choice
+- a first authored set of Hunter-specific Act 3 final boons
 
 That target flow is documented in:
 
@@ -67,32 +68,39 @@ That target flow is documented in:
 
 The long-term design intent is a 3-act structure.
 
-The current prototype does **not** yet play through all 3 acts as a full production flow. Right now:
+The current prototype now supports a playable 3-act run flow in the same gameplay scene. Right now:
 
-- the run ends when the player reaches the goal on the current map
+- the run advances from Act 1 to Act 2 and from Act 2 to Act 3 through a transition modal
+- the run ends when the player reaches the goal in Act 3
 - the run also ends if `Food` reaches `0`
 - the run also ends if `Morale` reaches `0`
 - `Gold` reaching `0` does **not** cause defeat
 
 The `Nemesis` exists now as a configurable testable system that can be enabled in the Unity editor. It is architected as if it belongs to later acts, but can currently be turned on for prototype iteration.
 
-The first runtime slice of the act-transition system now exists:
-
-- reaching the goal in Act 1 or Act 2 can hand off into the next act instead of ending the whole run
-- resources can carry between acts with configurable grants
-- the run still reloads the same gameplay scene between acts for now
-
-The multi-act transition flow now includes boon selection and stacking between acts.
-
-The remaining missing production piece is the final Act 3 nemesis family lock / activation handoff.
-
-The next target production flow is:
+The current runtime act-transition system includes:
 
 - Act 1 ends at the goal and leads into a transition screen
+- resources carry between acts with configurable grants
+- the run still reloads the same gameplay scene between acts for now
 - the first transition chooses the Act 2 boon and locks the Act 3 nemesis family
 - Act 2 uses a desert-biased procedural map and has no nemesis
 - the second transition chooses the Act 3 boon from the locked family
 - Act 3 uses a general procedural map and enables the locked-family nemesis
+
+The current authored Act 2 -> Act 3 boon set is Hunter-only:
+
+- `The Green Veil`
+- `The Guarded Promise`
+- `Ember Under Ash`
+
+Current Hunter Act 3 boon roles:
+
+- `The Green Veil`: more grass in Act 3, but the Hunter hides while standing on grass
+- `The Guarded Promise`: the Hunter moves slower, but starts on the goal hex
+- `Ember Under Ash`: grants a resource package for Act 3, but starts the Hunter `2` hexes closer to the caravan spawn point
+
+The architecture supports future Echo and Corruptor boon content, but those final-act pools are not authored yet.
 
 The detailed target for that feature lives in:
 
@@ -145,9 +153,9 @@ The current actual move resolution order is important:
 2. The caravan spends `Food` equal to the destination move cost.
 3. The caravan is moved to the destination hex.
 4. Fog of war updates.
-5. The obstacle system resolves.
-6. The Nemesis system resolves.
-7. Nemesis same-hex defeat is checked.
+5. Immediate Hunter same-hex contact is checked.
+6. The obstacle system resolves.
+7. The Nemesis system resolves.
 8. Goal victory is checked.
 9. Pitstop arrival resolves if the caravan landed on a pitstop.
 10. Resource defeat is checked.
@@ -158,11 +166,12 @@ This order has a few important consequences:
 - The player can make a move that takes `Food` or `Morale` to `0`.
 - That move is still allowed to resolve.
 - If the player reaches the goal on that move, victory takes priority over normal post-move resource defeat.
+- If the player steps onto a goal hex already occupied by the Hunter, defeat happens before victory.
 - If a pitstop and the Corruptor reach the same tile on the same move, the caravan has priority. The caravan gets the pitstop first, then the Corruptor destroys it afterward for future use.
 
 ## 4.3 Target multi-act run flow
 
-Once the act-transition system is implemented, the target loop becomes:
+The current act-transition loop is:
 
 1. Generate and play Act 1.
 2. Reach the goal.
@@ -895,9 +904,8 @@ These are important context points for future design discussion:
 - replay flow is still minimal
 - movement animation is not done
 - some board-state readability still needs polish
-- the game currently ends after the first map even though the long-term structure is 3 acts
-- the multi-act transition flow now has act handoff, act-profile generation, boon selection, and stacked-boon runtime in place
-- the remaining missing act-transition feature is Act 3 nemesis activation from the locked family
+- the multi-act transition flow now has act handoff, act-profile generation, boon selection, stacked-boon runtime, and Act 3 nemesis family lock in place
+- the currently authored final-act boon content is still Hunter-only
 - some map-generation visuals still need cleanup
 - the map generator now has a shared generation context, modifier path, terrain-landmark stamp pass, placement reservations, scene-level map-object requests, and a shared map-object placement pass that can plan pitstops, outposts, and quest markers together
 - quest markers can now be placed and spawned through the shared map-object pipeline, and they currently use a prototype-only mock interaction that shows placeholder dialog text on arrival; a real quest system does not exist yet
@@ -907,7 +915,7 @@ These are important context points for future design discussion:
 
 Based on the current backlog, the main remaining non-event tasks are:
 
-- implement the documented act-transition system from `Docs/ActTransitionSystem.md`
+- expand act-transition content beyond the current Hunter-only final boon set
 - add in-game replay flow without stopping Play mode
 - continue the map-generation refactor from the current shared placement slice into richer object behaviors, movement-blocking support if ever needed, and additional map-object content
 - improve board readability for start, goal, obstacles, fog, and pitstop state
