@@ -14,17 +14,17 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  m_FogMode: 3
-  m_FogDensity: 0.01
-  m_LinearFogStart: 0
-  m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
-  m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_Fog: 1
+  m_FogColor: {r: 0.17, g: 0.25, b: 0.31, a: 1}
+  m_FogMode: 1
+  m_FogDensity: 0.025
+  m_LinearFogStart: 6
+  m_LinearFogEnd: 16
+  m_AmbientSkyColor: {r: 0.2, g: 0.29, b: 0.35, a: 1}
+  m_AmbientEquatorColor: {r: 0.1, g: 0.14, b: 0.17, a: 1}
+  m_AmbientGroundColor: {r: 0.03, g: 0.04, b: 0.05, a: 1}
+  m_AmbientIntensity: 0.7
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
@@ -614,19 +614,19 @@ Light:
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 1
-  m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 1
+  m_Color: {r: 0.58, g: 0.78, b: 0.93, a: 1}
+  m_Intensity: 0.74
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize2D: {x: 10, y: 10}
+  m_CookieSize2D: {x: 24, y: 24}
   m_Shadows:
-    m_Type: 0
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
     m_Bias: 0.05
-    m_NormalBias: 0.4
+    m_NormalBias: 0.48
     m_NearPlane: 0.2
     m_CullingMatrixOverride:
       e00: 1
@@ -677,7 +677,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 408798155}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.26912957, y: -0.37365806, z: 0.11423872, w: 0.88028324}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 0.99999994}
   m_ConstrainProportionsScale: 0
@@ -1332,7 +1332,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0.08, g: 0.13, b: 0.18, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -1680,6 +1680,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 85f616af6de246a7ad1c34f3fa76a061, type: 2}
   - {fileID: 11400000, guid: ed6fbf77a16a4372aa2e8bb171fcca11, type: 2}
   encounterResourcesPath: PitstopEvents
+  enableDebugLogging: 1
 --- !u!1 &1822504953
 GameObject:
   m_ObjectHideFlags: 0
@@ -1729,16 +1730,11 @@ MonoBehaviour:
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
-  selectedBoonsSummary: 'Act: 3
-
-    Locked Family: Hunter
+  selectedBoonsSummary: 'Act: 1
 
     Boons:
 
-    - Staff
-    of the Guide [Hunter]
-
-    - The Green Veil [Hunter]'
+    - None'
 --- !u!1 &1822504960
 GameObject:
   m_ObjectHideFlags: 0
@@ -2346,6 +2342,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2114172011}
   - component: {fileID: 2114172012}
+  - component: {fileID: 2114172013}
   m_Layer: 0
   m_Name: Act Transition System
   m_TagString: Untagged
@@ -2382,6 +2379,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexActTransitionController
   useSceneTransitionConfig: 1
   transitionConfig: {fileID: 11400000, guid: 9602b2a76d44489ca77ef87db0870d1f, type: 2}
+--- !u!114 &2114172013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2114172010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbc4089ed6cc46fabb04df98f8f3a884, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexActAtmosphereController
+  applyActAtmosphere: 1
+  previewAtmosphereInEditor: 1
+  editorPreviewAct: 3
+  atmosphereConfig: {fileID: 11400000, guid: a8a8e32cde7b849a5b87ca4a812b7b98, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

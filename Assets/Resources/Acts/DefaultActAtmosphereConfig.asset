@@ -1,0 +1,130 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03b7b44184124b839293f5e1bdab6524, type: 3}
+  m_Name: DefaultActAtmosphereConfig
+  m_EditorClassIdentifier: Assembly-CSharp::HexActAtmosphereConfigAsset
+  displayName: Default Act Atmosphere
+  description: Built-in lighting mood used for subtle act-by-act atmosphere changes
+    without overpowering the board art.
+  isEnabled: 1
+  act1Atmosphere:
+    cameraClearFlags: 2
+    cameraBackgroundColor: {r: 0.59, g: 0.69, b: 0.78, a: 1}
+    enableFog: 1
+    fogMode: 1
+    fogColor: {r: 0.73, g: 0.79, b: 0.82, a: 1}
+    fogDensity: 0.006
+    linearFogStart: 24
+    linearFogEnd: 70
+    ambientMode: 1
+    ambientSkyColor: {r: 0.58, g: 0.64, b: 0.68, a: 1}
+    ambientEquatorColor: {r: 0.34, g: 0.37, b: 0.38, a: 1}
+    ambientGroundColor: {r: 0.17, g: 0.15, b: 0.13, a: 1}
+    ambientIntensity: 1.1
+    skyboxMaterial: {fileID: 0}
+    directionalLight:
+      overrideRotation: 1
+      eulerAngles: {x: 48, y: -26, z: 0}
+      color: {r: 1, g: 0.95, b: 0.84, a: 1}
+      intensity: 1.22
+      shadows: 2
+      shadowStrength: 0.92
+      shadowBias: 0.05
+      shadowNormalBias: 0.35
+    cloudShadows:
+      enabled: 1
+      darkness: 0.12
+      softness: 0.34
+      coverage: 0.66
+      primaryScale: 1.2
+      detailScale: 2.4
+      detailBlend: 0.28
+      textureSize: 96
+      cookieWorldSize: 60
+      windDirection: {x: 1, y: 0.15}
+      windSpeed: 0.035
+      refreshInterval: 0.18
+  act2Atmosphere:
+    cameraClearFlags: 2
+    cameraBackgroundColor: {r: 0.79, g: 0.72, b: 0.57, a: 1}
+    enableFog: 1
+    fogMode: 1
+    fogColor: {r: 0.82, g: 0.73, b: 0.58, a: 1}
+    fogDensity: 0.01
+    linearFogStart: 16
+    linearFogEnd: 42
+    ambientMode: 1
+    ambientSkyColor: {r: 0.74, g: 0.64, b: 0.49, a: 1}
+    ambientEquatorColor: {r: 0.48, g: 0.39, b: 0.28, a: 1}
+    ambientGroundColor: {r: 0.23, g: 0.18, b: 0.12, a: 1}
+    ambientIntensity: 1
+    skyboxMaterial: {fileID: 0}
+    directionalLight:
+      overrideRotation: 1
+      eulerAngles: {x: 58, y: -18, z: 0}
+      color: {r: 1, g: 0.89, b: 0.69, a: 1}
+      intensity: 1.38
+      shadows: 2
+      shadowStrength: 1
+      shadowBias: 0.06
+      shadowNormalBias: 0.4
+    cloudShadows:
+      enabled: 1
+      darkness: 0.2
+      softness: 0.3
+      coverage: 0.58
+      primaryScale: 1.45
+      detailScale: 3
+      detailBlend: 0.4
+      textureSize: 96
+      cookieWorldSize: 48
+      windDirection: {x: 0.9, y: 0.28}
+      windSpeed: 0.06
+      refreshInterval: 0.14
+  act3Atmosphere:
+    cameraClearFlags: 2
+    cameraBackgroundColor: {r: 0.33, g: 0.42, b: 0.47, a: 1}
+    enableFog: 1
+    fogMode: 1
+    fogColor: {r: 0.38, g: 0.47, b: 0.49, a: 1}
+    fogDensity: 0.012
+    linearFogStart: 14
+    linearFogEnd: 36
+    ambientMode: 1
+    ambientSkyColor: {r: 0.28, g: 0.36, b: 0.39, a: 1}
+    ambientEquatorColor: {r: 0.19, g: 0.24, b: 0.25, a: 1}
+    ambientGroundColor: {r: 0.08, g: 0.08, b: 0.09, a: 1}
+    ambientIntensity: 0.95
+    skyboxMaterial: {fileID: 0}
+    directionalLight:
+      overrideRotation: 1
+      eulerAngles: {x: 38, y: -34, z: 0}
+      color: {r: 0.76, g: 0.86, b: 0.91, a: 1}
+      intensity: 0.98
+      shadows: 2
+      shadowStrength: 1
+      shadowBias: 0.05
+      shadowNormalBias: 0.45
+    cloudShadows:
+      enabled: 1
+      darkness: 0.26
+      softness: 0.38
+      coverage: 0.56
+      primaryScale: 1.7
+      detailScale: 3.3
+      detailBlend: 0.45
+      textureSize: 128
+      cookieWorldSize: 42
+      windDirection: {x: 0.7, y: 0.4}
+      windSpeed: 0.07
+      refreshInterval: 0.12
+  editorRevision: 6
