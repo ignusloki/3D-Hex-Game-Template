@@ -6,6 +6,7 @@ Shader "Hex/Stylized Water"
         _WaveColor ("Wave Color", Color) = (0.30, 0.83, 0.91, 1)
         _FoamColor ("Foam Color", Color) = (0.72, 0.96, 1.0, 1)
         _RimColor ("Rim Color", Color) = (0.52, 0.92, 1.0, 1)
+        _EmissionColor ("Highlight Emission", Color) = (0, 0, 0, 1)
         _Glossiness ("Smoothness", Range(0, 1)) = 0.06
         _Metallic ("Metallic", Range(0, 1)) = 0
         _EmissionStrength ("Emission Strength", Range(0, 1)) = 0.12
@@ -34,6 +35,7 @@ Shader "Hex/Stylized Water"
         fixed4 _WaveColor;
         fixed4 _FoamColor;
         fixed4 _RimColor;
+        fixed4 _EmissionColor;
         half _Glossiness;
         half _Metallic;
         half _EmissionStrength;
@@ -89,7 +91,9 @@ Shader "Hex/Stylized Water"
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
             o.Occlusion = 1.0;
-            o.Emission = ((_WaveColor.rgb * band) + (_RimColor.rgb * rim)) * _EmissionStrength;
+            float highlightMask = lerp(0.45, 1.0, topMask);
+            float3 waterEmission = ((_WaveColor.rgb * band) + (_RimColor.rgb * rim)) * _EmissionStrength;
+            o.Emission = waterEmission + (_EmissionColor.rgb * highlightMask);
             o.Alpha = 1.0;
         }
         ENDCG
