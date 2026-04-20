@@ -15,15 +15,15 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.17, g: 0.25, b: 0.31, a: 1}
+  m_FogColor: {r: 0.38, g: 0.47, b: 0.49, a: 1}
   m_FogMode: 1
-  m_FogDensity: 0.025
-  m_LinearFogStart: 6
-  m_LinearFogEnd: 16
-  m_AmbientSkyColor: {r: 0.2, g: 0.29, b: 0.35, a: 1}
-  m_AmbientEquatorColor: {r: 0.1, g: 0.14, b: 0.17, a: 1}
-  m_AmbientGroundColor: {r: 0.03, g: 0.04, b: 0.05, a: 1}
-  m_AmbientIntensity: 0.7
+  m_FogDensity: 0.012
+  m_LinearFogStart: 14
+  m_LinearFogEnd: 36
+  m_AmbientSkyColor: {r: 0.28, g: 0.36, b: 0.39, a: 1}
+  m_AmbientEquatorColor: {r: 0.19, g: 0.24, b: 0.25, a: 1}
+  m_AmbientGroundColor: {r: 0.08, g: 0.08, b: 0.09, a: 1}
+  m_AmbientIntensity: 0.95
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
@@ -614,19 +614,19 @@ Light:
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 1
-  m_Color: {r: 0.58, g: 0.78, b: 0.93, a: 1}
-  m_Intensity: 0.74
+  m_Color: {r: 0.76, g: 0.86, b: 0.91, a: 1}
+  m_Intensity: 0.98
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize2D: {x: 24, y: 24}
+  m_CookieSize2D: {x: 42, y: 42}
   m_Shadows:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
     m_Bias: 0.05
-    m_NormalBias: 0.48
+    m_NormalBias: 0.45
     m_NearPlane: 0.2
     m_CullingMatrixOverride:
       e00: 1
@@ -677,7 +677,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 408798155}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.26912957, y: -0.37365806, z: 0.11423872, w: 0.88028324}
+  m_LocalRotation: {x: 0.31134236, y: -0.27644286, z: 0.095186904, w: 0.9042039}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 0.99999994}
   m_ConstrainProportionsScale: 0
@@ -1176,7 +1176,16 @@ MonoBehaviour:
   forestTiles:
   - {fileID: 6522165577605890704, guid: e790cb340ccbf45bfbdfe583260c17a1, type: 3}
   grassTiles:
-  - {fileID: 5187999822806453262, guid: 77352326543e04e5cbae1beff77c1a8a, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 8200518795985248757, guid: f44dd7da62d194e96a476efb6830f2ae, type: 3}
+  - {fileID: 3600706751302520755, guid: 5e5ade8e0766a472fa301a6b9ac028bf, type: 3}
+  - {fileID: 3482095209483532904, guid: 5f18eee7120074d198819ae257e80eb6, type: 3}
   mountainTiles:
   - {fileID: 6146226879205311681, guid: 5a1d974af670f40e48a3b835a3383baf, type: 3}
   - {fileID: 2917034906780847595, guid: f0a152b596452402eba4a0afedb53bb6, type: 3}
@@ -1332,7 +1341,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.08, g: 0.13, b: 0.18, a: 1}
+  m_BackGroundColor: {r: 0.33, g: 0.42, b: 0.47, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
