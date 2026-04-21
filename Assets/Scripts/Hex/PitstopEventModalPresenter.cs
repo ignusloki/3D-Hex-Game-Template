@@ -1,47 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 public sealed class PitstopEventModalPresenter : MonoBehaviour
 {
-    [Header("Layout")]
-    [Min(32f)] [SerializeField] private float panelWidth = 860f;
-    [Min(32f)] [SerializeField] private float panelHeight = 640f;
-    [Min(32f)] [SerializeField] private float optionHeight = 58f;
-    [Min(8f)] [SerializeField] private float optionSpacing = 14f;
-    [Min(120f)] [SerializeField] private float optionSummaryWidth = 270f;
-    [Min(8f)] [SerializeField] private float optionSummaryGap = 24f;
+    private HexPitstopEventModalDocumentController documentController;
 
-    [Header("Colors")]
-    [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.86f);
-    [SerializeField] private Color titleColor = new(0.98f, 0.98f, 0.98f, 1f);
-    [SerializeField] private Color arrivalRewardColor = new(0.76f, 0.81f, 0.93f, 1f);
-    [SerializeField] private Color bodyColor = new(0.9f, 0.9f, 0.9f, 1f);
-    [SerializeField] private Color optionBackgroundColor = new(0.12f, 0.15f, 0.19f, 0.94f);
-    [SerializeField] private Color optionHighlightedColor = new(0.19f, 0.24f, 0.31f, 0.98f);
-    [SerializeField] private Color optionPressedColor = new(0.28f, 0.34f, 0.42f, 1f);
-    [SerializeField] private Color optionTextColor = new(0.96f, 0.96f, 0.96f, 1f);
-    [SerializeField] private Color disabledOptionTextColor = new(0.62f, 0.62f, 0.62f, 1f);
-    [SerializeField] private Color optionEffectColor = new(0.94f, 0.84f, 0.62f, 1f);
-    [SerializeField] private Color disabledOptionEffectColor = new(0.68f, 0.62f, 0.54f, 1f);
-    [SerializeField] private Color resultColor = new(0.93f, 0.86f, 0.64f, 1f);
-
-    private Canvas targetCanvas;
-    private GameObject overlayRoot;
-    private Text titleText;
-    private Text arrivalRewardText;
-    private Text descriptionText;
-    private Text resultText;
-    private RectTransform optionsRoot;
-    private Button mapButton;
-    private Text mapButtonText;
-    private Font uiFont;
-    private readonly List<GameObject> spawnedOptionObjects = new();
-    private Action<int> selectionCallback;
-    private Action closeCallback;
-
-    public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
+    public bool IsOpen => documentController != null && documentController.IsOpen;
 
     public void ShowChoice(PitstopEventResult eventResult, CaravanResourceSnapshot resources, Action<int> onOptionSelected)
     {
@@ -50,172 +16,70 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
             return;
         }
 
-        EnsureUi();
-        if (overlayRoot == null)
+        EnsureView();
+        if (documentController == null)
         {
             return;
         }
 
-        selectionCallback = onOptionSelected;
-        closeCallback = null;
-        overlayRoot.SetActive(true);
-        titleText.text = eventResult.Title;
-        arrivalRewardText.text = FormatEntrySummary(eventResult);
-        arrivalRewardText.gameObject.SetActive(true);
-        descriptionText.text = eventResult.Description;
-        resultText.gameObject.SetActive(false);
-        resultText.text = string.Empty;
-        mapButton.gameObject.SetActive(false);
-        optionsRoot.gameObject.SetActive(true);
-        RebuildOptions(eventResult.Encounter.options, resources);
+        documentController.ShowChoice(
+            BuildMetaLabel(eventResult),
+            eventResult.Title,
+            eventResult.Description,
+            BuildEffectChips(eventResult.EntryEffects, "No arrival bonus"),
+            BuildResourceSummaryData(resources),
+            BuildOptionViewData(eventResult.Encounter.options, resources),
+            onOptionSelected);
     }
 
-    public void ShowResolution(PitstopEventResult eventResult, Action onCloseRequested)
+    public void ShowResolution(PitstopEventResult eventResult, CaravanResourceSnapshot resources, Action onCloseRequested)
     {
         if (eventResult == null)
         {
             return;
         }
 
-        EnsureUi();
-        if (overlayRoot == null)
+        EnsureView();
+        if (documentController == null)
         {
             return;
         }
 
-        selectionCallback = null;
-        closeCallback = onCloseRequested;
-        overlayRoot.SetActive(true);
-        titleText.text = eventResult.Title;
-        arrivalRewardText.text = FormatEntrySummary(eventResult);
-        arrivalRewardText.gameObject.SetActive(true);
-        descriptionText.text = string.IsNullOrWhiteSpace(eventResult.OutcomeText)
+        string description = string.IsNullOrWhiteSpace(eventResult.OutcomeText)
             ? eventResult.Description
             : eventResult.OutcomeText;
-        optionsRoot.gameObject.SetActive(false);
-        ClearOptions();
-        resultText.text = FormatResolutionSummary(eventResult);
-        resultText.gameObject.SetActive(true);
-        mapButtonText.text = "Map";
-        mapButton.gameObject.SetActive(true);
+
+        documentController.ShowResolution(
+            BuildMetaLabel(eventResult),
+            eventResult.Title,
+            description,
+            BuildEffectChips(eventResult.EntryEffects, "No arrival bonus"),
+            BuildResourceSummaryData(resources),
+            BuildResolutionChoiceText(eventResult),
+            BuildEffectChips(eventResult.ChoiceEffects, "No resource change"),
+            "Map",
+            onCloseRequested);
     }
 
     public void Hide()
     {
-        selectionCallback = null;
-        closeCallback = null;
-        if (overlayRoot != null)
-        {
-            overlayRoot.SetActive(false);
-        }
+        documentController?.Hide();
     }
 
-    private void EnsureUi()
+    private void EnsureView()
     {
-        if (overlayRoot != null)
-        {
-            return;
-        }
-
-        targetCanvas = FindAnyObjectByType<Canvas>();
-        if (targetCanvas == null)
-        {
-            Debug.LogError("PitstopEventModalPresenter requires a Canvas in the scene.", this);
-            return;
-        }
-
-        uiFont = ResolveFont();
-        RectTransform overlayRect = CreateRectTransform("Pitstop Event Overlay", targetCanvas.transform);
-        overlayRoot = overlayRect.gameObject;
-        StretchToParent(overlayRect);
-
-        Image overlayImage = overlayRoot.AddComponent<Image>();
-        overlayImage.color = overlayColor;
-        overlayImage.raycastTarget = true;
-        overlayRoot.SetActive(false);
-
-        RectTransform contentRoot = CreateRectTransform("Content Root", overlayRect);
-        contentRoot.anchorMin = new Vector2(0.5f, 0.5f);
-        contentRoot.anchorMax = new Vector2(0.5f, 0.5f);
-        contentRoot.pivot = new Vector2(0.5f, 0.5f);
-        contentRoot.anchoredPosition = Vector2.zero;
-        contentRoot.sizeDelta = new Vector2(panelWidth, panelHeight);
-
-        titleText = CreateText("Event Title", contentRoot, 58, FontStyle.Bold, titleColor);
-        RectTransform titleRect = titleText.rectTransform;
-        titleRect.anchorMin = new Vector2(0.5f, 1f);
-        titleRect.anchorMax = new Vector2(0.5f, 1f);
-        titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.anchoredPosition = new Vector2(0f, -10f);
-        titleRect.sizeDelta = new Vector2(panelWidth, 72f);
-        titleText.alignment = TextAnchor.UpperLeft;
-
-        arrivalRewardText = CreateText("Arrival Reward", contentRoot, 20, FontStyle.Italic, arrivalRewardColor);
-        RectTransform arrivalRewardRect = arrivalRewardText.rectTransform;
-        arrivalRewardRect.anchorMin = new Vector2(0.5f, 1f);
-        arrivalRewardRect.anchorMax = new Vector2(0.5f, 1f);
-        arrivalRewardRect.pivot = new Vector2(0.5f, 1f);
-        arrivalRewardRect.anchoredPosition = new Vector2(0f, -78f);
-        arrivalRewardRect.sizeDelta = new Vector2(panelWidth, 34f);
-        arrivalRewardText.alignment = TextAnchor.UpperLeft;
-
-        descriptionText = CreateText("Event Description", contentRoot, 28, FontStyle.Italic, bodyColor);
-        RectTransform descriptionRect = descriptionText.rectTransform;
-        descriptionRect.anchorMin = new Vector2(0.5f, 1f);
-        descriptionRect.anchorMax = new Vector2(0.5f, 1f);
-        descriptionRect.pivot = new Vector2(0.5f, 1f);
-        descriptionRect.anchoredPosition = new Vector2(0f, -122f);
-        descriptionRect.sizeDelta = new Vector2(panelWidth, 248f);
-
-        optionsRoot = CreateRectTransform("Options Root", contentRoot);
-        optionsRoot.anchorMin = new Vector2(0.5f, 1f);
-        optionsRoot.anchorMax = new Vector2(0.5f, 1f);
-        optionsRoot.pivot = new Vector2(0.5f, 1f);
-        optionsRoot.anchoredPosition = new Vector2(0f, -386f);
-        optionsRoot.sizeDelta = new Vector2(panelWidth, 220f);
-
-        resultText = CreateText("Result Text", contentRoot, 24, FontStyle.Bold, resultColor);
-        RectTransform resultRect = resultText.rectTransform;
-        resultRect.anchorMin = new Vector2(0.5f, 0f);
-        resultRect.anchorMax = new Vector2(0.5f, 0f);
-        resultRect.pivot = new Vector2(0.5f, 0f);
-        resultRect.anchoredPosition = new Vector2(0f, 110f);
-        resultRect.sizeDelta = new Vector2(panelWidth, 90f);
-        resultText.alignment = TextAnchor.UpperLeft;
-        resultText.gameObject.SetActive(false);
-
-        RectTransform buttonRect = CreateRectTransform("Map Button", contentRoot);
-        buttonRect.anchorMin = new Vector2(0.5f, 0f);
-        buttonRect.anchorMax = new Vector2(0.5f, 0f);
-        buttonRect.pivot = new Vector2(0.5f, 0f);
-        buttonRect.anchoredPosition = new Vector2(0f, 18f);
-        buttonRect.sizeDelta = new Vector2(220f, 56f);
-
-        Image buttonImage = buttonRect.gameObject.AddComponent<Image>();
-        buttonImage.color = optionBackgroundColor;
-        mapButton = buttonRect.gameObject.AddComponent<Button>();
-        ColorBlock buttonColors = mapButton.colors;
-        buttonColors.normalColor = optionBackgroundColor;
-        buttonColors.highlightedColor = optionHighlightedColor;
-        buttonColors.pressedColor = optionPressedColor;
-        buttonColors.selectedColor = optionHighlightedColor;
-        buttonColors.disabledColor = optionBackgroundColor * 0.6f;
-        mapButton.colors = buttonColors;
-        mapButton.onClick.AddListener(HandleMapClicked);
-
-        mapButtonText = CreateText("Map Button Text", buttonRect, 24, FontStyle.Bold, optionTextColor);
-        RectTransform mapButtonTextRect = mapButtonText.rectTransform;
-        StretchToParent(mapButtonTextRect, 16f, 10f);
-        mapButtonText.alignment = TextAnchor.MiddleCenter;
-        mapButton.gameObject.SetActive(false);
+        documentController ??= new HexPitstopEventModalDocumentController(this);
+        documentController.EnsureInitialized();
     }
 
-    private void RebuildOptions(IReadOnlyList<PitstopEncounterOption> options, CaravanResourceSnapshot resources)
+    private static List<HexPitstopOptionViewData> BuildOptionViewData(
+        IReadOnlyList<PitstopEncounterOption> options,
+        CaravanResourceSnapshot resources)
     {
-        ClearOptions();
+        List<HexPitstopOptionViewData> viewData = new();
         if (options == null)
         {
-            return;
+            return viewData;
         }
 
         for (int index = 0; index < options.Count; index++)
@@ -226,272 +90,138 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
                 continue;
             }
 
-            CreateOptionButton(option, index, resources);
+            List<HexPitstopEffectChipData> chips = BuildEffectChips(option.resourceEffects, "No resource change");
+            bool isEnabled = !option.TryGetUnavailableSummary(resources, out string unavailableSummary);
+            if (!string.IsNullOrWhiteSpace(unavailableSummary))
+            {
+                chips.Add(new HexPitstopEffectChipData(unavailableSummary, HexPitstopEffectChipTone.Warning));
+            }
+
+            viewData.Add(new HexPitstopOptionViewData(index, option.label, chips, isEnabled));
         }
+
+        return viewData;
     }
 
-    private void ClearOptions()
+    private static List<HexPitstopEffectChipData> BuildEffectChips(
+        IReadOnlyList<PitstopResourceEffectResult> effects,
+        string fallbackText)
     {
-        for (int index = 0; index < spawnedOptionObjects.Count; index++)
+        List<HexPitstopEffectChipData> chips = new();
+        if (effects != null)
         {
-            if (spawnedOptionObjects[index] != null)
+            for (int index = 0; index < effects.Count; index++)
             {
-                Destroy(spawnedOptionObjects[index]);
+                PitstopResourceEffectResult effect = effects[index];
+                if (effect.Amount == 0)
+                {
+                    continue;
+                }
+
+                chips.Add(CreateChipData(effect.ResourceType, effect.Amount));
             }
         }
 
-        spawnedOptionObjects.Clear();
-    }
-
-    private void CreateOptionButton(PitstopEncounterOption option, int index, CaravanResourceSnapshot resources)
-    {
-        RectTransform rowRect = CreateRectTransform($"Option {index + 1}", optionsRoot);
-        GameObject rowObject = rowRect.gameObject;
-        spawnedOptionObjects.Add(rowObject);
-        rowRect.anchorMin = new Vector2(0f, 1f);
-        rowRect.anchorMax = new Vector2(0f, 1f);
-        rowRect.pivot = new Vector2(0f, 1f);
-        rowRect.anchoredPosition = new Vector2(0f, -index * (optionHeight + optionSpacing));
-        rowRect.sizeDelta = new Vector2(panelWidth, optionHeight);
-
-        float buttonWidth = Mathf.Max(220f, panelWidth - optionSummaryWidth - optionSummaryGap);
-        RectTransform buttonRect = CreateRectTransform("Choice Button", rowRect);
-        GameObject buttonObject = buttonRect.gameObject;
-        buttonRect.anchorMin = new Vector2(0f, 0.5f);
-        buttonRect.anchorMax = new Vector2(0f, 0.5f);
-        buttonRect.pivot = new Vector2(0f, 0.5f);
-        buttonRect.anchoredPosition = Vector2.zero;
-        buttonRect.sizeDelta = new Vector2(buttonWidth, optionHeight);
-
-        Image buttonImage = buttonObject.AddComponent<Image>();
-        buttonImage.color = optionBackgroundColor;
-        Button button = buttonObject.AddComponent<Button>();
-        ColorBlock colors = button.colors;
-        colors.normalColor = optionBackgroundColor;
-        colors.highlightedColor = optionHighlightedColor;
-        colors.pressedColor = optionPressedColor;
-        colors.selectedColor = optionHighlightedColor;
-        colors.disabledColor = optionBackgroundColor * 0.6f;
-        button.colors = colors;
-        bool canAfford = option.CanAfford(resources);
-        button.interactable = canAfford;
-        int optionIndex = index;
-        button.onClick.AddListener(() => HandleOptionSelected(optionIndex));
-
-        Text optionText = CreateText("Label", buttonRect, 24, FontStyle.Bold, optionTextColor);
-        RectTransform textRect = optionText.rectTransform;
-        StretchToParent(textRect, 18f, 10f);
-        optionText.text = option.label;
-        optionText.alignment = TextAnchor.MiddleLeft;
-        optionText.color = canAfford ? optionTextColor : disabledOptionTextColor;
-
-        Text optionEffectText = CreateText("Effect Summary", rowRect, 18, FontStyle.Italic, optionEffectColor);
-        RectTransform effectRect = optionEffectText.rectTransform;
-        effectRect.anchorMin = new Vector2(1f, 0.5f);
-        effectRect.anchorMax = new Vector2(1f, 0.5f);
-        effectRect.pivot = new Vector2(1f, 0.5f);
-        effectRect.anchoredPosition = Vector2.zero;
-        effectRect.sizeDelta = new Vector2(optionSummaryWidth, optionHeight);
-        optionEffectText.alignment = TextAnchor.MiddleLeft;
-        optionEffectText.color = canAfford ? optionEffectColor : disabledOptionEffectColor;
-        optionEffectText.text = FormatOptionSummary(option, resources);
-    }
-
-    private void HandleOptionSelected(int optionIndex)
-    {
-        Action<int> callback = selectionCallback;
-        callback?.Invoke(optionIndex);
-    }
-
-    private void HandleMapClicked()
-    {
-        Action close = closeCallback;
-        Hide();
-        close?.Invoke();
-    }
-
-    private Font ResolveFont()
-    {
-        Text existingText = FindAnyObjectByType<Text>();
-        if (existingText != null && existingText.font != null)
+        if (chips.Count == 0 && !string.IsNullOrWhiteSpace(fallbackText))
         {
-            return existingText.font;
+            chips.Add(new HexPitstopEffectChipData(fallbackText, HexPitstopEffectChipTone.Neutral));
         }
 
-        return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        return chips;
     }
 
-    private Text CreateText(string name, Transform parent, int fontSize, FontStyle fontStyle, Color color)
+    private static List<HexPitstopEffectChipData> BuildEffectChips(
+        IReadOnlyList<PitstopResourceEffect> effects,
+        string fallbackText)
     {
-        RectTransform textRect = CreateRectTransform(name, parent);
-        Text text = textRect.gameObject.AddComponent<Text>();
-        text.font = uiFont;
-        text.fontSize = fontSize;
-        text.fontStyle = fontStyle;
-        text.color = color;
-        text.alignment = TextAnchor.UpperLeft;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        text.raycastTarget = false;
-        return text;
-    }
-
-    private static RectTransform CreateRectTransform(string name, Transform parent)
-    {
-        GameObject gameObject = new(name, typeof(RectTransform));
-        gameObject.transform.SetParent(parent, false);
-        gameObject.layer = parent.gameObject.layer;
-        return gameObject.GetComponent<RectTransform>();
-    }
-
-    private static void StretchToParent(RectTransform rectTransform, float horizontalPadding = 0f, float verticalPadding = 0f)
-    {
-        rectTransform.anchorMin = Vector2.zero;
-        rectTransform.anchorMax = Vector2.one;
-        rectTransform.offsetMin = new Vector2(horizontalPadding, verticalPadding);
-        rectTransform.offsetMax = new Vector2(-horizontalPadding, -verticalPadding);
-        rectTransform.pivot = new Vector2(0.5f, 0.5f);
-    }
-
-    private static string FormatResolutionSummary(PitstopEventResult eventResult)
-    {
-        if (eventResult == null || eventResult.ChoiceEffects.Count == 0)
+        List<HexPitstopEffectChipData> chips = new();
+        if (effects != null)
         {
-            return "No resource change.";
-        }
+            for (int index = 0; index < effects.Count; index++)
+            {
+                PitstopResourceEffect effect = effects[index];
+                if (effect == null || effect.amount == 0)
+                {
+                    continue;
+                }
 
-        List<string> gains = new();
-        List<string> losses = new();
-        for (int index = 0; index < eventResult.ChoiceEffects.Count; index++)
-        {
-            PitstopResourceEffectResult effect = eventResult.ChoiceEffects[index];
-            string label = $"{Mathf.Abs(effect.Amount)} {FormatResource(effect.ResourceType)}";
-            if (effect.Amount >= 0)
-            {
-                gains.Add(label);
-            }
-            else
-            {
-                losses.Add(label);
+                chips.Add(CreateChipData(effect.resourceType, effect.amount));
             }
         }
 
-        List<string> lines = new();
-        if (gains.Count > 0)
+        if (chips.Count == 0 && !string.IsNullOrWhiteSpace(fallbackText))
         {
-            lines.Add($"Gained: {string.Join(", ", gains)}");
+            chips.Add(new HexPitstopEffectChipData(fallbackText, HexPitstopEffectChipTone.Neutral));
         }
 
-        if (losses.Count > 0)
-        {
-            lines.Add($"Lost: {string.Join(", ", losses)}");
-        }
-
-        return string.Join("\n", lines);
+        return chips;
     }
 
-    private static string FormatEntrySummary(PitstopEventResult eventResult)
+    private static HexPitstopEffectChipData CreateChipData(CaravanResourceType resourceType, int amount)
     {
-        if (eventResult == null)
-        {
-            return string.Empty;
-        }
+        bool isNegative = amount < 0;
+        string prefix = isNegative ? "-" : "+";
+        string text = $"{prefix}{Mathf.Abs(amount)} {FormatResource(resourceType)}";
 
-        string summary = FormatEffectSummary(eventResult.EntryEffects);
-        return string.IsNullOrWhiteSpace(summary)
-            ? "Arrival bonus: none"
-            : $"Arrival bonus: {summary}";
+        HexPitstopEffectChipTone tone = resourceType switch
+        {
+            CaravanResourceType.Food => HexPitstopEffectChipTone.Food,
+            CaravanResourceType.Morale => HexPitstopEffectChipTone.Morale,
+            CaravanResourceType.Gold => HexPitstopEffectChipTone.Gold,
+            _ => HexPitstopEffectChipTone.Neutral
+        };
+
+        return new HexPitstopEffectChipData(text, tone, isNegative);
     }
 
-    private static string FormatOptionSummary(PitstopEncounterOption option, CaravanResourceSnapshot resources)
+    private static List<HexPitstopResourceViewData> BuildResourceSummaryData(CaravanResourceSnapshot resources)
     {
-        if (option == null)
+        return new List<HexPitstopResourceViewData>(3)
         {
-            return "No resource change";
-        }
-
-        string summary = FormatEffectSummary(option.resourceEffects);
-        if (option.TryGetUnavailableSummary(resources, out string unavailableSummary))
-        {
-            summary = string.IsNullOrWhiteSpace(summary)
-                ? unavailableSummary
-                : $"{summary}\n{unavailableSummary}";
-        }
-
-        return string.IsNullOrWhiteSpace(summary) ? "No resource change" : summary;
+            new("F", Mathf.Max(resources.Food, 0).ToString(), HexPitstopEffectChipTone.Food),
+            new("M", Mathf.Max(resources.Morale, 0).ToString(), HexPitstopEffectChipTone.Morale),
+            new("G", Mathf.Max(resources.Gold, 0).ToString(), HexPitstopEffectChipTone.Gold)
+        };
     }
 
-    private static string FormatEffectSummary(IReadOnlyList<PitstopResourceEffectResult> effects)
+    private static string BuildResolutionChoiceText(PitstopEventResult eventResult)
     {
-        if (effects == null || effects.Count == 0)
+        if (eventResult?.SelectedOption == null)
         {
-            return string.Empty;
+            return "Outcome";
         }
 
-        List<string> gains = new();
-        List<string> losses = new();
-        for (int index = 0; index < effects.Count; index++)
-        {
-            PitstopResourceEffectResult effect = effects[index];
-            string label = $"{Mathf.Abs(effect.Amount)} {FormatResource(effect.ResourceType)}";
-            if (effect.Amount >= 0)
-            {
-                gains.Add(label);
-            }
-            else
-            {
-                losses.Add(label);
-            }
-        }
-
-        return JoinEffectGroups(gains, losses);
+        return eventResult.SelectedOption.label;
     }
 
-    private static string FormatEffectSummary(IReadOnlyList<PitstopResourceEffect> effects)
+    private static string BuildMetaLabel(PitstopEventResult eventResult)
     {
-        if (effects == null || effects.Count == 0)
+        PitstopSite site = eventResult?.Site;
+        if (site == null)
         {
-            return string.Empty;
+            return "Pitstop";
         }
 
-        List<string> gains = new();
-        List<string> losses = new();
-        for (int index = 0; index < effects.Count; index++)
-        {
-            PitstopResourceEffect effect = effects[index];
-            if (effect == null || effect.amount == 0)
-            {
-                continue;
-            }
-
-            string label = $"{Mathf.Abs(effect.amount)} {FormatResource(effect.resourceType)}";
-            if (effect.amount >= 0)
-            {
-                gains.Add(label);
-            }
-            else
-            {
-                losses.Add(label);
-            }
-        }
-
-        return JoinEffectGroups(gains, losses);
+        return $"{FormatPitstopKind(site.Kind)} • {site.Coordinates.Row},{site.Coordinates.Column}";
     }
 
-    private static string JoinEffectGroups(IReadOnlyList<string> gains, IReadOnlyList<string> losses)
+    private static string FormatPitstopKind(PitstopKind kind)
     {
-        List<string> groups = new();
-        if (gains != null && gains.Count > 0)
+        string raw = kind.ToString();
+        System.Text.StringBuilder builder = new(raw.Length + 8);
+        for (int index = 0; index < raw.Length; index++)
         {
-            groups.Add($"Gain: {string.Join(", ", gains)}");
+            char character = raw[index];
+            if (index > 0 && char.IsUpper(character))
+            {
+                builder.Append(' ');
+            }
+
+            builder.Append(character);
         }
 
-        if (losses != null && losses.Count > 0)
-        {
-            groups.Add($"Lose: {string.Join(", ", losses)}");
-        }
-
-        return string.Join("\n", groups);
+        builder.Append(" Pitstop");
+        return builder.ToString().ToUpperInvariant();
     }
 
     private static string FormatResource(CaravanResourceType resourceType)
@@ -503,5 +233,416 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
             CaravanResourceType.Gold => "Gold",
             _ => resourceType.ToString()
         };
+    }
+}
+
+internal enum HexPitstopEffectChipTone
+{
+    Neutral,
+    Food,
+    Morale,
+    Gold,
+    Warning
+}
+
+internal readonly struct HexPitstopEffectChipData
+{
+    public HexPitstopEffectChipData(string text, HexPitstopEffectChipTone tone, bool isNegative = false)
+    {
+        Text = text;
+        Tone = tone;
+        IsNegative = isNegative;
+    }
+
+    public string Text { get; }
+    public HexPitstopEffectChipTone Tone { get; }
+    public bool IsNegative { get; }
+}
+
+internal sealed class HexPitstopOptionViewData
+{
+    public HexPitstopOptionViewData(
+        int index,
+        string label,
+        IReadOnlyList<HexPitstopEffectChipData> chips,
+        bool isEnabled)
+    {
+        Index = index;
+        Label = label;
+        Chips = chips ?? Array.Empty<HexPitstopEffectChipData>();
+        IsEnabled = isEnabled;
+    }
+
+    public int Index { get; }
+    public string Label { get; }
+    public IReadOnlyList<HexPitstopEffectChipData> Chips { get; }
+    public bool IsEnabled { get; }
+}
+
+internal readonly struct HexPitstopResourceViewData
+{
+    public HexPitstopResourceViewData(string label, string value, HexPitstopEffectChipTone tone)
+    {
+        Label = label;
+        Value = value;
+        Tone = tone;
+    }
+
+    public string Label { get; }
+    public string Value { get; }
+    public HexPitstopEffectChipTone Tone { get; }
+}
+
+internal sealed class HexPitstopEventModalDocumentController
+{
+    private const string PanelSettingsResourcePath = "UI/Hud/HexHudPanelSettings";
+    private const string LayoutResourcePath = "UI/Modal/HexPitstopEventModal";
+    private const string StyleSheetResourcePath = "UI/Modal/HexPitstopEventModalStyles";
+
+    private readonly MonoBehaviour owner;
+    private PanelSettings panelSettings;
+    private VisualTreeAsset layoutAsset;
+    private StyleSheet styleSheet;
+    private UIDocument document;
+    private VisualElement modalRoot;
+    private VisualElement shellElement;
+    private Label metaLabel;
+    private Label titleLabel;
+    private Label descriptionLabel;
+    private VisualElement arrivalChipsContainer;
+    private VisualElement resourceStripContainer;
+    private VisualElement optionsSection;
+    private VisualElement optionsList;
+    private VisualElement resolutionSection;
+    private Label resolutionChoiceLabel;
+    private VisualElement resolutionChipsContainer;
+    private Button continueButton;
+    private Action<int> optionSelected;
+    private Action continueSelected;
+    private HexHudDocumentController hudDocumentController;
+    private bool isInitialized;
+    private bool isOpen;
+
+    public HexPitstopEventModalDocumentController(MonoBehaviour owner)
+    {
+        this.owner = owner;
+    }
+
+    public bool IsOpen => isOpen;
+
+    public void EnsureInitialized()
+    {
+        if (isInitialized)
+        {
+            return;
+        }
+
+        panelSettings ??= Resources.Load<PanelSettings>(PanelSettingsResourcePath);
+        layoutAsset ??= Resources.Load<VisualTreeAsset>(LayoutResourcePath);
+        styleSheet ??= Resources.Load<StyleSheet>(StyleSheetResourcePath);
+        if (panelSettings == null || layoutAsset == null || styleSheet == null)
+        {
+            Debug.LogError("HexPitstopEventModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
+            return;
+        }
+
+        document ??= owner.GetComponent<UIDocument>() ?? owner.gameObject.AddComponent<UIDocument>();
+        document.panelSettings = panelSettings;
+        document.sortingOrder = 0;
+
+        VisualElement root = document.rootVisualElement;
+        root.Clear();
+        root.styleSheets.Clear();
+        root.styleSheets.Add(styleSheet);
+        layoutAsset.CloneTree(root);
+
+        modalRoot = root.Q<VisualElement>("pitstop-modal-root");
+        shellElement = root.Q<VisualElement>("pitstop-modal-shell");
+        metaLabel = root.Q<Label>("pitstop-modal-meta");
+        titleLabel = root.Q<Label>("pitstop-modal-title");
+        descriptionLabel = root.Q<Label>("pitstop-modal-description");
+        arrivalChipsContainer = root.Q<VisualElement>("pitstop-arrival-chips");
+        resourceStripContainer = root.Q<VisualElement>("pitstop-modal-resource-strip");
+        optionsSection = root.Q<VisualElement>("pitstop-options-section");
+        optionsList = root.Q<VisualElement>("pitstop-options-list");
+        resolutionSection = root.Q<VisualElement>("pitstop-resolution-section");
+        resolutionChoiceLabel = root.Q<Label>("pitstop-resolution-choice");
+        resolutionChipsContainer = root.Q<VisualElement>("pitstop-resolution-chips");
+        continueButton = root.Q<Button>("pitstop-continue-button");
+
+        if (continueButton != null)
+        {
+            continueButton.clicked += HandleContinueClicked;
+        }
+
+        if (modalRoot != null)
+        {
+            modalRoot.style.display = DisplayStyle.None;
+        }
+
+        isInitialized = true;
+    }
+
+    public void ShowChoice(
+        string metaText,
+        string titleText,
+        string descriptionText,
+        IReadOnlyList<HexPitstopEffectChipData> arrivalChips,
+        IReadOnlyList<HexPitstopResourceViewData> resources,
+        IReadOnlyList<HexPitstopOptionViewData> options,
+        Action<int> onOptionSelected)
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            return;
+        }
+
+        optionSelected = onOptionSelected;
+        continueSelected = null;
+        SetHeader(metaText, titleText, descriptionText, arrivalChips, resources);
+        PopulateOptions(options);
+        PopulateChipContainer(resolutionChipsContainer, Array.Empty<HexPitstopEffectChipData>());
+        resolutionChoiceLabel.text = string.Empty;
+        optionsSection.style.display = DisplayStyle.Flex;
+        resolutionSection.style.display = DisplayStyle.None;
+        SetResultMode(false);
+        SetModalVisibility(true);
+    }
+
+    public void ShowResolution(
+        string metaText,
+        string titleText,
+        string descriptionText,
+        IReadOnlyList<HexPitstopEffectChipData> arrivalChips,
+        IReadOnlyList<HexPitstopResourceViewData> resources,
+        string resolutionChoiceText,
+        IReadOnlyList<HexPitstopEffectChipData> resolutionChips,
+        string continueLabel,
+        Action onContinueSelected)
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            return;
+        }
+
+        optionSelected = null;
+        continueSelected = onContinueSelected;
+        SetHeader(metaText, titleText, descriptionText, arrivalChips, resources);
+        PopulateOptions(Array.Empty<HexPitstopOptionViewData>());
+        resolutionChoiceLabel.text = string.IsNullOrWhiteSpace(resolutionChoiceText) ? "Outcome" : resolutionChoiceText;
+        PopulateChipContainer(resolutionChipsContainer, resolutionChips);
+        continueButton.text = string.IsNullOrWhiteSpace(continueLabel) ? "Continue" : continueLabel;
+        optionsSection.style.display = DisplayStyle.None;
+        resolutionSection.style.display = DisplayStyle.Flex;
+        SetResultMode(true);
+        SetModalVisibility(true);
+    }
+
+    public void Hide()
+    {
+        optionSelected = null;
+        continueSelected = null;
+        PopulateOptions(Array.Empty<HexPitstopOptionViewData>());
+        PopulateChipContainer(resolutionChipsContainer, Array.Empty<HexPitstopEffectChipData>());
+        SetResultMode(false);
+        SetModalVisibility(false);
+    }
+
+    private void SetHeader(
+        string metaText,
+        string titleText,
+        string descriptionText,
+        IReadOnlyList<HexPitstopEffectChipData> arrivalChips,
+        IReadOnlyList<HexPitstopResourceViewData> resources)
+    {
+        metaLabel.text = string.IsNullOrWhiteSpace(metaText) ? "Pitstop" : metaText;
+        titleLabel.text = string.IsNullOrWhiteSpace(titleText) ? "Pitstop" : titleText;
+        descriptionLabel.text = string.IsNullOrWhiteSpace(descriptionText) ? string.Empty : descriptionText.Trim();
+        PopulateChipContainer(arrivalChipsContainer, arrivalChips);
+        PopulateResourceSummary(resources);
+    }
+
+    private void PopulateOptions(IReadOnlyList<HexPitstopOptionViewData> options)
+    {
+        if (optionsList == null)
+        {
+            return;
+        }
+
+        optionsList.Clear();
+        if (options == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < options.Count; index++)
+        {
+            HexPitstopOptionViewData option = options[index];
+            if (option == null)
+            {
+                continue;
+            }
+
+            Button optionButton = new();
+            optionButton.text = string.Empty;
+            optionButton.AddToClassList("pitstop-option");
+            optionButton.SetEnabled(option.IsEnabled);
+            int optionIndex = option.Index;
+            optionButton.clicked += () => HandleOptionClicked(optionIndex);
+
+            Label optionLabel = new(option.Label);
+            optionLabel.AddToClassList("pitstop-option-label");
+            optionButton.Add(optionLabel);
+
+            VisualElement chipRow = new();
+            chipRow.AddToClassList("pitstop-option-chip-row");
+            PopulateChipContainer(chipRow, option.Chips);
+            optionButton.Add(chipRow);
+
+            optionsList.Add(optionButton);
+        }
+    }
+
+    private static void PopulateChipContainer(VisualElement container, IReadOnlyList<HexPitstopEffectChipData> chips)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        container.Clear();
+        if (chips == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < chips.Count; index++)
+        {
+            HexPitstopEffectChipData chip = chips[index];
+            if (string.IsNullOrWhiteSpace(chip.Text))
+            {
+                continue;
+            }
+
+            Label chipLabel = new(chip.Text);
+            chipLabel.AddToClassList("pitstop-effect-chip");
+
+            switch (chip.Tone)
+            {
+                case HexPitstopEffectChipTone.Food:
+                    chipLabel.AddToClassList("pitstop-effect-chip--food");
+                    break;
+
+                case HexPitstopEffectChipTone.Morale:
+                    chipLabel.AddToClassList("pitstop-effect-chip--morale");
+                    break;
+
+                case HexPitstopEffectChipTone.Gold:
+                    chipLabel.AddToClassList("pitstop-effect-chip--gold");
+                    break;
+
+                case HexPitstopEffectChipTone.Warning:
+                    chipLabel.AddToClassList("pitstop-effect-chip--warning");
+                    break;
+
+                default:
+                    chipLabel.AddToClassList("pitstop-effect-chip--neutral");
+                    break;
+            }
+
+            if (chip.IsNegative)
+            {
+                chipLabel.AddToClassList("pitstop-effect-chip--negative");
+            }
+
+            container.Add(chipLabel);
+        }
+    }
+
+    private void PopulateResourceSummary(IReadOnlyList<HexPitstopResourceViewData> resources)
+    {
+        if (resourceStripContainer == null)
+        {
+            return;
+        }
+
+        resourceStripContainer.Clear();
+        if (resources == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < resources.Count; index++)
+        {
+            HexPitstopResourceViewData resource = resources[index];
+            if (string.IsNullOrWhiteSpace(resource.Label))
+            {
+                continue;
+            }
+
+            VisualElement module = new();
+            module.AddToClassList("pitstop-resource-mini");
+
+            switch (resource.Tone)
+            {
+                case HexPitstopEffectChipTone.Food:
+                    module.AddToClassList("pitstop-resource-mini--food");
+                    break;
+
+                case HexPitstopEffectChipTone.Morale:
+                    module.AddToClassList("pitstop-resource-mini--morale");
+                    break;
+
+                case HexPitstopEffectChipTone.Gold:
+                    module.AddToClassList("pitstop-resource-mini--gold");
+                    break;
+            }
+
+            Label label = new(resource.Label);
+            label.AddToClassList("pitstop-resource-mini-label");
+            module.Add(label);
+
+            Label value = new(resource.Value);
+            value.AddToClassList("pitstop-resource-mini-value");
+            module.Add(value);
+
+            resourceStripContainer.Add(module);
+        }
+    }
+
+    private void SetResultMode(bool isResult)
+    {
+        if (shellElement != null)
+        {
+            shellElement.EnableInClassList("pitstop-modal-shell--result", isResult);
+        }
+    }
+
+    private void SetModalVisibility(bool visible)
+    {
+        hudDocumentController ??= UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        hudDocumentController?.SetGameplayModalState(visible);
+
+        if (modalRoot != null)
+        {
+            modalRoot.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        isOpen = visible;
+    }
+
+    private void HandleOptionClicked(int optionIndex)
+    {
+        Action<int> callback = optionSelected;
+        callback?.Invoke(optionIndex);
+    }
+
+    private void HandleContinueClicked()
+    {
+        Action callback = continueSelected;
+        Hide();
+        callback?.Invoke();
     }
 }

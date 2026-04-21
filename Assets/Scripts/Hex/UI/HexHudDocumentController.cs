@@ -26,6 +26,8 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     [SerializeField] private bool hideLegacyHudPanels = true;
 
     private UIDocument document;
+    private VisualElement topBar;
+    private VisualElement centerStatusPocket;
     private Label runContextLabelElement;
     private Label foodValueLabel;
     private Label moraleValueLabel;
@@ -41,6 +43,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     private VisualElement foodIconElement;
     private VisualElement moraleIconElement;
     private VisualElement goldIconElement;
+    private bool isGameplayModalActive;
     private bool isInitialized;
 
     public bool IsReady => isInitialized;
@@ -87,6 +90,8 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         layoutAsset.CloneTree(root);
 
         runContextLabelElement = root.Q<Label>("run-context-label");
+        topBar = root.Q<VisualElement>("top-bar");
+        centerStatusPocket = root.Q<VisualElement>("center-status-pocket");
         foodValueLabel = root.Q<Label>("resource-food-value");
         moraleValueLabel = root.Q<Label>("resource-morale-value");
         goldValueLabel = root.Q<Label>("resource-gold-value");
@@ -145,9 +150,8 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
             return;
         }
 
-        bool hasBoonStatus = !string.IsNullOrWhiteSpace(boonLine);
-        boonStatusLabel.style.display = hasBoonStatus ? DisplayStyle.Flex : DisplayStyle.None;
-        boonStatusLabel.text = hasBoonStatus ? boonLine.Trim() : string.Empty;
+        boonStatusLabel.text = string.IsNullOrWhiteSpace(boonLine) ? string.Empty : boonLine.Trim();
+        RefreshBoonStatusVisibility();
     }
 
     public void SetStatusText(string value)
@@ -158,10 +162,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     public void SetTileDetailsText(string value)
     {
         SetLabelText(tileDetailsLabel, value);
-        if (tileInspectorPanel != null)
-        {
-            tileInspectorPanel.style.display = ShouldShowTileInspector(value) ? DisplayStyle.Flex : DisplayStyle.None;
-        }
+        RefreshTileInspectorVisibility();
     }
 
     public void SetHintText(string value)
@@ -176,10 +177,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     public void SetPitstopInfoText(string value)
     {
         SetLabelText(pitstopInfoLabel, value);
-        if (pitstopPanel != null)
-        {
-            pitstopPanel.style.display = ShouldShowPitstopPanel(value) ? DisplayStyle.Flex : DisplayStyle.None;
-        }
+        RefreshPitstopPanelVisibility();
     }
 
     public void SetTravelTimeText(string value)
@@ -189,6 +187,25 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         {
             travelTimeLabel.style.display = ShouldShowTravelTime(value) ? DisplayStyle.Flex : DisplayStyle.None;
         }
+    }
+
+    public void SetGameplayModalState(bool active)
+    {
+        isGameplayModalActive = active;
+
+        if (topBar != null)
+        {
+            topBar.EnableInClassList("modal-muted", active);
+        }
+
+        if (centerStatusPocket != null)
+        {
+            centerStatusPocket.style.display = active ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        RefreshBoonStatusVisibility();
+        RefreshTileInspectorVisibility();
+        RefreshPitstopPanelVisibility();
     }
 
     private static void ApplyIcon(VisualElement target, Texture2D texture)
@@ -222,6 +239,40 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         {
             target.text = string.IsNullOrWhiteSpace(value) ? string.Empty : value;
         }
+    }
+
+    private void RefreshBoonStatusVisibility()
+    {
+        if (boonStatusLabel == null)
+        {
+            return;
+        }
+
+        boonStatusLabel.EnableInClassList("modal-muted", isGameplayModalActive);
+        bool hasBoonStatus = !string.IsNullOrWhiteSpace(boonStatusLabel.text);
+        boonStatusLabel.style.display = !isGameplayModalActive && hasBoonStatus ? DisplayStyle.Flex : DisplayStyle.None;
+    }
+
+    private void RefreshTileInspectorVisibility()
+    {
+        if (tileInspectorPanel == null)
+        {
+            return;
+        }
+
+        bool shouldDisplay = !isGameplayModalActive && ShouldShowTileInspector(tileDetailsLabel?.text);
+        tileInspectorPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
+    }
+
+    private void RefreshPitstopPanelVisibility()
+    {
+        if (pitstopPanel == null)
+        {
+            return;
+        }
+
+        bool shouldDisplay = !isGameplayModalActive && ShouldShowPitstopPanel(pitstopInfoLabel?.text);
+        pitstopPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     private static bool ShouldShowTravelTime(string value)

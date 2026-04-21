@@ -253,6 +253,10 @@
     display: none;
 }
 
+.modal-muted {
+    opacity: 0.42;
+}
+
 .hud-card {
     position: absolute;
     padding-left: 11px;

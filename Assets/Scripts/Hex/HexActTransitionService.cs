@@ -10,12 +10,45 @@ public readonly struct HexActTransitionDisplayData
         string selectionPrompt,
         string continueButtonLabel,
         HexBoonDefinition[] boonOptions)
+        : this(
+            title,
+            body,
+            selectionPrompt,
+            continueButtonLabel,
+            boonOptions,
+            0,
+            0,
+            new CaravanResourceSnapshot(0, 0, 0),
+            0,
+            0,
+            0)
+    {
+    }
+
+    public HexActTransitionDisplayData(
+        string title,
+        string body,
+        string selectionPrompt,
+        string continueButtonLabel,
+        HexBoonDefinition[] boonOptions,
+        int completedActNumber,
+        int nextActNumber,
+        CaravanResourceSnapshot currentResources,
+        int betweenActFood,
+        int betweenActMorale,
+        int betweenActGold)
     {
         Title = title ?? string.Empty;
         Body = body ?? string.Empty;
         SelectionPrompt = selectionPrompt ?? string.Empty;
         ContinueButtonLabel = string.IsNullOrWhiteSpace(continueButtonLabel) ? "Continue" : continueButtonLabel.Trim();
         BoonOptions = boonOptions ?? Array.Empty<HexBoonDefinition>();
+        CompletedActNumber = Mathf.Max(0, completedActNumber);
+        NextActNumber = Mathf.Max(0, nextActNumber);
+        CurrentResources = currentResources;
+        BetweenActFood = betweenActFood;
+        BetweenActMorale = betweenActMorale;
+        BetweenActGold = betweenActGold;
     }
 
     public string Title { get; }
@@ -23,6 +56,13 @@ public readonly struct HexActTransitionDisplayData
     public string SelectionPrompt { get; }
     public string ContinueButtonLabel { get; }
     public HexBoonDefinition[] BoonOptions { get; }
+    public int CompletedActNumber { get; }
+    public int NextActNumber { get; }
+    public CaravanResourceSnapshot CurrentResources { get; }
+    public int BetweenActFood { get; }
+    public int BetweenActMorale { get; }
+    public int BetweenActGold { get; }
+    public bool HasBetweenActGrant => BetweenActFood != 0 || BetweenActMorale != 0 || BetweenActGold != 0;
     public bool RequiresBoonSelection => BoonOptions != null && BoonOptions.Length > 0;
 }
 
@@ -232,6 +272,7 @@ public static class HexActTransitionService
     {
         HexActTransitionConfigAsset config = LoadConfig();
         int currentAct = GetCurrentActNumber();
+        int nextAct = currentAct + 1;
         HexActTransitionStepDefinition step = config != null
             ? config.GetTransitionForCompletedAct(currentAct)
             : null;
@@ -244,11 +285,6 @@ public static class HexActTransitionService
             ? step.body.Trim()
             : "The caravan prepares for the next act.";
 
-        if (step != null && step.betweenActGrant != null && step.betweenActGrant.HasAny)
-        {
-            body = $"{body}\n\n{FormatGrant(step.betweenActGrant)}";
-        }
-
         HexBoonDefinition[] boonOptions = config != null
             ? config.GetBoonOptionsForCompletedAct(currentAct, GetLockedBoonFamily(), GetSelectedBoons())
             : Array.Empty<HexBoonDefinition>();
@@ -258,7 +294,19 @@ public static class HexActTransitionService
             : string.Empty;
 
         string buttonLabel = step != null ? step.continueButtonLabel : "Continue";
-        return new HexActTransitionDisplayData(title, body, selectionPrompt, buttonLabel, boonOptions);
+        HexActResourceGrant grant = step?.betweenActGrant;
+        return new HexActTransitionDisplayData(
+            title,
+            body,
+            selectionPrompt,
+            buttonLabel,
+            boonOptions,
+            currentAct,
+            nextAct,
+            currentResources,
+            grant?.food ?? 0,
+            grant?.morale ?? 0,
+            grant?.gold ?? 0);
     }
 
     public static bool TryAdvanceToNextAct(CaravanResourceSnapshot currentResources, HexBoonDefinition selectedBoon = null)
@@ -350,34 +398,6 @@ public static class HexActTransitionService
         return true;
     }
 
-    private static string FormatGrant(HexActResourceGrant grant)
-    {
-        System.Collections.Generic.List<string> parts = new();
-        if (grant.food != 0)
-        {
-            parts.Add($"{FormatSigned(grant.food)} Food");
-        }
-
-        if (grant.morale != 0)
-        {
-            parts.Add($"{FormatSigned(grant.morale)} Morale");
-        }
-
-        if (grant.gold != 0)
-        {
-            parts.Add($"{FormatSigned(grant.gold)} Gold");
-        }
-
-        return parts.Count > 0
-            ? $"Between-act grant: {string.Join(", ", parts)}."
-            : "No between-act grant.";
-    }
-
-    private static string FormatSigned(int value)
-    {
-        return value > 0 ? $"+{value}" : value.ToString();
-    }
-
     private static void StoreSelectedBoon(HexBoonDefinition selectedBoon)
     {
         if (currentSession == null || selectedBoon == null)
@@ -409,9 +429,20 @@ public static class HexActTransitionService
             ? step.boonSelectionPrompt.Trim()
             : "Choose one boon to carry into the next act.";
 
-        if (completedAct >= 2 && GetLockedBoonFamily() != HexNemesisArchetype.None)
+        if (completedAct <= 1)
         {
-            prompt = $"{prompt}\n\nLocked family: {FormatArchetype(GetLockedBoonFamily())}.";
+            if (prompt.IndexOf("lock", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                prompt = $"{prompt}\n\nThis choice locks the Act 3 family.";
+            }
+        }
+        else if (GetLockedBoonFamily() != HexNemesisArchetype.None)
+        {
+            string lockedFamilyLabel = FormatArchetype(GetLockedBoonFamily());
+            if (prompt.IndexOf(lockedFamilyLabel, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                prompt = $"{prompt}\n\nLocked family: {lockedFamilyLabel}.";
+            }
         }
 
         return prompt;

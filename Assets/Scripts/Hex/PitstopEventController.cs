@@ -116,7 +116,7 @@ public sealed class PitstopEventController : MonoBehaviour
                 return;
             }
 
-            modalPresenter.ShowResolution(resolvedResult, null);
+            modalPresenter.ShowResolution(resolvedResult, resources.ToSnapshot(), null);
         });
     }
 

@@ -1,0 +1,367 @@
+#pitstop-modal-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+#pitstop-modal-overlay {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 64px;
+    padding-bottom: 32px;
+    background-color: rgba(8, 12, 18, 0.72);
+}
+
+#pitstop-modal-shell {
+    width: 680px;
+    max-width: 700px;
+    padding-left: 26px;
+    padding-right: 26px;
+    padding-top: 22px;
+    padding-bottom: 20px;
+    background-color: rgba(16, 23, 33, 0.96);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.05);
+    border-right-color: rgba(255, 255, 255, 0.05);
+    border-top-color: rgba(255, 255, 255, 0.05);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+    flex-direction: column;
+}
+
+.pitstop-modal-shell--result {
+    width: 640px;
+    max-width: 660px;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 20px;
+    padding-bottom: 16px;
+}
+
+#pitstop-modal-header {
+    flex-direction: column;
+}
+
+#pitstop-modal-topline {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+#pitstop-modal-head-copy {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+#pitstop-modal-meta {
+    color: rgba(201, 212, 224, 0.68);
+    font-size: 11px;
+    -unity-font-style: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
+}
+
+#pitstop-modal-title {
+    margin-top: 4px;
+    color: rgb(244, 239, 228);
+    font-size: 29px;
+    line-height: 30px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+#pitstop-arrival-row {
+    margin-top: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+#pitstop-arrival-kicker,
+#pitstop-resolution-kicker {
+    color: rgba(241, 213, 159, 0.8);
+    font-size: 13px;
+    -unity-font-style: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#pitstop-modal-resource-strip {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+#pitstop-arrival-chips,
+#pitstop-resolution-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.pitstop-resource-mini {
+    min-width: 60px;
+    max-width: 66px;
+    height: 22px;
+    padding-left: 5px;
+    padding-right: 5px;
+    background-color: rgba(24, 35, 48, 0.9);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.04);
+    border-right-color: rgba(255, 255, 255, 0.04);
+    border-top-color: rgba(255, 255, 255, 0.04);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pitstop-resource-mini-label {
+    color: rgba(201, 212, 224, 0.76);
+    font-size: 10px;
+    line-height: 10px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+}
+
+.pitstop-resource-mini-value {
+    color: rgb(244, 239, 228);
+    font-size: 12px;
+    line-height: 12px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+}
+
+.pitstop-resource-mini--food .pitstop-resource-mini-label {
+    color: rgb(237, 213, 189);
+}
+
+.pitstop-resource-mini--morale .pitstop-resource-mini-label {
+    color: rgb(237, 201, 206);
+}
+
+.pitstop-resource-mini--gold .pitstop-resource-mini-label {
+    color: rgb(243, 223, 166);
+}
+
+#pitstop-modal-description {
+    margin-top: 12px;
+    color: rgb(222, 229, 235);
+    font-size: 16px;
+    line-height: 20px;
+    white-space: normal;
+}
+
+#pitstop-options-section {
+    margin-top: 14px;
+}
+
+#pitstop-options-list {
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pitstop-option {
+    min-height: 46px;
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    background-color: rgba(20, 30, 42, 0.94);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.04);
+    border-right-color: rgba(255, 255, 255, 0.04);
+    border-top-color: rgba(255, 255, 255, 0.04);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pitstop-option:hover {
+    background-color: rgba(27, 39, 54, 0.98);
+    border-left-color: rgba(241, 213, 159, 0.18);
+    border-right-color: rgba(241, 213, 159, 0.18);
+    border-top-color: rgba(241, 213, 159, 0.18);
+    border-bottom-color: rgba(241, 213, 159, 0.18);
+}
+
+.pitstop-option:active {
+    background-color: rgba(33, 48, 66, 1);
+}
+
+.pitstop-option:disabled {
+    opacity: 0.56;
+}
+
+.pitstop-option-label {
+    flex-grow: 1;
+    color: rgb(244, 239, 228);
+    font-size: 17px;
+    line-height: 18px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.pitstop-option-chip-row {
+    margin-left: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    max-width: 240px;
+}
+
+.pitstop-effect-chip {
+    min-height: 22px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    color: rgb(230, 233, 237);
+    font-size: 12px;
+    line-height: 12px;
+    -unity-font-style: bold;
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.04);
+    border-right-color: rgba(255, 255, 255, 0.04);
+    border-top-color: rgba(255, 255, 255, 0.04);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    background-color: rgba(35, 46, 58, 0.94);
+}
+
+.pitstop-effect-chip--food {
+    color: rgb(237, 213, 189);
+    background-color: rgba(163, 102, 52, 0.16);
+}
+
+.pitstop-effect-chip--morale {
+    color: rgb(237, 201, 206);
+    background-color: rgba(146, 53, 63, 0.16);
+}
+
+.pitstop-effect-chip--gold {
+    color: rgb(243, 223, 166);
+    background-color: rgba(158, 118, 24, 0.18);
+}
+
+.pitstop-effect-chip--warning {
+    color: rgb(241, 213, 159);
+    background-color: rgba(96, 72, 36, 0.22);
+}
+
+.pitstop-effect-chip--neutral {
+    color: rgba(214, 225, 234, 0.84);
+    background-color: rgba(44, 57, 71, 0.78);
+}
+
+.pitstop-effect-chip--negative {
+    border-left-color: rgba(255, 214, 214, 0.12);
+    border-right-color: rgba(255, 214, 214, 0.12);
+    border-top-color: rgba(255, 214, 214, 0.12);
+    border-bottom-color: rgba(255, 214, 214, 0.12);
+}
+
+#pitstop-resolution-section {
+    margin-top: 12px;
+    display: none;
+    flex-direction: column;
+}
+
+#pitstop-resolution-choice {
+    margin-top: 4px;
+    color: rgb(244, 239, 228);
+    font-size: 18px;
+    line-height: 19px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+#pitstop-resolution-chips {
+    margin-top: 6px;
+}
+
+#pitstop-modal-actions {
+    margin-top: 10px;
+    padding-top: 2px;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-self: stretch;
+}
+
+#pitstop-continue-button {
+    min-width: 124px;
+    max-width: 132px;
+    height: 40px;
+    padding-left: 14px;
+    padding-right: 14px;
+    background-color: rgba(27, 39, 54, 0.98);
+    color: rgb(244, 239, 228);
+    font-size: 15px;
+    -unity-font-style: bold;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.04);
+    border-right-color: rgba(255, 255, 255, 0.04);
+    border-top-color: rgba(255, 255, 255, 0.04);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+#pitstop-continue-button:hover {
+    background-color: rgba(33, 48, 66, 1);
+    border-left-color: rgba(241, 213, 159, 0.18);
+    border-right-color: rgba(241, 213, 159, 0.18);
+    border-top-color: rgba(241, 213, 159, 0.18);
+    border-bottom-color: rgba(241, 213, 159, 0.18);
+}
+
+#pitstop-continue-button:active {
+    background-color: rgba(40, 58, 78, 1);
+}
