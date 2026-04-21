@@ -1,15 +1,26 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
+    private enum TransitionScreenMode
+    {
+        None,
+        Intermission,
+        Selection
+    }
+
     [Header("Layout")]
     [Min(260f)] [SerializeField] private float panelWidth = 680f;
     [Min(320f)] [SerializeField] private float panelHeight = 760f;
-    [Min(900f)] [SerializeField] private float transitionPanelWidth = 1040f;
-    [Min(620f)] [SerializeField] private float transitionPanelHeight = 724f;
+    [Min(640f)] [SerializeField] private float transitionIntermissionPanelWidth = 780f;
+    [Min(520f)] [SerializeField] private float transitionIntermissionPanelHeight = 620f;
+    [Min(820f)] [SerializeField] private float transitionSelectionPanelWidth = 980f;
+    [Min(560f)] [SerializeField] private float transitionSelectionPanelHeight = 660f;
     [Min(220f)] [SerializeField] private float transitionCardWidth = 240f;
     [Min(340f)] [SerializeField] private float transitionCardHeight = 380f;
 
@@ -40,10 +51,16 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private RectTransform panelRect;
     private RectTransform standardContentRect;
     private RectTransform transitionContentRect;
+    private RectTransform transitionIntermissionRect;
+    private RectTransform transitionIntermissionContentRect;
+    private RectTransform transitionSelectionRect;
     private RectTransform transitionGrantChipContainerRect;
     private RectTransform transitionResourceChipContainerRect;
-    private RectTransform optionsContentRect;
+    private RectTransform transitionSelectionResourceChipContainerRect;
+    private RectTransform transitionSelectionOptionsRect;
+    private RectTransform transitionSelectionDetailRect;
     private Image panelImage;
+    private Image transitionIllustrationImage;
     private Text titleText;
     private Text bodyText;
     private Text transitionMetaText;
@@ -53,6 +70,12 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private Text transitionGrantEmptyText;
     private Text transitionResourceLabelText;
     private Text selectionPromptText;
+    private Text selectionContextNoteText;
+    private Text transitionIllustrationFallbackText;
+    private Text transitionSelectionDetailMetaText;
+    private Text transitionSelectionDetailTitleText;
+    private Text transitionSelectionDetailEffectText;
+    private Text transitionSelectionDetailLoreText;
     private Button actionButton;
     private Text actionButtonText;
     private Font uiFont;
@@ -60,9 +83,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private Action actionCallback;
     private Action<HexBoonDefinition> transitionActionCallback;
     private readonly List<TransitionBoonCardUi> transitionCards = new();
+    private HexActTransitionDisplayData activeTransitionDisplayData;
     private HexBoonDefinition[] transitionBoonOptions = Array.Empty<HexBoonDefinition>();
     private HexBoonDefinition selectedTransitionBoon;
-    private bool isTransitionSelectionMode;
+    private HexBoonDefinition hoveredTransitionBoon;
+    private TransitionScreenMode transitionScreenMode;
 
     public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
 
@@ -70,6 +95,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     {
         public RectTransform RootRect;
         public LayoutElement LayoutElement;
+        public RectTransform MotionRect;
         public Button Button;
         public Image FrameImage;
         public Image SurfaceImage;
@@ -78,9 +104,16 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         public Text ArtFallbackText;
         public Text TitleText;
         public Text EffectText;
-        public Text LoreText;
         public Image FamilyBadgeImage;
         public Text FamilyBadgeText;
+        public bool IsHovered;
+        public float TargetScale = 1f;
+        public float TargetLift;
+    }
+
+    private void Update()
+    {
+        AnimateTransitionCards();
     }
 
     public void ShowVictory(Action onRetryRequested)
@@ -100,6 +133,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
                 title,
                 body,
                 string.Empty,
+                string.Empty,
+                continueButtonLabel,
                 continueButtonLabel,
                 Array.Empty<HexBoonDefinition>()),
             _ => onContinueRequested?.Invoke());
@@ -115,40 +150,29 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         transitionActionCallback = onContinueRequested;
         actionCallback = null;
-        isTransitionSelectionMode = displayData.RequiresBoonSelection;
+        activeTransitionDisplayData = displayData;
         transitionBoonOptions = displayData.BoonOptions ?? Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
+        hoveredTransitionBoon = null;
+        transitionScreenMode = TransitionScreenMode.None;
 
         SetModalVisibility(true);
-        ApplyPanelMode(isTransitionLayout: true, hasCards: displayData.RequiresBoonSelection);
-        transitionMetaText.text = BuildTransitionMetaLabel(displayData);
-        transitionTitleText.text = string.IsNullOrWhiteSpace(displayData.Title) ? "Act Complete" : displayData.Title.Trim();
-        transitionBodyText.text = string.IsNullOrWhiteSpace(displayData.Body)
-            ? "The caravan gathers itself for the road ahead."
-            : displayData.Body.Trim();
-        transitionBodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(transitionBodyText.text));
-        selectionPromptText.text = string.IsNullOrWhiteSpace(displayData.SelectionPrompt)
-            ? "Choose one boon for the next act."
-            : displayData.SelectionPrompt.Trim();
-        selectionPromptText.gameObject.SetActive(!string.IsNullOrWhiteSpace(selectionPromptText.text));
-        actionButtonText.text = string.IsNullOrWhiteSpace(displayData.ContinueButtonLabel)
-            ? "Continue"
-            : displayData.ContinueButtonLabel.Trim();
-        actionButton.interactable = !displayData.RequiresBoonSelection;
-
-        RebuildGrantSummary(displayData);
-        RebuildCarryOverSummary(displayData.CurrentResources);
+        ApplyPanelMode(isTransitionLayout: true);
+        RefreshTransitionStaticContent();
         EnsureTransitionCardCount(transitionBoonOptions.Length);
         RefreshTransitionCards();
+        ShowTransitionScreen(TransitionScreenMode.Intermission);
     }
 
     public void Hide()
     {
         actionCallback = null;
         transitionActionCallback = null;
+        activeTransitionDisplayData = default;
         transitionBoonOptions = Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
-        isTransitionSelectionMode = false;
+        hoveredTransitionBoon = null;
+        transitionScreenMode = TransitionScreenMode.None;
         SetModalVisibility(false);
     }
 
@@ -162,11 +186,18 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         actionCallback = onActionRequested;
         transitionActionCallback = null;
+        activeTransitionDisplayData = default;
         transitionBoonOptions = Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
-        isTransitionSelectionMode = false;
+        hoveredTransitionBoon = null;
+        transitionScreenMode = TransitionScreenMode.None;
         SetModalVisibility(true);
-        ApplyPanelMode(isTransitionLayout: false, hasCards: false);
+        ApplyPanelMode(isTransitionLayout: false);
+        if (actionButton != null)
+        {
+            actionButton.gameObject.SetActive(true);
+        }
+
         titleText.text = title;
         bodyText.text = string.IsNullOrWhiteSpace(body) ? string.Empty : body.Trim();
         bodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(bodyText.text));
@@ -194,6 +225,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         overlayRoot = overlayRect.gameObject;
         StretchToParent(overlayRect);
 
+        Canvas modalCanvas = overlayRoot.AddComponent<Canvas>();
+        modalCanvas.overrideSorting = true;
+        modalCanvas.sortingOrder = 250;
+        overlayRoot.AddComponent<GraphicRaycaster>();
+
         Image overlayImage = overlayRoot.AddComponent<Image>();
         overlayImage.color = overlayColor;
         overlayImage.raycastTarget = true;
@@ -212,10 +248,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         panelOutline.effectDistance = new Vector2(1f, -1f);
 
         standardContentRect = CreateRectTransform("Standard Content", panelRect);
-        standardContentRect.anchorMin = Vector2.zero;
-        standardContentRect.anchorMax = Vector2.one;
+        StretchToParent(standardContentRect, 34f, 28f);
         standardContentRect.offsetMin = new Vector2(34f, 104f);
-        standardContentRect.offsetMax = new Vector2(-34f, -28f);
         VerticalLayoutGroup standardLayout = standardContentRect.gameObject.AddComponent<VerticalLayoutGroup>();
         standardLayout.padding = new RectOffset(0, 0, 0, 0);
         standardLayout.spacing = 14f;
@@ -241,169 +275,24 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         transitionContentRect = CreateRectTransform("Transition Content", panelRect);
         transitionContentRect.anchorMin = Vector2.zero;
         transitionContentRect.anchorMax = Vector2.one;
-        transitionContentRect.offsetMin = new Vector2(28f, 94f);
-        transitionContentRect.offsetMax = new Vector2(-28f, -28f);
-        VerticalLayoutGroup transitionLayout = transitionContentRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        transitionLayout.padding = new RectOffset(0, 0, 0, 0);
-        transitionLayout.spacing = 16f;
-        transitionLayout.childAlignment = TextAnchor.UpperCenter;
-        transitionLayout.childControlHeight = true;
-        transitionLayout.childControlWidth = true;
-        transitionLayout.childForceExpandHeight = false;
-        transitionLayout.childForceExpandWidth = true;
+        transitionContentRect.offsetMin = new Vector2(30f, 82f);
+        transitionContentRect.offsetMax = new Vector2(-30f, -24f);
         transitionContentRect.gameObject.SetActive(false);
 
-        RectTransform headerRect = CreateRectTransform("Transition Header", transitionContentRect);
-        LayoutElement headerLayout = headerRect.gameObject.AddComponent<LayoutElement>();
-        headerLayout.preferredHeight = 182f;
-        VerticalLayoutGroup headerVerticalLayout = headerRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        headerVerticalLayout.padding = new RectOffset(0, 0, 0, 0);
-        headerVerticalLayout.spacing = 12f;
-        headerVerticalLayout.childAlignment = TextAnchor.UpperLeft;
-        headerVerticalLayout.childControlHeight = true;
-        headerVerticalLayout.childControlWidth = true;
-        headerVerticalLayout.childForceExpandHeight = false;
-        headerVerticalLayout.childForceExpandWidth = true;
-
-        RectTransform topRowRect = CreateRectTransform("Transition Header Top Row", headerRect);
-        LayoutElement topRowLayout = topRowRect.gameObject.AddComponent<LayoutElement>();
-        topRowLayout.preferredHeight = 120f;
-        HorizontalLayoutGroup topRowHorizontalLayout = topRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        topRowHorizontalLayout.padding = new RectOffset(0, 0, 0, 0);
-        topRowHorizontalLayout.spacing = 24f;
-        topRowHorizontalLayout.childAlignment = TextAnchor.UpperLeft;
-        topRowHorizontalLayout.childControlHeight = true;
-        topRowHorizontalLayout.childControlWidth = true;
-        topRowHorizontalLayout.childForceExpandHeight = false;
-        topRowHorizontalLayout.childForceExpandWidth = false;
-
-        RectTransform headerCopyRect = CreateRectTransform("Transition Header Copy", topRowRect);
-        LayoutElement headerCopyLayout = headerCopyRect.gameObject.AddComponent<LayoutElement>();
-        headerCopyLayout.flexibleWidth = 1f;
-        headerCopyLayout.minWidth = 440f;
-        VerticalLayoutGroup headerCopyVerticalLayout = headerCopyRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        headerCopyVerticalLayout.padding = new RectOffset(0, 0, 0, 0);
-        headerCopyVerticalLayout.spacing = 6f;
-        headerCopyVerticalLayout.childAlignment = TextAnchor.UpperLeft;
-        headerCopyVerticalLayout.childControlHeight = true;
-        headerCopyVerticalLayout.childControlWidth = true;
-        headerCopyVerticalLayout.childForceExpandHeight = false;
-        headerCopyVerticalLayout.childForceExpandWidth = true;
-
-        transitionMetaText = CreateText("Transition Meta", headerCopyRect, 11, FontStyle.Bold, metaColor);
-        LayoutElement metaLayout = transitionMetaText.gameObject.AddComponent<LayoutElement>();
-        metaLayout.preferredHeight = 16f;
-        transitionMetaText.alignment = TextAnchor.MiddleLeft;
-
-        transitionTitleText = CreateText("Transition Title", headerCopyRect, 32, FontStyle.Bold, titleColor);
-        LayoutElement transitionTitleLayout = transitionTitleText.gameObject.AddComponent<LayoutElement>();
-        transitionTitleLayout.preferredHeight = 42f;
-        transitionTitleText.alignment = TextAnchor.UpperLeft;
-
-        transitionBodyText = CreateText("Transition Body", headerCopyRect, 17, FontStyle.Normal, bodyColor);
-        LayoutElement transitionBodyLayout = transitionBodyText.gameObject.AddComponent<LayoutElement>();
-        transitionBodyLayout.preferredHeight = 56f;
-        transitionBodyText.alignment = TextAnchor.UpperLeft;
-        transitionBodyText.lineSpacing = 1.1f;
-        transitionBodyText.verticalOverflow = VerticalWrapMode.Truncate;
-
-        RectTransform resourceSummaryRect = CreateRectTransform("Transition Resource Summary", topRowRect);
-        LayoutElement resourceSummaryLayout = resourceSummaryRect.gameObject.AddComponent<LayoutElement>();
-        resourceSummaryLayout.preferredWidth = 236f;
-        resourceSummaryLayout.minWidth = 236f;
-        VerticalLayoutGroup resourceSummaryVerticalLayout = resourceSummaryRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        resourceSummaryVerticalLayout.padding = new RectOffset(0, 0, 0, 0);
-        resourceSummaryVerticalLayout.spacing = 6f;
-        resourceSummaryVerticalLayout.childAlignment = TextAnchor.UpperRight;
-        resourceSummaryVerticalLayout.childControlHeight = true;
-        resourceSummaryVerticalLayout.childControlWidth = true;
-        resourceSummaryVerticalLayout.childForceExpandHeight = false;
-        resourceSummaryVerticalLayout.childForceExpandWidth = false;
-
-        transitionResourceLabelText = CreateText("Carry Over Label", resourceSummaryRect, 11, FontStyle.Bold, metaColor);
-        LayoutElement resourceLabelLayout = transitionResourceLabelText.gameObject.AddComponent<LayoutElement>();
-        resourceLabelLayout.preferredHeight = 16f;
-        transitionResourceLabelText.alignment = TextAnchor.MiddleRight;
-        transitionResourceLabelText.text = "Carry-over";
-
-        transitionResourceChipContainerRect = CreateRectTransform("Carry Over Chips", resourceSummaryRect);
-        LayoutElement resourceChipLayout = transitionResourceChipContainerRect.gameObject.AddComponent<LayoutElement>();
-        resourceChipLayout.preferredHeight = 54f;
-        HorizontalLayoutGroup resourceChipHorizontalLayout = transitionResourceChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        resourceChipHorizontalLayout.padding = new RectOffset(0, 0, 0, 0);
-        resourceChipHorizontalLayout.spacing = 8f;
-        resourceChipHorizontalLayout.childAlignment = TextAnchor.UpperRight;
-        resourceChipHorizontalLayout.childControlHeight = true;
-        resourceChipHorizontalLayout.childControlWidth = true;
-        resourceChipHorizontalLayout.childForceExpandHeight = false;
-        resourceChipHorizontalLayout.childForceExpandWidth = false;
-
-        RectTransform grantRowRect = CreateRectTransform("Transition Grant Row", headerRect);
-        LayoutElement grantRowLayout = grantRowRect.gameObject.AddComponent<LayoutElement>();
-        grantRowLayout.preferredHeight = 34f;
-        HorizontalLayoutGroup grantRowHorizontalLayout = grantRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        grantRowHorizontalLayout.padding = new RectOffset(0, 0, 0, 0);
-        grantRowHorizontalLayout.spacing = 12f;
-        grantRowHorizontalLayout.childAlignment = TextAnchor.MiddleLeft;
-        grantRowHorizontalLayout.childControlHeight = true;
-        grantRowHorizontalLayout.childControlWidth = true;
-        grantRowHorizontalLayout.childForceExpandHeight = false;
-        grantRowHorizontalLayout.childForceExpandWidth = false;
-
-        transitionGrantLabelText = CreateText("Grant Label", grantRowRect, 13, FontStyle.Bold, bodyColor);
-        LayoutElement grantLabelLayout = transitionGrantLabelText.gameObject.AddComponent<LayoutElement>();
-        grantLabelLayout.preferredWidth = 130f;
-        transitionGrantLabelText.alignment = TextAnchor.MiddleLeft;
-        transitionGrantLabelText.text = "Between-act grant";
-
-        transitionGrantChipContainerRect = CreateRectTransform("Grant Chips", grantRowRect);
-        LayoutElement grantChipLayout = transitionGrantChipContainerRect.gameObject.AddComponent<LayoutElement>();
-        grantChipLayout.flexibleWidth = 1f;
-        HorizontalLayoutGroup grantChipHorizontalLayout = transitionGrantChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        grantChipHorizontalLayout.padding = new RectOffset(0, 0, 0, 0);
-        grantChipHorizontalLayout.spacing = 8f;
-        grantChipHorizontalLayout.childAlignment = TextAnchor.MiddleLeft;
-        grantChipHorizontalLayout.childControlHeight = true;
-        grantChipHorizontalLayout.childControlWidth = true;
-        grantChipHorizontalLayout.childForceExpandHeight = false;
-        grantChipHorizontalLayout.childForceExpandWidth = false;
-
-        transitionGrantEmptyText = CreateText("Grant Empty", transitionGrantChipContainerRect, 13, FontStyle.Normal, mutedBodyColor);
-        transitionGrantEmptyText.alignment = TextAnchor.MiddleLeft;
-        transitionGrantEmptyText.text = "No between-act grant";
-        transitionGrantEmptyText.gameObject.SetActive(false);
-
-        selectionPromptText = CreateText("Selection Prompt", transitionContentRect, 16, FontStyle.Bold, bodyColor);
-        LayoutElement selectionPromptLayout = selectionPromptText.gameObject.AddComponent<LayoutElement>();
-        selectionPromptLayout.preferredHeight = 52f;
-        selectionPromptText.alignment = TextAnchor.MiddleCenter;
-        selectionPromptText.lineSpacing = 1.08f;
-        selectionPromptText.verticalOverflow = VerticalWrapMode.Truncate;
-        selectionPromptText.gameObject.SetActive(false);
-
-        RectTransform cardRowRect = CreateRectTransform("Transition Card Row", transitionContentRect);
-        LayoutElement cardRowLayout = cardRowRect.gameObject.AddComponent<LayoutElement>();
-        cardRowLayout.preferredHeight = Mathf.Max(transitionCardHeight + 10f, 360f);
-        HorizontalLayoutGroup cardRowHorizontalLayout = cardRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        cardRowHorizontalLayout.padding = new RectOffset(0, 0, 0, 0);
-        cardRowHorizontalLayout.spacing = 24f;
-        cardRowHorizontalLayout.childAlignment = TextAnchor.MiddleCenter;
-        cardRowHorizontalLayout.childControlHeight = true;
-        cardRowHorizontalLayout.childControlWidth = true;
-        cardRowHorizontalLayout.childForceExpandHeight = false;
-        cardRowHorizontalLayout.childForceExpandWidth = false;
-        optionsContentRect = cardRowRect;
+        BuildTransitionIntermissionUi();
+        BuildTransitionSelectionUi();
 
         RectTransform buttonRect = CreateRectTransform("Action Button", panelRect);
         buttonRect.anchorMin = new Vector2(0.5f, 0f);
         buttonRect.anchorMax = new Vector2(0.5f, 0f);
         buttonRect.pivot = new Vector2(0.5f, 0f);
-        buttonRect.anchoredPosition = new Vector2(0f, 26f);
-        buttonRect.sizeDelta = new Vector2(172f, 44f);
+        buttonRect.anchoredPosition = new Vector2(0f, 22f);
+        buttonRect.sizeDelta = new Vector2(184f, 42f);
 
         Image buttonImage = buttonRect.gameObject.AddComponent<Image>();
         buttonImage.color = buttonColor;
         actionButton = buttonRect.gameObject.AddComponent<Button>();
+        actionButton.targetGraphic = buttonImage;
         ColorBlock buttonColors = actionButton.colors;
         buttonColors.normalColor = buttonColor;
         buttonColors.highlightedColor = buttonHighlightColor;
@@ -423,9 +312,289 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         actionButtonText.alignment = TextAnchor.MiddleCenter;
     }
 
+    private void BuildTransitionIntermissionUi()
+    {
+        transitionIntermissionRect = CreateRectTransform("Transition Intermission Screen", transitionContentRect);
+        StretchToParent(transitionIntermissionRect);
+        transitionIntermissionRect.gameObject.SetActive(false);
+
+        transitionIntermissionContentRect = CreateRectTransform("Transition Intermission Content", transitionIntermissionRect);
+        transitionIntermissionContentRect.anchorMin = new Vector2(0f, 0f);
+        transitionIntermissionContentRect.anchorMax = new Vector2(1f, 1f);
+        transitionIntermissionContentRect.offsetMin = Vector2.zero;
+        transitionIntermissionContentRect.offsetMax = Vector2.zero;
+
+        VerticalLayoutGroup intermissionLayout = transitionIntermissionContentRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        intermissionLayout.padding = new RectOffset(0, 0, 0, 0);
+        intermissionLayout.spacing = 14f;
+        intermissionLayout.childAlignment = TextAnchor.UpperCenter;
+        intermissionLayout.childControlHeight = true;
+        intermissionLayout.childControlWidth = true;
+        intermissionLayout.childForceExpandHeight = false;
+        intermissionLayout.childForceExpandWidth = true;
+
+        transitionMetaText = CreateText("Transition Meta", transitionIntermissionContentRect, 11, FontStyle.Bold, metaColor);
+        LayoutElement metaLayout = transitionMetaText.gameObject.AddComponent<LayoutElement>();
+        metaLayout.preferredHeight = 16f;
+        transitionMetaText.alignment = TextAnchor.MiddleCenter;
+
+        transitionTitleText = CreateText("Transition Title", transitionIntermissionContentRect, 34, FontStyle.Bold, titleColor);
+        LayoutElement transitionTitleLayout = transitionTitleText.gameObject.AddComponent<LayoutElement>();
+        transitionTitleLayout.preferredHeight = 42f;
+        transitionTitleText.alignment = TextAnchor.MiddleCenter;
+
+        RectTransform illustrationRect = CreateRectTransform("Transition Illustration", transitionIntermissionContentRect);
+        LayoutElement illustrationLayout = illustrationRect.gameObject.AddComponent<LayoutElement>();
+        illustrationLayout.preferredHeight = 188f;
+        Image illustrationFrame = illustrationRect.gameObject.AddComponent<Image>();
+        illustrationFrame.color = artPanelColor;
+        Outline illustrationOutline = illustrationRect.gameObject.AddComponent<Outline>();
+        illustrationOutline.effectColor = chipBorderColor;
+        illustrationOutline.effectDistance = new Vector2(1f, -1f);
+
+        RectTransform illustrationInsetRect = CreateRectTransform("Transition Illustration Inset", illustrationRect);
+        StretchToParent(illustrationInsetRect, 2f, 2f);
+        Image illustrationInset = illustrationInsetRect.gameObject.AddComponent<Image>();
+        illustrationInset.color = new Color(0.09f, 0.11f, 0.14f, 0.98f);
+
+        RectTransform illustrationImageRect = CreateRectTransform("Transition Illustration Image", illustrationInsetRect);
+        StretchToParent(illustrationImageRect, 10f, 10f);
+        transitionIllustrationImage = illustrationImageRect.gameObject.AddComponent<Image>();
+        transitionIllustrationImage.preserveAspect = true;
+        transitionIllustrationImage.color = Color.white;
+
+        transitionIllustrationFallbackText = CreateText("Transition Illustration Placeholder", illustrationInsetRect, 20, FontStyle.Bold, mutedBodyColor);
+        StretchToParent(transitionIllustrationFallbackText.rectTransform, 18f, 18f);
+        transitionIllustrationFallbackText.alignment = TextAnchor.MiddleCenter;
+
+        transitionBodyText = CreateText("Transition Body", transitionIntermissionContentRect, 18, FontStyle.Italic, bodyColor);
+        LayoutElement transitionBodyLayout = transitionBodyText.gameObject.AddComponent<LayoutElement>();
+        transitionBodyLayout.preferredHeight = 76f;
+        transitionBodyText.alignment = TextAnchor.MiddleCenter;
+        transitionBodyText.lineSpacing = 1.08f;
+        transitionBodyText.verticalOverflow = VerticalWrapMode.Truncate;
+
+        RectTransform summaryRowRect = CreateRectTransform("Transition Summary Row", transitionIntermissionContentRect);
+        LayoutElement summaryRowLayout = summaryRowRect.gameObject.AddComponent<LayoutElement>();
+        summaryRowLayout.preferredHeight = 124f;
+        HorizontalLayoutGroup summaryRowLayoutGroup = summaryRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        summaryRowLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        summaryRowLayoutGroup.spacing = 16f;
+        summaryRowLayoutGroup.childAlignment = TextAnchor.UpperCenter;
+        summaryRowLayoutGroup.childControlHeight = true;
+        summaryRowLayoutGroup.childControlWidth = true;
+        summaryRowLayoutGroup.childForceExpandHeight = false;
+        summaryRowLayoutGroup.childForceExpandWidth = true;
+
+        RectTransform carryOverPanelRect = CreateInfoSurface("Carry Over Summary", summaryRowRect);
+        LayoutElement carryOverPanelLayout = carryOverPanelRect.GetComponent<LayoutElement>();
+        carryOverPanelLayout.flexibleWidth = 1f;
+        VerticalLayoutGroup carryOverLayout = carryOverPanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        carryOverLayout.padding = new RectOffset(16, 16, 14, 14);
+        carryOverLayout.spacing = 8f;
+        carryOverLayout.childAlignment = TextAnchor.UpperCenter;
+        carryOverLayout.childControlHeight = true;
+        carryOverLayout.childControlWidth = true;
+        carryOverLayout.childForceExpandHeight = false;
+        carryOverLayout.childForceExpandWidth = true;
+
+        transitionResourceLabelText = CreateText("Carry Over Label", carryOverPanelRect, 12, FontStyle.Bold, metaColor);
+        LayoutElement resourceLabelLayout = transitionResourceLabelText.gameObject.AddComponent<LayoutElement>();
+        resourceLabelLayout.preferredHeight = 16f;
+        transitionResourceLabelText.alignment = TextAnchor.MiddleCenter;
+        transitionResourceLabelText.text = "Carry-over resources";
+
+        transitionResourceChipContainerRect = CreateRectTransform("Carry Over Chips", carryOverPanelRect);
+        LayoutElement resourceChipLayout = transitionResourceChipContainerRect.gameObject.AddComponent<LayoutElement>();
+        resourceChipLayout.preferredHeight = 60f;
+        HorizontalLayoutGroup resourceChipLayoutGroup = transitionResourceChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        resourceChipLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        resourceChipLayoutGroup.spacing = 8f;
+        resourceChipLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+        resourceChipLayoutGroup.childControlHeight = true;
+        resourceChipLayoutGroup.childControlWidth = true;
+        resourceChipLayoutGroup.childForceExpandHeight = false;
+        resourceChipLayoutGroup.childForceExpandWidth = false;
+
+        RectTransform grantPanelRect = CreateInfoSurface("Grant Summary", summaryRowRect);
+        LayoutElement grantPanelLayout = grantPanelRect.GetComponent<LayoutElement>();
+        grantPanelLayout.flexibleWidth = 1f;
+        VerticalLayoutGroup grantLayout = grantPanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        grantLayout.padding = new RectOffset(16, 16, 14, 14);
+        grantLayout.spacing = 8f;
+        grantLayout.childAlignment = TextAnchor.UpperCenter;
+        grantLayout.childControlHeight = true;
+        grantLayout.childControlWidth = true;
+        grantLayout.childForceExpandHeight = false;
+        grantLayout.childForceExpandWidth = true;
+
+        transitionGrantLabelText = CreateText("Grant Label", grantPanelRect, 12, FontStyle.Bold, metaColor);
+        LayoutElement grantLabelLayout = transitionGrantLabelText.gameObject.AddComponent<LayoutElement>();
+        grantLabelLayout.preferredHeight = 16f;
+        transitionGrantLabelText.alignment = TextAnchor.MiddleCenter;
+        transitionGrantLabelText.text = "Between-act grant";
+
+        transitionGrantChipContainerRect = CreateRectTransform("Grant Chips", grantPanelRect);
+        LayoutElement grantChipLayout = transitionGrantChipContainerRect.gameObject.AddComponent<LayoutElement>();
+        grantChipLayout.preferredHeight = 30f;
+        HorizontalLayoutGroup grantChipLayoutGroup = transitionGrantChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        grantChipLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        grantChipLayoutGroup.spacing = 8f;
+        grantChipLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+        grantChipLayoutGroup.childControlHeight = true;
+        grantChipLayoutGroup.childControlWidth = true;
+        grantChipLayoutGroup.childForceExpandHeight = false;
+        grantChipLayoutGroup.childForceExpandWidth = false;
+
+        transitionGrantEmptyText = CreateText("Grant Empty", grantPanelRect, 13, FontStyle.Normal, mutedBodyColor);
+        LayoutElement grantEmptyLayout = transitionGrantEmptyText.gameObject.AddComponent<LayoutElement>();
+        grantEmptyLayout.preferredHeight = 18f;
+        transitionGrantEmptyText.alignment = TextAnchor.MiddleCenter;
+        transitionGrantEmptyText.text = "No between-act grant";
+        transitionGrantEmptyText.gameObject.SetActive(false);
+
+    }
+
+    private void BuildTransitionSelectionUi()
+    {
+        transitionSelectionRect = CreateRectTransform("Transition Selection Screen", transitionContentRect);
+        StretchToParent(transitionSelectionRect);
+        VerticalLayoutGroup selectionLayout = transitionSelectionRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        selectionLayout.padding = new RectOffset(0, 0, 0, 0);
+        selectionLayout.spacing = 16f;
+        selectionLayout.childAlignment = TextAnchor.UpperCenter;
+        selectionLayout.childControlHeight = true;
+        selectionLayout.childControlWidth = true;
+        selectionLayout.childForceExpandHeight = false;
+        selectionLayout.childForceExpandWidth = true;
+        transitionSelectionRect.gameObject.SetActive(false);
+
+        RectTransform selectionHeaderRect = CreateRectTransform("Selection Header", transitionSelectionRect);
+        LayoutElement selectionHeaderLayout = selectionHeaderRect.gameObject.AddComponent<LayoutElement>();
+        selectionHeaderLayout.preferredHeight = 70f;
+        HorizontalLayoutGroup selectionHeaderLayoutGroup = selectionHeaderRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        selectionHeaderLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        selectionHeaderLayoutGroup.spacing = 16f;
+        selectionHeaderLayoutGroup.childAlignment = TextAnchor.UpperCenter;
+        selectionHeaderLayoutGroup.childControlHeight = true;
+        selectionHeaderLayoutGroup.childControlWidth = true;
+        selectionHeaderLayoutGroup.childForceExpandHeight = false;
+        selectionHeaderLayoutGroup.childForceExpandWidth = false;
+
+        RectTransform selectionCopyRect = CreateRectTransform("Selection Copy", selectionHeaderRect);
+        LayoutElement selectionCopyLayout = selectionCopyRect.gameObject.AddComponent<LayoutElement>();
+        selectionCopyLayout.flexibleWidth = 1f;
+        VerticalLayoutGroup selectionCopyLayoutGroup = selectionCopyRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        selectionCopyLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        selectionCopyLayoutGroup.spacing = 4f;
+        selectionCopyLayoutGroup.childAlignment = TextAnchor.UpperLeft;
+        selectionCopyLayoutGroup.childControlHeight = true;
+        selectionCopyLayoutGroup.childControlWidth = true;
+        selectionCopyLayoutGroup.childForceExpandHeight = false;
+        selectionCopyLayoutGroup.childForceExpandWidth = true;
+
+        selectionPromptText = CreateText("Selection Prompt", selectionCopyRect, 18, FontStyle.Bold, titleColor);
+        LayoutElement selectionPromptLayout = selectionPromptText.gameObject.AddComponent<LayoutElement>();
+        selectionPromptLayout.preferredHeight = 26f;
+        selectionPromptText.alignment = TextAnchor.MiddleLeft;
+        selectionPromptText.verticalOverflow = VerticalWrapMode.Truncate;
+
+        selectionContextNoteText = CreateText("Selection Note", selectionCopyRect, 13, FontStyle.Normal, mutedBodyColor);
+        LayoutElement selectionNoteLayout = selectionContextNoteText.gameObject.AddComponent<LayoutElement>();
+        selectionNoteLayout.preferredHeight = 18f;
+        selectionContextNoteText.alignment = TextAnchor.MiddleLeft;
+        selectionContextNoteText.verticalOverflow = VerticalWrapMode.Truncate;
+        selectionContextNoteText.gameObject.SetActive(false);
+
+        RectTransform selectionResourcePanelRect = CreateInfoSurface("Selection Resource Summary", selectionHeaderRect);
+        LayoutElement selectionResourcePanelLayout = selectionResourcePanelRect.GetComponent<LayoutElement>();
+        selectionResourcePanelLayout.preferredWidth = 240f;
+        selectionResourcePanelLayout.minWidth = 240f;
+        selectionResourcePanelLayout.preferredHeight = 58f;
+        VerticalLayoutGroup selectionResourceLayout = selectionResourcePanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        selectionResourceLayout.padding = new RectOffset(12, 12, 10, 10);
+        selectionResourceLayout.spacing = 6f;
+        selectionResourceLayout.childAlignment = TextAnchor.UpperCenter;
+        selectionResourceLayout.childControlHeight = true;
+        selectionResourceLayout.childControlWidth = true;
+        selectionResourceLayout.childForceExpandHeight = false;
+        selectionResourceLayout.childForceExpandWidth = true;
+
+        Text selectionResourceLabelText = CreateText("Selection Carry Over Label", selectionResourcePanelRect, 10, FontStyle.Bold, metaColor);
+        LayoutElement selectionResourceLabelLayout = selectionResourceLabelText.gameObject.AddComponent<LayoutElement>();
+        selectionResourceLabelLayout.preferredHeight = 14f;
+        selectionResourceLabelText.alignment = TextAnchor.MiddleCenter;
+        selectionResourceLabelText.text = "Carry-over";
+
+        transitionSelectionResourceChipContainerRect = CreateRectTransform("Selection Carry Over Chips", selectionResourcePanelRect);
+        LayoutElement selectionResourceChipLayout = transitionSelectionResourceChipContainerRect.gameObject.AddComponent<LayoutElement>();
+        selectionResourceChipLayout.preferredHeight = 28f;
+        HorizontalLayoutGroup selectionResourceChipLayoutGroup = transitionSelectionResourceChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        selectionResourceChipLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        selectionResourceChipLayoutGroup.spacing = 6f;
+        selectionResourceChipLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+        selectionResourceChipLayoutGroup.childControlHeight = true;
+        selectionResourceChipLayoutGroup.childControlWidth = true;
+        selectionResourceChipLayoutGroup.childForceExpandHeight = false;
+        selectionResourceChipLayoutGroup.childForceExpandWidth = false;
+
+        transitionSelectionOptionsRect = CreateRectTransform("Transition Card Row", transitionSelectionRect);
+        LayoutElement cardRowLayout = transitionSelectionOptionsRect.gameObject.AddComponent<LayoutElement>();
+        cardRowLayout.preferredHeight = Mathf.Max(transitionCardHeight + 12f, 360f);
+        HorizontalLayoutGroup cardRowLayoutGroup = transitionSelectionOptionsRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        cardRowLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        cardRowLayoutGroup.spacing = 20f;
+        cardRowLayoutGroup.childAlignment = TextAnchor.UpperCenter;
+        cardRowLayoutGroup.childControlHeight = true;
+        cardRowLayoutGroup.childControlWidth = true;
+        cardRowLayoutGroup.childForceExpandHeight = false;
+        cardRowLayoutGroup.childForceExpandWidth = false;
+
+        transitionSelectionDetailRect = CreateInfoSurface("Transition Detail Panel", transitionSelectionRect);
+        LayoutElement detailLayout = transitionSelectionDetailRect.GetComponent<LayoutElement>();
+        detailLayout.preferredHeight = 112f;
+        VerticalLayoutGroup detailLayoutGroup = transitionSelectionDetailRect.gameObject.AddComponent<VerticalLayoutGroup>();
+        detailLayoutGroup.padding = new RectOffset(18, 18, 16, 16);
+        detailLayoutGroup.spacing = 4f;
+        detailLayoutGroup.childAlignment = TextAnchor.UpperLeft;
+        detailLayoutGroup.childControlHeight = true;
+        detailLayoutGroup.childControlWidth = true;
+        detailLayoutGroup.childForceExpandHeight = false;
+        detailLayoutGroup.childForceExpandWidth = true;
+
+        transitionSelectionDetailMetaText = CreateText("Transition Detail Meta", transitionSelectionDetailRect, 11, FontStyle.Bold, metaColor);
+        LayoutElement detailMetaLayout = transitionSelectionDetailMetaText.gameObject.AddComponent<LayoutElement>();
+        detailMetaLayout.preferredHeight = 14f;
+        transitionSelectionDetailMetaText.alignment = TextAnchor.MiddleLeft;
+
+        transitionSelectionDetailTitleText = CreateText("Transition Detail Title", transitionSelectionDetailRect, 20, FontStyle.Bold, titleColor);
+        LayoutElement detailTitleLayout = transitionSelectionDetailTitleText.gameObject.AddComponent<LayoutElement>();
+        detailTitleLayout.preferredHeight = 24f;
+        transitionSelectionDetailTitleText.alignment = TextAnchor.MiddleLeft;
+
+        transitionSelectionDetailEffectText = CreateText("Transition Detail Effect", transitionSelectionDetailRect, 15, FontStyle.Normal, bodyColor);
+        LayoutElement detailEffectLayout = transitionSelectionDetailEffectText.gameObject.AddComponent<LayoutElement>();
+        detailEffectLayout.preferredHeight = 20f;
+        transitionSelectionDetailEffectText.alignment = TextAnchor.MiddleLeft;
+        transitionSelectionDetailEffectText.verticalOverflow = VerticalWrapMode.Truncate;
+
+        transitionSelectionDetailLoreText = CreateText("Transition Detail Lore", transitionSelectionDetailRect, 13, FontStyle.Italic, mutedBodyColor);
+        LayoutElement detailLoreLayout = transitionSelectionDetailLoreText.gameObject.AddComponent<LayoutElement>();
+        detailLoreLayout.preferredHeight = 32f;
+        transitionSelectionDetailLoreText.alignment = TextAnchor.UpperLeft;
+        transitionSelectionDetailLoreText.verticalOverflow = VerticalWrapMode.Truncate;
+        transitionSelectionDetailLoreText.lineSpacing = 1.05f;
+    }
+
     private void HandleActionClicked()
     {
-        if (isTransitionSelectionMode)
+        if (transitionScreenMode == TransitionScreenMode.Intermission)
+        {
+            HandleIntermissionContinueClicked();
+            return;
+        }
+
+        if (transitionScreenMode == TransitionScreenMode.Selection)
         {
             if (selectedTransitionBoon == null)
             {
@@ -442,6 +611,138 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         Action standardCallback = actionCallback;
         Hide();
         standardCallback?.Invoke();
+    }
+
+    private void HandleIntermissionContinueClicked()
+    {
+        if (activeTransitionDisplayData.RequiresBoonSelection)
+        {
+            ShowTransitionScreen(TransitionScreenMode.Selection);
+            return;
+        }
+
+        Action<HexBoonDefinition> callback = transitionActionCallback;
+        Hide();
+        callback?.Invoke(null);
+    }
+
+    private void RefreshTransitionStaticContent()
+    {
+        transitionMetaText.text = BuildTransitionMetaLabel(activeTransitionDisplayData);
+        transitionTitleText.text = string.IsNullOrWhiteSpace(activeTransitionDisplayData.Title)
+            ? "Act Complete"
+            : activeTransitionDisplayData.Title.Trim();
+        transitionBodyText.text = string.IsNullOrWhiteSpace(activeTransitionDisplayData.Body)
+            ? "The caravan gathers itself for the road ahead."
+            : activeTransitionDisplayData.Body.Trim();
+        transitionBodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(transitionBodyText.text));
+        selectionPromptText.text = string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionPrompt)
+            ? BuildDefaultSelectionPrompt(activeTransitionDisplayData.NextActNumber)
+            : activeTransitionDisplayData.SelectionPrompt.Trim();
+        selectionPromptText.gameObject.SetActive(activeTransitionDisplayData.RequiresBoonSelection);
+        selectionContextNoteText.text = string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote)
+            ? string.Empty
+            : activeTransitionDisplayData.SelectionContextNote.Trim();
+        selectionContextNoteText.gameObject.SetActive(!string.IsNullOrWhiteSpace(selectionContextNoteText.text));
+
+        RefreshTransitionIllustration();
+        RebuildIntermissionGrantSummary(activeTransitionDisplayData);
+        RebuildIntermissionCarryOverSummary(activeTransitionDisplayData.CurrentResources);
+        RebuildSelectionCarryOverSummary(activeTransitionDisplayData.CurrentResources);
+        RefreshTransitionDetailPanel();
+    }
+
+    private void ShowTransitionScreen(TransitionScreenMode mode)
+    {
+        transitionScreenMode = mode;
+
+        if (transitionIntermissionRect != null)
+        {
+            transitionIntermissionRect.gameObject.SetActive(mode == TransitionScreenMode.Intermission);
+        }
+
+        if (transitionSelectionRect != null)
+        {
+            bool showSelection = mode == TransitionScreenMode.Selection && activeTransitionDisplayData.RequiresBoonSelection;
+            transitionSelectionRect.gameObject.SetActive(showSelection);
+        }
+
+        if (panelRect != null)
+        {
+            panelRect.sizeDelta = mode == TransitionScreenMode.Selection
+                ? ResolveTransitionSelectionPanelSize()
+                : ResolveTransitionIntermissionPanelSize();
+        }
+
+        if (actionButton != null)
+        {
+            actionButton.gameObject.SetActive(mode != TransitionScreenMode.None);
+        }
+
+        RefreshTransitionActionState();
+        RefreshTransitionDetailPanel();
+        ApplyTransitionSelectionVisuals();
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private void RefreshTransitionActionState()
+    {
+        if (actionButton == null || actionButtonText == null)
+        {
+            return;
+        }
+
+        if (transitionScreenMode == TransitionScreenMode.Selection)
+        {
+            actionButtonText.text = string.IsNullOrWhiteSpace(activeTransitionDisplayData.ContinueButtonLabel)
+                ? "Continue"
+                : activeTransitionDisplayData.ContinueButtonLabel.Trim();
+            actionButton.interactable = selectedTransitionBoon != null;
+            return;
+        }
+
+        if (transitionScreenMode == TransitionScreenMode.Intermission)
+        {
+            string intermissionLabel = activeTransitionDisplayData.RequiresBoonSelection
+                ? activeTransitionDisplayData.IntermissionContinueButtonLabel
+                : activeTransitionDisplayData.ContinueButtonLabel;
+            actionButtonText.text = string.IsNullOrWhiteSpace(intermissionLabel)
+                ? "Continue"
+                : intermissionLabel.Trim();
+            actionButton.interactable = true;
+            return;
+        }
+
+        actionButton.interactable = true;
+    }
+
+    private void AnimateTransitionCards()
+    {
+        if (transitionScreenMode != TransitionScreenMode.Selection || transitionCards.Count == 0)
+        {
+            return;
+        }
+
+        float deltaTime = Time.unscaledDeltaTime;
+        if (deltaTime <= 0f)
+        {
+            return;
+        }
+
+        float blend = 1f - Mathf.Exp(-18f * deltaTime);
+        for (int index = 0; index < transitionCards.Count; index++)
+        {
+            TransitionBoonCardUi card = transitionCards[index];
+            if (card?.RootRect == null || !card.RootRect.gameObject.activeSelf || card.MotionRect == null)
+            {
+                continue;
+            }
+
+            card.MotionRect.localScale = Vector3.Lerp(card.MotionRect.localScale, Vector3.one * card.TargetScale, blend);
+            Vector3 motionPosition = card.MotionRect.localPosition;
+            motionPosition.y = Mathf.Lerp(motionPosition.y, card.TargetLift, blend);
+            card.MotionRect.localPosition = motionPosition;
+        }
     }
 
     private Font ResolveFont()
@@ -472,7 +773,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     private void EnsureTransitionCardCount(int count)
     {
-        if (optionsContentRect == null)
+        if (transitionSelectionOptionsRect == null)
         {
             return;
         }
@@ -488,25 +789,32 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private void RefreshTransitionCards()
     {
         bool hasOptions = transitionBoonOptions != null && transitionBoonOptions.Length > 0;
-        if (optionsContentRect != null)
+        if (transitionSelectionOptionsRect != null)
         {
-            optionsContentRect.gameObject.SetActive(hasOptions);
+            transitionSelectionOptionsRect.gameObject.SetActive(hasOptions);
         }
 
         for (int index = 0; index < transitionCards.Count; index++)
         {
             bool shouldBeVisible = hasOptions && index < transitionBoonOptions.Length;
-            transitionCards[index].RootRect.gameObject.SetActive(shouldBeVisible);
+            TransitionBoonCardUi card = transitionCards[index];
+            card.RootRect.gameObject.SetActive(shouldBeVisible);
+            card.IsHovered = false;
+            card.TargetScale = 1f;
+            card.TargetLift = 0f;
+            card.MotionRect.localScale = Vector3.one;
+            card.MotionRect.localPosition = Vector3.zero;
+
             if (!shouldBeVisible)
             {
                 continue;
             }
 
-            HexBoonDefinition boon = transitionBoonOptions[index];
-            PopulateTransitionCard(transitionCards[index], boon);
+            PopulateTransitionCard(card, transitionBoonOptions[index]);
         }
 
         ApplyTransitionSelectionVisuals();
+        RefreshTransitionDetailPanel();
         Canvas.ForceUpdateCanvases();
     }
 
@@ -518,8 +826,39 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
 
         selectedTransitionBoon = transitionBoonOptions[optionIndex];
-        actionButton.interactable = selectedTransitionBoon != null;
+        RefreshTransitionActionState();
         ApplyTransitionSelectionVisuals();
+        RefreshTransitionDetailPanel();
+    }
+
+    private void HandleTransitionOptionHoverChanged(int optionIndex, bool isHovered)
+    {
+        if (transitionBoonOptions == null || optionIndex < 0 || optionIndex >= transitionBoonOptions.Length)
+        {
+            return;
+        }
+
+        if (optionIndex >= transitionCards.Count)
+        {
+            return;
+        }
+
+        TransitionBoonCardUi card = transitionCards[optionIndex];
+        card.IsHovered = isHovered;
+
+        if (isHovered)
+        {
+            hoveredTransitionBoon = transitionBoonOptions[optionIndex];
+        }
+        else if (hoveredTransitionBoon != null
+                 && transitionBoonOptions[optionIndex] != null
+                 && string.Equals(hoveredTransitionBoon.id, transitionBoonOptions[optionIndex].id, StringComparison.OrdinalIgnoreCase))
+        {
+            hoveredTransitionBoon = null;
+        }
+
+        ApplyTransitionSelectionVisuals();
+        RefreshTransitionDetailPanel();
     }
 
     private void ApplyTransitionSelectionVisuals()
@@ -538,35 +877,112 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             bool isSelected = selectedTransitionBoon != null
                 && option != null
                 && string.Equals(option.id, selectedTransitionBoon.id, StringComparison.OrdinalIgnoreCase);
+            bool isHovered = card.IsHovered;
             Color accentColor = option != null ? GetArchetypeAccent(option.archetypeFamily) : cardSelectedFrameColor;
 
-            card.FrameImage.color = isSelected
-                ? Color.Lerp(accentColor, cardSelectedFrameColor, 0.45f)
-                : cardFrameColor;
-
-            ColorBlock cardColors = card.Button.colors;
             if (isSelected)
             {
-                cardColors.normalColor = cardSelectedSurfaceColor;
-                cardColors.highlightedColor = Color.Lerp(cardSelectedSurfaceColor, Color.white, 0.08f);
-                cardColors.pressedColor = Color.Lerp(cardSelectedSurfaceColor, Color.white, 0.14f);
-                cardColors.selectedColor = cardColors.highlightedColor;
+                card.FrameImage.color = Color.Lerp(accentColor, cardSelectedFrameColor, 0.3f);
+                card.SurfaceImage.color = cardSelectedSurfaceColor;
+                card.TargetScale = isHovered ? 1.045f : 1.035f;
+                card.TargetLift = isHovered ? 12f : 9f;
+            }
+            else if (isHovered)
+            {
+                card.FrameImage.color = Color.Lerp(cardFrameColor, accentColor, 0.35f);
+                card.SurfaceImage.color = cardHoverColor;
+                card.TargetScale = 1.018f;
+                card.TargetLift = 6f;
             }
             else
             {
-                cardColors.normalColor = cardSurfaceColor;
-                cardColors.highlightedColor = cardHoverColor;
-                cardColors.pressedColor = cardPressedColor;
-                cardColors.selectedColor = cardHoverColor;
+                card.FrameImage.color = cardFrameColor;
+                card.SurfaceImage.color = cardSurfaceColor;
+                card.TargetScale = 1f;
+                card.TargetLift = 0f;
             }
-
-            card.Button.colors = cardColors;
-            card.SurfaceImage.color = cardColors.normalColor;
-            card.RootRect.localScale = isSelected ? Vector3.one * 1.03f : Vector3.one;
         }
     }
 
-    private void ApplyPanelMode(bool isTransitionLayout, bool hasCards)
+    private void RefreshTransitionDetailPanel()
+    {
+        if (transitionSelectionDetailRect == null)
+        {
+            return;
+        }
+
+        bool shouldShow = transitionScreenMode == TransitionScreenMode.Selection && activeTransitionDisplayData.RequiresBoonSelection;
+        transitionSelectionDetailRect.gameObject.SetActive(shouldShow);
+        if (!shouldShow)
+        {
+            return;
+        }
+
+        HexBoonDefinition focusedBoon = GetFocusedTransitionBoon();
+        if (focusedBoon == null)
+        {
+            transitionSelectionDetailMetaText.text = "Transition Detail";
+            transitionSelectionDetailTitleText.text = "Hover a boon to inspect it.";
+            transitionSelectionDetailEffectText.text = !string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote)
+                ? activeTransitionDisplayData.SelectionContextNote.Trim()
+                : "Choose one boon to carry into the next act.";
+            transitionSelectionDetailLoreText.text = string.Empty;
+            transitionSelectionDetailLoreText.gameObject.SetActive(false);
+            return;
+        }
+
+        focusedBoon.Validate();
+        transitionSelectionDetailMetaText.text = BuildSelectionDetailMeta(focusedBoon);
+        transitionSelectionDetailTitleText.text = focusedBoon.GetResolvedDisplayName();
+        transitionSelectionDetailEffectText.text = GetExpandedBoonEffect(focusedBoon.description);
+
+        string lore = NormalizeInlineText(focusedBoon.flavorText);
+        if (!string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote))
+        {
+            lore = string.IsNullOrWhiteSpace(lore)
+                ? activeTransitionDisplayData.SelectionContextNote.Trim()
+                : $"{lore}\n{activeTransitionDisplayData.SelectionContextNote.Trim()}";
+        }
+
+        transitionSelectionDetailLoreText.text = lore;
+        transitionSelectionDetailLoreText.gameObject.SetActive(!string.IsNullOrWhiteSpace(lore));
+    }
+
+    private string BuildSelectionDetailMeta(HexBoonDefinition boon)
+    {
+        bool isSelected = selectedTransitionBoon != null
+            && string.Equals(selectedTransitionBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        bool isHovered = hoveredTransitionBoon != null
+            && string.Equals(hoveredTransitionBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        string stateLabel = isSelected ? "Selected path" : isHovered ? "Previewing path" : "Available path";
+        return $"{stateLabel} · {FormatArchetype(boon.archetypeFamily)} family";
+    }
+
+    private void RefreshTransitionIllustration()
+    {
+        if (transitionIllustrationImage == null || transitionIllustrationFallbackText == null)
+        {
+            return;
+        }
+
+        Sprite illustration = activeTransitionDisplayData.IntermissionIllustration;
+        if (illustration != null)
+        {
+            transitionIllustrationImage.sprite = illustration;
+            transitionIllustrationImage.enabled = true;
+            transitionIllustrationFallbackText.gameObject.SetActive(false);
+            return;
+        }
+
+        transitionIllustrationImage.sprite = null;
+        transitionIllustrationImage.enabled = false;
+        transitionIllustrationFallbackText.text = activeTransitionDisplayData.NextActNumber > 0
+            ? $"Road to Act {activeTransitionDisplayData.NextActNumber}"
+            : "Road Omen";
+        transitionIllustrationFallbackText.gameObject.SetActive(true);
+    }
+
+    private void ApplyPanelMode(bool isTransitionLayout)
     {
         if (panelRect == null)
         {
@@ -574,7 +990,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
 
         panelRect.sizeDelta = isTransitionLayout
-            ? ResolveTransitionPanelSize(hasCards)
+            ? ResolveTransitionIntermissionPanelSize()
             : ResolveStandardPanelSize();
 
         if (standardContentRect != null)
@@ -593,7 +1009,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
     }
 
-    private void RebuildGrantSummary(HexActTransitionDisplayData displayData)
+    private void RebuildIntermissionGrantSummary(HexActTransitionDisplayData displayData)
     {
         ClearChildren(transitionGrantChipContainerRect);
 
@@ -601,34 +1017,33 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         chipCount += TryCreateGrantChip(transitionGrantChipContainerRect, "Food", displayData.BetweenActFood);
         chipCount += TryCreateGrantChip(transitionGrantChipContainerRect, "Morale", displayData.BetweenActMorale);
         chipCount += TryCreateGrantChip(transitionGrantChipContainerRect, "Gold", displayData.BetweenActGold);
-
-        if (chipCount == 0)
-        {
-            transitionGrantEmptyText = CreateText("Grant Empty", transitionGrantChipContainerRect, 13, FontStyle.Normal, mutedBodyColor);
-            transitionGrantEmptyText.alignment = TextAnchor.MiddleLeft;
-            transitionGrantEmptyText.text = "No between-act grant";
-        }
+        transitionGrantEmptyText.gameObject.SetActive(chipCount == 0);
     }
 
-    private void RebuildCarryOverSummary(CaravanResourceSnapshot currentResources)
+    private void RebuildIntermissionCarryOverSummary(CaravanResourceSnapshot currentResources)
     {
         ClearChildren(transitionResourceChipContainerRect);
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Food", currentResources.Food.ToString(), new Color(0.56f, 0.35f, 0.18f, 1f));
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Morale", currentResources.Morale.ToString(), new Color(0.51f, 0.21f, 0.24f, 1f));
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Gold", currentResources.Gold.ToString(), new Color(0.57f, 0.43f, 0.12f, 1f));
+        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Food", currentResources.Food.ToString(), new Color(0.56f, 0.35f, 0.18f, 1f), compact: false);
+        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Morale", currentResources.Morale.ToString(), new Color(0.51f, 0.21f, 0.24f, 1f), compact: false);
+        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Gold", currentResources.Gold.ToString(), new Color(0.57f, 0.43f, 0.12f, 1f), compact: false);
+    }
+
+    private void RebuildSelectionCarryOverSummary(CaravanResourceSnapshot currentResources)
+    {
+        ClearChildren(transitionSelectionResourceChipContainerRect);
+        CreateResourceSummaryChip(transitionSelectionResourceChipContainerRect, "Food", currentResources.Food.ToString(), new Color(0.56f, 0.35f, 0.18f, 1f), compact: true);
+        CreateResourceSummaryChip(transitionSelectionResourceChipContainerRect, "Morale", currentResources.Morale.ToString(), new Color(0.51f, 0.21f, 0.24f, 1f), compact: true);
+        CreateResourceSummaryChip(transitionSelectionResourceChipContainerRect, "Gold", currentResources.Gold.ToString(), new Color(0.57f, 0.43f, 0.12f, 1f), compact: true);
     }
 
     private TransitionBoonCardUi CreateTransitionCardUi(int optionIndex)
     {
-        RectTransform cardRect = CreateRectTransform($"Transition Card {optionIndex + 1}", optionsContentRect);
+        RectTransform cardRect = CreateRectTransform($"Transition Card {optionIndex + 1}", transitionSelectionOptionsRect);
         LayoutElement layoutElement = cardRect.gameObject.AddComponent<LayoutElement>();
         layoutElement.preferredWidth = transitionCardWidth;
         layoutElement.minWidth = transitionCardWidth;
         layoutElement.preferredHeight = transitionCardHeight;
         layoutElement.minHeight = transitionCardHeight;
-
-        Image frameImage = cardRect.gameObject.AddComponent<Image>();
-        frameImage.color = cardFrameColor;
 
         Button button = cardRect.gameObject.AddComponent<Button>();
         ColorBlock buttonColors = button.colors;
@@ -639,10 +1054,13 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         buttonColors.disabledColor = disabledCardColor;
         buttonColors.fadeDuration = 0.08f;
         button.colors = buttonColors;
-        int capturedIndex = optionIndex;
-        button.onClick.AddListener(() => HandleTransitionOptionClicked(capturedIndex));
 
-        RectTransform surfaceRect = CreateRectTransform("Surface", cardRect);
+        RectTransform motionRect = CreateRectTransform("Motion", cardRect);
+        StretchToParent(motionRect);
+        Image frameImage = motionRect.gameObject.AddComponent<Image>();
+        frameImage.color = cardFrameColor;
+
+        RectTransform surfaceRect = CreateRectTransform("Surface", motionRect);
         StretchToParent(surfaceRect, 2f, 2f);
         Image surfaceImage = surfaceRect.gameObject.AddComponent<Image>();
         surfaceImage.color = cardSurfaceColor;
@@ -665,7 +1083,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         RectTransform artRect = CreateRectTransform("Art", surfaceRect);
         LayoutElement artLayout = artRect.gameObject.AddComponent<LayoutElement>();
-        artLayout.preferredHeight = 156f;
+        artLayout.preferredHeight = 164f;
         Image artFrameImage = artRect.gameObject.AddComponent<Image>();
         artFrameImage.color = artPanelColor;
 
@@ -687,21 +1105,14 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         Text effectText = CreateText("Effect", surfaceRect, 15, FontStyle.Bold, bodyColor);
         LayoutElement effectLayout = effectText.gameObject.AddComponent<LayoutElement>();
-        effectLayout.preferredHeight = 56f;
+        effectLayout.preferredHeight = 42f;
         effectText.alignment = TextAnchor.UpperLeft;
         effectText.verticalOverflow = VerticalWrapMode.Truncate;
-        effectText.lineSpacing = 1.08f;
-
-        Text loreText = CreateText("Lore", surfaceRect, 13, FontStyle.Italic, mutedBodyColor);
-        LayoutElement loreLayout = loreText.gameObject.AddComponent<LayoutElement>();
-        loreLayout.preferredHeight = 42f;
-        loreText.alignment = TextAnchor.UpperLeft;
-        loreText.verticalOverflow = VerticalWrapMode.Truncate;
-        loreText.lineSpacing = 1.06f;
+        effectText.lineSpacing = 1.05f;
 
         RectTransform familyBadgeRect = CreateRectTransform("Family Badge", surfaceRect);
         LayoutElement familyBadgeLayout = familyBadgeRect.gameObject.AddComponent<LayoutElement>();
-        familyBadgeLayout.preferredHeight = 28f;
+        familyBadgeLayout.preferredHeight = 26f;
         Image familyBadgeImage = familyBadgeRect.gameObject.AddComponent<Image>();
         familyBadgeImage.color = chipColor;
 
@@ -709,10 +1120,18 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         StretchToParent(familyBadgeText.rectTransform, 10f, 5f);
         familyBadgeText.alignment = TextAnchor.MiddleCenter;
 
+        int capturedIndex = optionIndex;
+        button.onClick.AddListener(() => HandleTransitionOptionClicked(capturedIndex));
+
+        EventTrigger eventTrigger = cardRect.gameObject.AddComponent<EventTrigger>();
+        AddEventTrigger(eventTrigger, EventTriggerType.PointerEnter, _ => HandleTransitionOptionHoverChanged(capturedIndex, true));
+        AddEventTrigger(eventTrigger, EventTriggerType.PointerExit, _ => HandleTransitionOptionHoverChanged(capturedIndex, false));
+
         return new TransitionBoonCardUi
         {
             RootRect = cardRect,
             LayoutElement = layoutElement,
+            MotionRect = motionRect,
             Button = button,
             FrameImage = frameImage,
             SurfaceImage = surfaceImage,
@@ -721,7 +1140,6 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             ArtFallbackText = artFallbackText,
             TitleText = cardTitleText,
             EffectText = effectText,
-            LoreText = loreText,
             FamilyBadgeImage = familyBadgeImage,
             FamilyBadgeText = familyBadgeText
         };
@@ -739,8 +1157,6 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             card.Button.interactable = false;
             card.TitleText.text = "Missing Boon";
             card.EffectText.text = "No boon data is available.";
-            card.LoreText.text = string.Empty;
-            card.LoreText.gameObject.SetActive(false);
             card.FamilyBadgeText.text = "Unavailable";
             card.ArtImage.sprite = null;
             card.ArtImage.enabled = false;
@@ -753,18 +1169,9 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         boon.Validate();
         card.Button.interactable = boon.isEnabled;
         Color accentColor = GetArchetypeAccent(boon.archetypeFamily);
-        string effectText = string.IsNullOrWhiteSpace(boon.description)
-            ? "No gameplay bonus described."
-            : boon.description.Trim();
-        string loreText = string.IsNullOrWhiteSpace(boon.flavorText)
-            ? string.Empty
-            : boon.flavorText.Trim();
-
         card.TitleText.text = boon.GetResolvedDisplayName();
-        card.EffectText.text = effectText;
-        card.LoreText.text = loreText;
-        card.LoreText.gameObject.SetActive(!string.IsNullOrWhiteSpace(loreText));
-        card.FamilyBadgeText.text = $"Nemesis Family: {FormatArchetype(boon.archetypeFamily)}";
+        card.EffectText.text = GetCompactBoonEffect(boon.description);
+        card.FamilyBadgeText.text = $"{FormatArchetype(boon.archetypeFamily)} Family";
         card.FamilyBadgeImage.color = Color.Lerp(accentColor, chipColor, 0.48f);
         card.ArtFrameImage.color = Color.Lerp(accentColor, artPanelColor, 0.72f);
 
@@ -778,10 +1185,15 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         {
             card.ArtImage.sprite = null;
             card.ArtImage.enabled = false;
-            card.ArtFallbackText.text = $"{FormatArchetype(boon.archetypeFamily)}\nFamily";
+            card.ArtFallbackText.text = $"{FormatArchetype(boon.archetypeFamily)}\nPath";
             card.ArtFallbackText.color = Color.Lerp(accentColor, Color.white, 0.3f);
             card.ArtFallbackText.gameObject.SetActive(true);
         }
+    }
+
+    private HexBoonDefinition GetFocusedTransitionBoon()
+    {
+        return hoveredTransitionBoon ?? selectedTransitionBoon;
     }
 
     private void SetModalVisibility(bool visible)
@@ -805,10 +1217,13 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         RectTransform chipRect = CreateRectTransform($"{label} Grant Chip", parent);
         LayoutElement chipLayout = chipRect.gameObject.AddComponent<LayoutElement>();
         string chipCopy = $"{FormatSigned(value)} {label}";
-        chipLayout.preferredWidth = Mathf.Max(84f, 28f + chipCopy.Length * 6f);
+        chipLayout.preferredWidth = Mathf.Max(86f, 32f + chipCopy.Length * 6f);
         chipLayout.preferredHeight = 26f;
         Image chipImage = chipRect.gameObject.AddComponent<Image>();
         chipImage.color = chipColor;
+        Outline chipOutline = chipRect.gameObject.AddComponent<Outline>();
+        chipOutline.effectColor = chipBorderColor;
+        chipOutline.effectDistance = new Vector2(1f, -1f);
 
         Text chipText = CreateText("Text", chipRect, 12, FontStyle.Bold, titleColor);
         StretchToParent(chipText.rectTransform, 10f, 5f);
@@ -817,17 +1232,43 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         return 1;
     }
 
-    private void CreateResourceSummaryChip(Transform parent, string label, string value, Color accentColor)
+    private void CreateResourceSummaryChip(Transform parent, string label, string value, Color accentColor, bool compact)
     {
         RectTransform chipRect = CreateRectTransform($"{label} Resource", parent);
         LayoutElement chipLayout = chipRect.gameObject.AddComponent<LayoutElement>();
-        chipLayout.preferredWidth = 68f;
-        chipLayout.preferredHeight = 48f;
+        chipLayout.preferredWidth = compact ? 68f : 72f;
+        chipLayout.preferredHeight = compact ? 28f : 48f;
         Image chipImage = chipRect.gameObject.AddComponent<Image>();
         chipImage.color = chipColor;
         Outline chipOutline = chipRect.gameObject.AddComponent<Outline>();
         chipOutline.effectColor = chipBorderColor;
         chipOutline.effectDistance = new Vector2(1f, -1f);
+
+        if (compact)
+        {
+            HorizontalLayoutGroup compactLayout = chipRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+            compactLayout.padding = new RectOffset(6, 6, 4, 4);
+            compactLayout.spacing = 4f;
+            compactLayout.childAlignment = TextAnchor.MiddleCenter;
+            compactLayout.childControlHeight = true;
+            compactLayout.childControlWidth = true;
+            compactLayout.childForceExpandHeight = false;
+            compactLayout.childForceExpandWidth = false;
+
+            Text labelText = CreateText("Label", chipRect, 10, FontStyle.Bold, Color.Lerp(accentColor, Color.white, 0.38f));
+            LayoutElement labelLayout = labelText.gameObject.AddComponent<LayoutElement>();
+            labelLayout.preferredWidth = Mathf.Max(22f, label.Length * 5f);
+            labelLayout.preferredHeight = 14f;
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.text = label.Substring(0, 1);
+
+            Text valueText = CreateText("Value", chipRect, 12, FontStyle.Bold, titleColor);
+            LayoutElement valueLayout = valueText.gameObject.AddComponent<LayoutElement>();
+            valueLayout.preferredHeight = 14f;
+            valueText.alignment = TextAnchor.MiddleCenter;
+            valueText.text = value;
+            return;
+        }
 
         VerticalLayoutGroup chipLayoutGroup = chipRect.gameObject.AddComponent<VerticalLayoutGroup>();
         chipLayoutGroup.padding = new RectOffset(8, 8, 6, 6);
@@ -838,17 +1279,41 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         chipLayoutGroup.childForceExpandHeight = false;
         chipLayoutGroup.childForceExpandWidth = true;
 
-        Text labelText = CreateText("Label", chipRect, 10, FontStyle.Bold, Color.Lerp(accentColor, Color.white, 0.38f));
-        LayoutElement labelLayout = labelText.gameObject.AddComponent<LayoutElement>();
-        labelLayout.preferredHeight = 12f;
-        labelText.alignment = TextAnchor.MiddleCenter;
-        labelText.text = label;
+        Text fullLabelText = CreateText("Label", chipRect, 10, FontStyle.Bold, Color.Lerp(accentColor, Color.white, 0.38f));
+        LayoutElement fullLabelLayout = fullLabelText.gameObject.AddComponent<LayoutElement>();
+        fullLabelLayout.preferredHeight = 12f;
+        fullLabelText.alignment = TextAnchor.MiddleCenter;
+        fullLabelText.text = label;
 
-        Text valueText = CreateText("Value", chipRect, 13, FontStyle.Bold, titleColor);
-        LayoutElement valueLayout = valueText.gameObject.AddComponent<LayoutElement>();
-        valueLayout.preferredHeight = 16f;
-        valueText.alignment = TextAnchor.MiddleCenter;
-        valueText.text = value;
+        Text fullValueText = CreateText("Value", chipRect, 13, FontStyle.Bold, titleColor);
+        LayoutElement fullValueLayout = fullValueText.gameObject.AddComponent<LayoutElement>();
+        fullValueLayout.preferredHeight = 16f;
+        fullValueText.alignment = TextAnchor.MiddleCenter;
+        fullValueText.text = value;
+    }
+
+    private static void AddEventTrigger(EventTrigger trigger, EventTriggerType eventType, UnityAction<BaseEventData> callback)
+    {
+        trigger.triggers ??= new List<EventTrigger.Entry>();
+        EventTrigger.Entry entry = new()
+        {
+            eventID = eventType
+        };
+        entry.callback.AddListener(callback);
+        trigger.triggers.Add(entry);
+    }
+
+    private RectTransform CreateInfoSurface(string name, Transform parent)
+    {
+        RectTransform rect = CreateRectTransform(name, parent);
+        LayoutElement layoutElement = rect.gameObject.AddComponent<LayoutElement>();
+        layoutElement.preferredHeight = 100f;
+        Image background = rect.gameObject.AddComponent<Image>();
+        background.color = chipColor;
+        Outline outline = rect.gameObject.AddComponent<Outline>();
+        outline.effectColor = chipBorderColor;
+        outline.effectDistance = new Vector2(1f, -1f);
+        return rect;
     }
 
     private static void ClearChildren(Transform parent)
@@ -869,14 +1334,18 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         return new Vector2(Mathf.Max(620f, panelWidth), Mathf.Clamp(panelHeight, 360f, 520f));
     }
 
-    private Vector2 ResolveTransitionPanelSize(bool hasCards)
+    private Vector2 ResolveTransitionIntermissionPanelSize()
     {
-        if (hasCards)
-        {
-            return new Vector2(Mathf.Max(980f, transitionPanelWidth), Mathf.Max(680f, transitionPanelHeight));
-        }
+        return new Vector2(
+            Mathf.Max(640f, transitionIntermissionPanelWidth),
+            Mathf.Max(676f, transitionIntermissionPanelHeight));
+    }
 
-        return new Vector2(Mathf.Max(760f, panelWidth), Mathf.Clamp(panelHeight, 420f, 560f));
+    private Vector2 ResolveTransitionSelectionPanelSize()
+    {
+        return new Vector2(
+            Mathf.Max(820f, transitionSelectionPanelWidth),
+            Mathf.Max(560f, transitionSelectionPanelHeight));
     }
 
     private static string BuildTransitionMetaLabel(HexActTransitionDisplayData displayData)
@@ -887,6 +1356,55 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         }
 
         return "ROAD INTERMISSION";
+    }
+
+    private static string BuildDefaultSelectionPrompt(int nextActNumber)
+    {
+        return nextActNumber > 0
+            ? $"Choose one boon for Act {nextActNumber}."
+            : "Choose one boon for the next act.";
+    }
+
+    private static string GetCompactBoonEffect(string rawDescription)
+    {
+        string normalized = NormalizeInlineText(rawDescription);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "No boon effect listed.";
+        }
+
+        int sentenceBreak = normalized.IndexOf('.');
+        if (sentenceBreak > 0 && sentenceBreak < 68)
+        {
+            normalized = normalized[..(sentenceBreak + 1)];
+        }
+
+        if (normalized.Length > 68)
+        {
+            normalized = $"{normalized[..65].TrimEnd()}...";
+        }
+
+        return normalized;
+    }
+
+    private static string GetExpandedBoonEffect(string rawDescription)
+    {
+        string normalized = NormalizeInlineText(rawDescription);
+        return string.IsNullOrWhiteSpace(normalized) ? "No gameplay bonus described." : normalized;
+    }
+
+    private static string NormalizeInlineText(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText))
+        {
+            return string.Empty;
+        }
+
+        return rawText
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Replace("  ", " ")
+            .Trim();
     }
 
     private static string FormatSigned(int value)

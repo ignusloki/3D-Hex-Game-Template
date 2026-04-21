@@ -28,7 +28,9 @@ public sealed class HexActTransitionStepDefinition
         "The caravan presses on. A new stretch of the road lies ahead.";
     [TextArea(2, 5)] public string boonSelectionPrompt =
         "Choose one boon to carry into the next act.";
+    public string intermissionContinueButtonLabel = "Choose a Boon";
     public string continueButtonLabel = "Continue";
+    public Sprite intermissionIllustration;
     public HexActResourceGrant betweenActGrant = new();
     public HexBoonDefinition[] boonOptions = Array.Empty<HexBoonDefinition>();
 
@@ -39,6 +41,9 @@ public sealed class HexActTransitionStepDefinition
         boonSelectionPrompt = string.IsNullOrWhiteSpace(boonSelectionPrompt)
             ? "Choose one boon to carry into the next act."
             : boonSelectionPrompt.Trim();
+        intermissionContinueButtonLabel = string.IsNullOrWhiteSpace(intermissionContinueButtonLabel)
+            ? "Choose a Boon"
+            : intermissionContinueButtonLabel.Trim();
         continueButtonLabel = string.IsNullOrWhiteSpace(continueButtonLabel) ? "Continue" : continueButtonLabel.Trim();
         betweenActGrant ??= new HexActResourceGrant();
         boonOptions ??= Array.Empty<HexBoonDefinition>();
