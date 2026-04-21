@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using UIE = UnityEngine.UIElements;
 
 public sealed class HexRunStateModalPresenter : MonoBehaviour
 {
@@ -157,6 +158,21 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     public void ShowTransition(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
     {
+        HexActTransitionModalPresenter toolkitPresenter = GetComponent<HexActTransitionModalPresenter>();
+        if (toolkitPresenter != null)
+        {
+            if (overlayRoot != null && overlayRoot.activeSelf)
+            {
+                SetModalVisibility(false);
+            }
+
+            Debug.LogWarning(
+                "[HexRunStateModalPresenter] Legacy act transition path was invoked. Forwarding to HexActTransitionModalPresenter instead.",
+                this);
+            toolkitPresenter.ShowTransition(displayData, onContinueRequested);
+            return;
+        }
+
         EnsureUi();
         if (overlayRoot == null)
         {
@@ -182,6 +198,21 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     public void ShowTransitionSelection(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
     {
+        HexActTransitionModalPresenter toolkitPresenter = GetComponent<HexActTransitionModalPresenter>();
+        if (toolkitPresenter != null)
+        {
+            if (overlayRoot != null && overlayRoot.activeSelf)
+            {
+                SetModalVisibility(false);
+            }
+
+            Debug.LogWarning(
+                "[HexRunStateModalPresenter] Legacy act transition selection path was invoked. Forwarding to HexActTransitionModalPresenter instead.",
+                this);
+            toolkitPresenter.ShowTransitionSelection(displayData, onContinueRequested);
+            return;
+        }
+
         ShowTransition(displayData, onContinueRequested);
         if (overlayRoot == null || !activeTransitionDisplayData.RequiresBoonSelection)
         {
@@ -1575,6 +1606,827 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         rectTransform.offsetMin = new Vector2(horizontalPadding, verticalPadding);
         rectTransform.offsetMax = new Vector2(-horizontalPadding, -verticalPadding);
         rectTransform.pivot = new Vector2(0.5f, 0.5f);
+    }
+}
+
+public sealed class HexActTransitionModalPresenter : MonoBehaviour
+{
+    private HexActTransitionModalDocumentController documentController;
+
+    public bool IsOpen => documentController != null && documentController.IsOpen;
+
+    public void ShowTransition(string title, string body, string continueButtonLabel, Action onContinueRequested)
+    {
+        ShowTransition(
+            new HexActTransitionDisplayData(
+                title,
+                body,
+                string.Empty,
+                string.Empty,
+                continueButtonLabel,
+                continueButtonLabel,
+                Array.Empty<HexBoonDefinition>()),
+            _ => onContinueRequested?.Invoke());
+    }
+
+    public void ShowTransition(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
+    {
+        EnsureView();
+        documentController?.Show(displayData, onContinueRequested, openSelectionImmediately: false);
+    }
+
+    public void ShowTransitionSelection(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
+    {
+        EnsureView();
+        documentController?.Show(displayData, onContinueRequested, openSelectionImmediately: true);
+    }
+
+    public void Hide()
+    {
+        documentController?.Hide();
+    }
+
+    private void EnsureView()
+    {
+        documentController ??= new HexActTransitionModalDocumentController(this);
+        documentController.EnsureInitialized();
+    }
+}
+
+internal sealed class HexActTransitionModalDocumentController
+{
+    private const string PanelSettingsResourcePath = "UI/Hud/HexHudPanelSettings";
+    private const string LayoutResourcePath = "UI/Modal/HexActTransitionModal";
+    private const string StyleSheetResourcePath = "UI/Modal/HexActTransitionModalStyles";
+
+    private enum TransitionScreenMode
+    {
+        None,
+        Intermission,
+        Selection
+    }
+
+    private readonly MonoBehaviour owner;
+    private readonly List<TransitionBoonCardView> cardViews = new();
+
+    private UIE.PanelSettings panelSettings;
+    private UIE.VisualTreeAsset layoutAsset;
+    private UIE.StyleSheet styleSheet;
+    private GameObject uiRootObject;
+    private UIE.UIDocument document;
+    private UIE.VisualElement modalRoot;
+    private UIE.VisualElement intermissionShell;
+    private UIE.VisualElement selectionShell;
+    private UIE.Label intermissionMetaLabel;
+    private UIE.Label intermissionTitleLabel;
+    private UIE.Label intermissionBodyLabel;
+    private UIE.Image intermissionIllustrationImage;
+    private UIE.Label intermissionIllustrationPlaceholderLabel;
+    private UIE.VisualElement carryOverChipsContainer;
+    private UIE.VisualElement grantChipsContainer;
+    private UIE.Label grantEmptyLabel;
+    private UIE.Button intermissionContinueButton;
+    private UIE.Label selectionPromptLabel;
+    private UIE.Label selectionNoteLabel;
+    private UIE.VisualElement selectionResourceStripContainer;
+    private UIE.VisualElement selectionCardsRow;
+    private UIE.Label detailMetaLabel;
+    private UIE.Label detailTitleLabel;
+    private UIE.Label detailKeywordLabel;
+    private UIE.Label detailEffectLabel;
+    private UIE.Label detailLoreLabel;
+    private UIE.Button selectionContinueButton;
+    private HexHudDocumentController hudDocumentController;
+    private Action<HexBoonDefinition> continueRequested;
+    private HexActTransitionDisplayData activeDisplayData;
+    private HexBoonDefinition[] boonOptions = Array.Empty<HexBoonDefinition>();
+    private HexBoonDefinition selectedBoon;
+    private HexBoonDefinition hoveredBoon;
+    private HexBoonDefinition focusedBoon;
+    private TransitionScreenMode screenMode;
+    private bool isInitialized;
+    private bool isOpen;
+
+    private sealed class TransitionBoonCardView
+    {
+        public UIE.VisualElement Root;
+        public UIE.Label TitleLabel;
+        public UIE.Image ArtImage;
+        public UIE.Label ArtPlaceholderLabel;
+        public UIE.Label SummaryLabel;
+        public UIE.Label FamilyLabel;
+        public HexBoonDefinition Boon;
+        public bool IsHovered;
+        public bool IsFocused;
+    }
+
+    public HexActTransitionModalDocumentController(MonoBehaviour owner)
+    {
+        this.owner = owner;
+    }
+
+    public bool IsOpen => isOpen;
+
+    public void EnsureInitialized()
+    {
+        if (isInitialized)
+        {
+            return;
+        }
+
+        panelSettings ??= Resources.Load<UIE.PanelSettings>(PanelSettingsResourcePath);
+        layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
+        styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
+        if (panelSettings == null || layoutAsset == null || styleSheet == null)
+        {
+            Debug.LogError("HexActTransitionModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
+            return;
+        }
+
+        uiRootObject = new GameObject("Act Transition Modal UI");
+        uiRootObject.transform.SetParent(owner.transform, false);
+        uiRootObject.layer = owner.gameObject.layer;
+
+        document = uiRootObject.AddComponent<UIE.UIDocument>();
+        document.panelSettings = panelSettings;
+        document.sortingOrder = 150;
+
+        UIE.VisualElement root = document.rootVisualElement;
+        root.Clear();
+        root.styleSheets.Clear();
+        root.styleSheets.Add(styleSheet);
+        layoutAsset.CloneTree(root);
+
+        modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-modal-root");
+        intermissionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-shell");
+        selectionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-shell");
+
+        intermissionMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-meta");
+        intermissionTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-title");
+        intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-body");
+        intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(root, "act-transition-intermission-illustration-image");
+        intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-illustration-placeholder");
+        carryOverChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-carry-chips");
+        grantChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-grant-chips");
+        grantEmptyLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-grant-empty");
+        intermissionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(root, "act-transition-intermission-button");
+
+        selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-prompt");
+        selectionNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-note");
+        selectionResourceStripContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-resource-strip");
+        selectionCardsRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-card-row");
+        detailMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-meta");
+        detailTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-title");
+        detailKeywordLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-keywords");
+        detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-effect");
+        detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-lore");
+        selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(root, "act-transition-selection-button");
+
+        if (intermissionContinueButton != null)
+        {
+            intermissionContinueButton.clicked += HandleIntermissionContinueClicked;
+        }
+
+        if (selectionContinueButton != null)
+        {
+            selectionContinueButton.clicked += HandleSelectionContinueClicked;
+        }
+
+        if (modalRoot != null)
+        {
+            modalRoot.style.display = UIE.DisplayStyle.None;
+        }
+
+        hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        isInitialized = true;
+    }
+
+    public void Show(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested, bool openSelectionImmediately)
+    {
+        EnsureInitialized();
+        if (!isInitialized || modalRoot == null)
+        {
+            return;
+        }
+
+        continueRequested = onContinueRequested;
+        activeDisplayData = displayData;
+        boonOptions = displayData.BoonOptions ?? Array.Empty<HexBoonDefinition>();
+        selectedBoon = null;
+        hoveredBoon = null;
+        focusedBoon = null;
+        screenMode = TransitionScreenMode.None;
+
+        PopulateIntermission();
+        PopulateSelection();
+
+        modalRoot.style.display = UIE.DisplayStyle.Flex;
+        isOpen = true;
+        hudDocumentController?.SetGameplayModalState(true);
+
+        if (openSelectionImmediately && activeDisplayData.RequiresBoonSelection)
+        {
+            ShowScreen(TransitionScreenMode.Selection);
+            return;
+        }
+
+        ShowScreen(TransitionScreenMode.Intermission);
+    }
+
+    public void Hide()
+    {
+        continueRequested = null;
+        activeDisplayData = default;
+        boonOptions = Array.Empty<HexBoonDefinition>();
+        selectedBoon = null;
+        hoveredBoon = null;
+        focusedBoon = null;
+        screenMode = TransitionScreenMode.None;
+        cardViews.Clear();
+
+        if (modalRoot != null)
+        {
+            modalRoot.style.display = UIE.DisplayStyle.None;
+        }
+
+        isOpen = false;
+        hudDocumentController?.SetGameplayModalState(false);
+    }
+
+    private void PopulateIntermission()
+    {
+        if (intermissionMetaLabel == null)
+        {
+            return;
+        }
+
+        intermissionMetaLabel.text = BuildTransitionMetaLabel(activeDisplayData);
+        intermissionTitleLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.Title)
+            ? "Act Complete"
+            : activeDisplayData.Title.Trim();
+        intermissionBodyLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.Body)
+            ? "The caravan gathers itself for the road ahead."
+            : activeDisplayData.Body.Trim();
+
+        ApplyIntermissionIllustration(activeDisplayData.IntermissionIllustration);
+        RebuildIntermissionCarryOverSummary(activeDisplayData.CurrentResources);
+        RebuildIntermissionGrantSummary(activeDisplayData);
+
+        string intermissionLabel = activeDisplayData.RequiresBoonSelection
+            ? activeDisplayData.IntermissionContinueButtonLabel
+            : activeDisplayData.ContinueButtonLabel;
+        if (intermissionContinueButton != null)
+        {
+            intermissionContinueButton.text = string.IsNullOrWhiteSpace(intermissionLabel) ? "Continue" : intermissionLabel.Trim();
+        }
+    }
+
+    private void PopulateSelection()
+    {
+        if (selectionPromptLabel == null)
+        {
+            return;
+        }
+
+        selectionPromptLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.SelectionPrompt)
+            ? BuildDefaultSelectionPrompt(activeDisplayData.NextActNumber)
+            : activeDisplayData.SelectionPrompt.Trim();
+        selectionNoteLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote)
+            ? string.Empty
+            : activeDisplayData.SelectionContextNote.Trim();
+        selectionNoteLabel.style.display = string.IsNullOrWhiteSpace(selectionNoteLabel.text) ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+        RebuildSelectionCarryOverSummary(activeDisplayData.CurrentResources);
+        RebuildSelectionCards();
+        RefreshSelectionActionState();
+        RefreshDetailPanel();
+    }
+
+    private void ShowScreen(TransitionScreenMode mode)
+    {
+        screenMode = mode;
+        bool showSelection = mode == TransitionScreenMode.Selection && activeDisplayData.RequiresBoonSelection;
+        if (intermissionShell != null)
+        {
+            intermissionShell.style.display = mode == TransitionScreenMode.Intermission ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+        }
+
+        if (selectionShell != null)
+        {
+            selectionShell.style.display = showSelection ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+        }
+    }
+
+    private void HandleIntermissionContinueClicked()
+    {
+        if (activeDisplayData.RequiresBoonSelection)
+        {
+            ShowScreen(TransitionScreenMode.Selection);
+            return;
+        }
+
+        Action<HexBoonDefinition> callback = continueRequested;
+        Hide();
+        callback?.Invoke(null);
+    }
+
+    private void HandleSelectionContinueClicked()
+    {
+        if (selectedBoon == null)
+        {
+            return;
+        }
+
+        Action<HexBoonDefinition> callback = continueRequested;
+        HexBoonDefinition chosenBoon = selectedBoon;
+        Hide();
+        callback?.Invoke(chosenBoon);
+    }
+
+    private void RebuildIntermissionCarryOverSummary(CaravanResourceSnapshot currentResources)
+    {
+        if (carryOverChipsContainer == null)
+        {
+            return;
+        }
+
+        carryOverChipsContainer.Clear();
+        carryOverChipsContainer.Add(CreateJournalChip("Food", currentResources.Food.ToString()));
+        carryOverChipsContainer.Add(CreateJournalChip("Morale", currentResources.Morale.ToString()));
+        carryOverChipsContainer.Add(CreateJournalChip("Gold", currentResources.Gold.ToString()));
+    }
+
+    private void RebuildIntermissionGrantSummary(HexActTransitionDisplayData displayData)
+    {
+        if (grantChipsContainer == null || grantEmptyLabel == null)
+        {
+            return;
+        }
+
+        grantChipsContainer.Clear();
+        int chipCount = 0;
+        chipCount += TryAddGrantChip(grantChipsContainer, "Food", displayData.BetweenActFood);
+        chipCount += TryAddGrantChip(grantChipsContainer, "Morale", displayData.BetweenActMorale);
+        chipCount += TryAddGrantChip(grantChipsContainer, "Gold", displayData.BetweenActGold);
+        grantEmptyLabel.style.display = chipCount == 0 ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+    }
+
+    private void RebuildSelectionCarryOverSummary(CaravanResourceSnapshot currentResources)
+    {
+        if (selectionResourceStripContainer == null)
+        {
+            return;
+        }
+
+        selectionResourceStripContainer.Clear();
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("F", currentResources.Food.ToString(), "act-transition-resource-mini--food"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("M", currentResources.Morale.ToString(), "act-transition-resource-mini--morale"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("G", currentResources.Gold.ToString(), "act-transition-resource-mini--gold"));
+    }
+
+    private void RebuildSelectionCards()
+    {
+        cardViews.Clear();
+        if (selectionCardsRow == null)
+        {
+            return;
+        }
+
+        selectionCardsRow.Clear();
+        for (int index = 0; index < boonOptions.Length; index++)
+        {
+            HexBoonDefinition boon = boonOptions[index];
+            if (boon == null)
+            {
+                continue;
+            }
+
+            boon.Validate();
+            TransitionBoonCardView cardView = CreateCardView(boon);
+            cardViews.Add(cardView);
+            selectionCardsRow.Add(cardView.Root);
+        }
+
+        RefreshCardVisuals();
+    }
+
+    private TransitionBoonCardView CreateCardView(HexBoonDefinition boon)
+    {
+        UIE.VisualElement root = new();
+        root.AddToClassList("act-transition-card");
+        root.focusable = true;
+        root.tabIndex = 0;
+        root.pickingMode = UIE.PickingMode.Position;
+
+        UIE.Label titleLabel = new();
+        titleLabel.AddToClassList("act-transition-card-title");
+        titleLabel.text = boon.GetResolvedDisplayName();
+
+        UIE.VisualElement artFrame = new();
+        artFrame.AddToClassList("act-transition-card-art-frame");
+
+        UIE.VisualElement artInset = new();
+        artInset.AddToClassList("act-transition-card-art-inset");
+
+        UIE.Image artImage = new();
+        artImage.AddToClassList("act-transition-card-art-image");
+        artImage.scaleMode = ScaleMode.ScaleToFit;
+
+        UIE.Label artPlaceholderLabel = new("placeholder");
+        artPlaceholderLabel.AddToClassList("act-transition-card-art-placeholder");
+
+        artInset.Add(artImage);
+        artInset.Add(artPlaceholderLabel);
+        artFrame.Add(artInset);
+
+        UIE.Label summaryLabel = new();
+        summaryLabel.AddToClassList("act-transition-card-summary");
+        summaryLabel.text = boon.GetCardSummary();
+
+        UIE.Label familyLabel = new();
+        familyLabel.AddToClassList("act-transition-card-family");
+        familyLabel.text = $"{FormatArchetype(boon.archetypeFamily)} Family";
+
+        root.Add(titleLabel);
+        root.Add(artFrame);
+        root.Add(summaryLabel);
+        root.Add(familyLabel);
+
+        if (boon.icon != null)
+        {
+            artImage.image = boon.icon.texture;
+            artImage.style.display = UIE.DisplayStyle.Flex;
+            artPlaceholderLabel.style.display = UIE.DisplayStyle.None;
+        }
+        else
+        {
+            artImage.image = null;
+            artImage.style.display = UIE.DisplayStyle.None;
+            artPlaceholderLabel.style.display = UIE.DisplayStyle.Flex;
+        }
+
+        root.RegisterCallback<UIE.ClickEvent>(_ => HandleCardClicked(boon));
+        root.RegisterCallback<UIE.PointerEnterEvent>(_ => HandleCardHovered(boon, true));
+        root.RegisterCallback<UIE.PointerLeaveEvent>(_ => HandleCardHovered(boon, false));
+        root.RegisterCallback<UIE.FocusInEvent>(_ => HandleCardFocused(boon, true));
+        root.RegisterCallback<UIE.FocusOutEvent>(_ => HandleCardFocused(boon, false));
+        root.RegisterCallback<UIE.KeyDownEvent>(evt =>
+        {
+            if (evt.keyCode != KeyCode.Return && evt.keyCode != KeyCode.Space)
+            {
+                return;
+            }
+
+            HandleCardClicked(boon);
+            evt.StopPropagation();
+        });
+
+        root.SetEnabled(boon.isEnabled);
+
+        return new TransitionBoonCardView
+        {
+            Root = root,
+            TitleLabel = titleLabel,
+            ArtImage = artImage,
+            ArtPlaceholderLabel = artPlaceholderLabel,
+            SummaryLabel = summaryLabel,
+            FamilyLabel = familyLabel,
+            Boon = boon
+        };
+    }
+
+    private void HandleCardClicked(HexBoonDefinition boon)
+    {
+        if (boon == null || !boon.isEnabled)
+        {
+            return;
+        }
+
+        selectedBoon = boon;
+        RefreshSelectionActionState();
+        RefreshCardVisuals();
+        RefreshDetailPanel();
+    }
+
+    private void HandleCardHovered(HexBoonDefinition boon, bool isHovered)
+    {
+        for (int index = 0; index < cardViews.Count; index++)
+        {
+            TransitionBoonCardView view = cardViews[index];
+            if (view.Boon == null || !string.Equals(view.Boon.id, boon.id, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            view.IsHovered = isHovered;
+            break;
+        }
+
+        if (isHovered)
+        {
+            hoveredBoon = boon;
+        }
+        else if (hoveredBoon != null && string.Equals(hoveredBoon.id, boon.id, StringComparison.OrdinalIgnoreCase))
+        {
+            hoveredBoon = null;
+        }
+
+        RefreshCardVisuals();
+        RefreshDetailPanel();
+    }
+
+    private void HandleCardFocused(HexBoonDefinition boon, bool isFocused)
+    {
+        for (int index = 0; index < cardViews.Count; index++)
+        {
+            TransitionBoonCardView view = cardViews[index];
+            if (view.Boon == null || !string.Equals(view.Boon.id, boon.id, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            view.IsFocused = isFocused;
+            break;
+        }
+
+        if (isFocused)
+        {
+            focusedBoon = boon;
+        }
+        else if (focusedBoon != null && string.Equals(focusedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase))
+        {
+            focusedBoon = null;
+        }
+
+        RefreshCardVisuals();
+        RefreshDetailPanel();
+    }
+
+    private void RefreshSelectionActionState()
+    {
+        if (selectionContinueButton == null)
+        {
+            return;
+        }
+
+        selectionContinueButton.text = string.IsNullOrWhiteSpace(activeDisplayData.ContinueButtonLabel)
+            ? "Continue"
+            : activeDisplayData.ContinueButtonLabel.Trim();
+        selectionContinueButton.SetEnabled(selectedBoon != null);
+    }
+
+    private void RefreshCardVisuals()
+    {
+        for (int index = 0; index < cardViews.Count; index++)
+        {
+            TransitionBoonCardView view = cardViews[index];
+            if (view?.Root == null)
+            {
+                continue;
+            }
+
+            bool isSelected = selectedBoon != null
+                && view.Boon != null
+                && string.Equals(selectedBoon.id, view.Boon.id, StringComparison.OrdinalIgnoreCase);
+            bool isHovered = view.IsHovered || view.IsFocused;
+            Color accentColor = view.Boon != null ? GetArchetypeAccent(view.Boon.archetypeFamily) : new Color(0.42f, 0.46f, 0.52f, 1f);
+            Color frameColor = isSelected
+                ? Color.Lerp(accentColor, new Color(0.78f, 0.67f, 0.42f, 1f), 0.3f)
+                : isHovered
+                    ? Color.Lerp(new Color(0.22f, 0.27f, 0.34f, 0.98f), accentColor, 0.35f)
+                    : new Color(0.22f, 0.27f, 0.34f, 0.98f);
+
+            view.Root.EnableInClassList("act-transition-card--selected", isSelected);
+            view.Root.EnableInClassList("act-transition-card--hovered", isHovered);
+            view.Root.EnableInClassList("act-transition-card--disabled", view.Boon == null || !view.Boon.isEnabled);
+
+            view.Root.style.borderLeftColor = frameColor;
+            view.Root.style.borderRightColor = frameColor;
+            view.Root.style.borderTopColor = frameColor;
+            view.Root.style.borderBottomColor = frameColor;
+            view.Root.style.backgroundColor = isSelected
+                ? new Color(0.16f, 0.2f, 0.25f, 1f)
+                : isHovered ? new Color(0.16f, 0.2f, 0.26f, 1f) : new Color(0.12f, 0.15f, 0.2f, 0.98f);
+            view.FamilyLabel.style.backgroundColor = Color.Lerp(accentColor, new Color(0.12f, 0.16f, 0.21f, 0.94f), 0.48f);
+        }
+    }
+
+    private void RefreshDetailPanel()
+    {
+        if (detailMetaLabel == null)
+        {
+            return;
+        }
+
+        HexBoonDefinition inspectBoon = hoveredBoon ?? focusedBoon ?? selectedBoon;
+        if (inspectBoon == null)
+        {
+            detailMetaLabel.text = "Boon Inspect";
+            detailTitleLabel.text = "Hover a boon to inspect it.";
+            detailKeywordLabel.text = "Keywords appear here.";
+            detailEffectLabel.text = !string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote)
+                ? activeDisplayData.SelectionContextNote.Trim()
+                : "Select a boon to view its full effect.";
+            detailLoreLabel.text = "Full effect and family notes appear below the cards.";
+            return;
+        }
+
+        inspectBoon.Validate();
+        detailMetaLabel.text = BuildSelectionDetailMeta(inspectBoon);
+        detailTitleLabel.text = inspectBoon.GetResolvedDisplayName();
+        detailKeywordLabel.text = BuildSelectionKeywordHeading(inspectBoon);
+        detailEffectLabel.text = BuildSelectionDescription(inspectBoon);
+
+        string lore = NormalizeInlineText(inspectBoon.flavorText);
+        string keywordExplanation = inspectBoon.GetKeywordExplanationText();
+        if (!string.IsNullOrWhiteSpace(keywordExplanation))
+        {
+            lore = string.IsNullOrWhiteSpace(lore)
+                ? keywordExplanation
+                : $"{keywordExplanation}\n{lore}";
+        }
+
+        string familyNote = BuildSelectionFamilyNote(inspectBoon);
+        if (!string.IsNullOrWhiteSpace(familyNote))
+        {
+            lore = string.IsNullOrWhiteSpace(lore) ? familyNote : $"{lore}\n{familyNote}";
+        }
+
+        detailLoreLabel.text = lore;
+    }
+
+    private string BuildSelectionDetailMeta(HexBoonDefinition boon)
+    {
+        bool isSelected = selectedBoon != null && string.Equals(selectedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        bool isHovered = hoveredBoon != null && string.Equals(hoveredBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        bool isFocused = focusedBoon != null && string.Equals(focusedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        string stateLabel = isSelected ? "Selected path" : (isHovered || isFocused) ? "Inspecting path" : "Available path";
+        return $"{stateLabel} · {FormatArchetype(boon.archetypeFamily)} family";
+    }
+
+    private void ApplyIntermissionIllustration(Sprite illustration)
+    {
+        if (intermissionIllustrationImage == null || intermissionIllustrationPlaceholderLabel == null)
+        {
+            return;
+        }
+
+        if (illustration != null)
+        {
+            intermissionIllustrationImage.image = illustration.texture;
+            intermissionIllustrationImage.style.display = UIE.DisplayStyle.Flex;
+            intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.None;
+            return;
+        }
+
+        intermissionIllustrationImage.image = null;
+        intermissionIllustrationImage.style.display = UIE.DisplayStyle.None;
+        intermissionIllustrationPlaceholderLabel.text = "placeholder";
+        intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.Flex;
+    }
+
+    private UIE.VisualElement CreateJournalChip(string label, string value)
+    {
+        UIE.VisualElement chip = new();
+        chip.AddToClassList("act-transition-journal-chip");
+        AddResourceModifierClass(chip, label);
+
+        UIE.Label chipLabel = new($"{label} {value}");
+        chipLabel.AddToClassList("act-transition-journal-chip-label");
+        chip.Add(chipLabel);
+        return chip;
+    }
+
+    private int TryAddGrantChip(UIE.VisualElement parent, string label, int value)
+    {
+        if (value == 0)
+        {
+            return 0;
+        }
+
+        UIE.VisualElement chip = new();
+        chip.AddToClassList("act-transition-journal-chip");
+        AddResourceModifierClass(chip, label);
+
+        UIE.Label chipLabel = new($"{FormatSigned(value)} {label}");
+        chipLabel.AddToClassList("act-transition-journal-chip-label");
+        chip.Add(chipLabel);
+        parent.Add(chip);
+        return 1;
+    }
+
+    private UIE.VisualElement CreateResourceMiniModule(string label, string value, string toneClass)
+    {
+        UIE.VisualElement module = new();
+        module.AddToClassList("act-transition-resource-mini");
+        module.AddToClassList(toneClass);
+
+        UIE.Label labelElement = new(label);
+        labelElement.AddToClassList("act-transition-resource-mini-label");
+        UIE.Label valueElement = new(value);
+        valueElement.AddToClassList("act-transition-resource-mini-value");
+
+        module.Add(labelElement);
+        module.Add(valueElement);
+        return module;
+    }
+
+    private static void AddResourceModifierClass(UIE.VisualElement element, string label)
+    {
+        switch (label)
+        {
+            case "Food":
+                element.AddToClassList("act-transition-resource--food");
+                break;
+
+            case "Morale":
+                element.AddToClassList("act-transition-resource--morale");
+                break;
+
+            case "Gold":
+                element.AddToClassList("act-transition-resource--gold");
+                break;
+        }
+    }
+
+    private static string BuildTransitionMetaLabel(HexActTransitionDisplayData displayData)
+    {
+        if (displayData.CompletedActNumber > 0 && displayData.NextActNumber > 0)
+        {
+            return $"ROAD INTERMISSION · ACT {displayData.CompletedActNumber} TO ACT {displayData.NextActNumber}";
+        }
+
+        return "ROAD INTERMISSION";
+    }
+
+    private static string BuildDefaultSelectionPrompt(int nextActNumber)
+    {
+        return nextActNumber > 0
+            ? $"Choose one boon for Act {nextActNumber}."
+            : "Choose one boon for the next act.";
+    }
+
+    private static string BuildSelectionKeywordHeading(HexBoonDefinition boon)
+    {
+        string keywordLine = boon?.GetKeywordLine() ?? string.Empty;
+        return string.IsNullOrWhiteSpace(keywordLine) ? "Keywords: None listed." : $"Keywords: {keywordLine}";
+    }
+
+    private static string BuildSelectionDescription(HexBoonDefinition boon)
+    {
+        string normalized = NormalizeInlineText(boon?.description);
+        return string.IsNullOrWhiteSpace(normalized) ? "No gameplay bonus described." : normalized;
+    }
+
+    private string BuildSelectionFamilyNote(HexBoonDefinition boon)
+    {
+        string familyNote = $"Family: {FormatArchetype(boon.archetypeFamily)} Family.";
+        if (string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote))
+        {
+            return familyNote;
+        }
+
+        return $"{familyNote}\n{activeDisplayData.SelectionContextNote.Trim()}";
+    }
+
+    private static string NormalizeInlineText(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText))
+        {
+            return string.Empty;
+        }
+
+        return rawText
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Replace("  ", " ")
+            .Trim();
+    }
+
+    private static string FormatSigned(int value)
+    {
+        return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private static Color GetArchetypeAccent(HexNemesisArchetype archetype)
+    {
+        return archetype switch
+        {
+            HexNemesisArchetype.Hunter => new Color(0.65f, 0.47f, 0.22f, 1f),
+            HexNemesisArchetype.Echo => new Color(0.33f, 0.55f, 0.7f, 1f),
+            HexNemesisArchetype.Corruptor => new Color(0.57f, 0.27f, 0.35f, 1f),
+            _ => new Color(0.42f, 0.46f, 0.52f, 1f)
+        };
+    }
+
+    private static string FormatArchetype(HexNemesisArchetype archetype)
+    {
+        return archetype switch
+        {
+            HexNemesisArchetype.Hunter => "Hunter",
+            HexNemesisArchetype.Echo => "Echo",
+            HexNemesisArchetype.Corruptor => "Corruptor",
+            _ => "None"
+        };
     }
 }
 

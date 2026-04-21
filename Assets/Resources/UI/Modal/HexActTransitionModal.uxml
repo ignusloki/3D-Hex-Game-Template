@@ -1,0 +1,78 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="act-transition-modal-root">
+        <ui:VisualElement name="act-transition-modal-overlay">
+            <ui:VisualElement name="act-transition-intermission-shell">
+                <ui:Label name="act-transition-intermission-meta" text="ROAD INTERMISSION" />
+                <ui:Label name="act-transition-intermission-title" text="Act Complete" />
+                <ui:VisualElement class="act-transition-divider" />
+
+                <ui:VisualElement name="act-transition-intermission-body-wrap">
+                    <ui:Label
+                        name="act-transition-intermission-body"
+                        text="The caravan gathers itself for the road ahead." />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="act-transition-intermission-illustration-frame">
+                    <ui:VisualElement name="act-transition-intermission-illustration-inset">
+                        <ui:Image name="act-transition-intermission-illustration-image" />
+                        <ui:Label name="act-transition-intermission-illustration-placeholder" text="placeholder" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="act-transition-divider" />
+                <ui:Label name="act-transition-intermission-summary-label" text="Travel provisions" />
+
+                <ui:VisualElement class="act-transition-summary-row">
+                    <ui:Label name="act-transition-intermission-carry-label" text="Carry-over" />
+                    <ui:VisualElement name="act-transition-intermission-carry-chips" class="act-transition-summary-chip-row" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="act-transition-summary-row">
+                    <ui:Label name="act-transition-intermission-grant-label" text="Fresh supplies" />
+                    <ui:VisualElement name="act-transition-intermission-grant-chips" class="act-transition-summary-chip-row" />
+                    <ui:Label name="act-transition-intermission-grant-empty" text="No fresh provisions" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="act-transition-actions act-transition-actions--center">
+                    <ui:Button name="act-transition-intermission-button" text="Choose a Boon" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="act-transition-selection-shell">
+                <ui:VisualElement name="act-transition-selection-header">
+                    <ui:VisualElement name="act-transition-selection-copy">
+                        <ui:Label
+                            name="act-transition-selection-prompt"
+                            text="Choose one boon to carry into the next act." />
+                        <ui:Label
+                            name="act-transition-selection-note"
+                            text="This choice locks the Act 3 family." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="act-transition-selection-resource-panel">
+                        <ui:Label name="act-transition-selection-resource-label" text="Carry-over" />
+                        <ui:VisualElement name="act-transition-selection-resource-strip" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement name="act-transition-selection-card-row" />
+
+                <ui:VisualElement name="act-transition-selection-detail-panel">
+                    <ui:Label name="act-transition-selection-detail-meta" text="Boon Inspect" />
+                    <ui:Label name="act-transition-selection-detail-title" text="Hover a boon to inspect it." />
+                    <ui:Label name="act-transition-selection-detail-keywords" text="Keywords appear here." />
+                    <ui:Label
+                        name="act-transition-selection-detail-effect"
+                        text="Select a boon to view its full effect." />
+                    <ui:Label
+                        name="act-transition-selection-detail-lore"
+                        text="Full effect and family notes appear below the cards." />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="act-transition-actions act-transition-actions--center">
+                    <ui:Button name="act-transition-selection-button" text="Begin Act 2" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

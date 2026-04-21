@@ -80,7 +80,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         document ??= GetComponent<UIDocument>() ?? gameObject.AddComponent<UIDocument>();
         document.panelSettings = panelSettings;
-        document.sortingOrder = -100;
+        document.sortingOrder = 300;
 
         VisualElement root = document.rootVisualElement;
         root.pickingMode = PickingMode.Ignore;

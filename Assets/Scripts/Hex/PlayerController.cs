@@ -38,6 +38,7 @@ public class PlayerController : MonoBehaviour
     private HexObstacleController obstacleController;
     private HexNemesisController nemesisController;
     private HexRunStateModalPresenter runStateModalPresenter;
+    private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
@@ -136,6 +137,7 @@ public class PlayerController : MonoBehaviour
         if (!isReady
             || isRunOver
             || (runStateModalPresenter != null && runStateModalPresenter.IsOpen)
+            || (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
             || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
             || (mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen))
         {
@@ -641,7 +643,7 @@ public class PlayerController : MonoBehaviour
         HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(caravanResources.ToSnapshot());
         PrepareForActTransitionModalState();
         hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
-        runStateModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
+        actTransitionModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
         return true;
     }
 
@@ -661,9 +663,9 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        if (runStateModalPresenter == null)
+        if (actTransitionModalPresenter == null)
         {
-            Debug.LogWarning("[ActTransitionPreview] Missing HexRunStateModalPresenter. Unable to open the boon preview.", this);
+            Debug.LogWarning("[ActTransitionPreview] Missing HexActTransitionModalPresenter. Unable to open the boon preview.", this);
             return;
         }
 
@@ -680,11 +682,11 @@ public class PlayerController : MonoBehaviour
 
         if (displayData.RequiresBoonSelection)
         {
-            runStateModalPresenter.ShowTransitionSelection(displayData, ContinueToNextAct);
+            actTransitionModalPresenter.ShowTransitionSelection(displayData, ContinueToNextAct);
         }
         else
         {
-            runStateModalPresenter.ShowTransition(displayData, ContinueToNextAct);
+            actTransitionModalPresenter.ShowTransition(displayData, ContinueToNextAct);
             Debug.LogWarning(
                 $"[ActTransitionPreview] No boon options were available for the {resolvedFamily} family. Showing the intermission screen instead.",
                 this);
@@ -897,6 +899,7 @@ public class PlayerController : MonoBehaviour
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
         nemesisController ??= FindAnyObjectByType<HexNemesisController>();
         runStateModalPresenter ??= GetComponent<HexRunStateModalPresenter>() ?? gameObject.AddComponent<HexRunStateModalPresenter>();
+        actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
     }
 

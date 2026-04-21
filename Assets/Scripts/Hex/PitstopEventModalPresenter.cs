@@ -303,6 +303,7 @@ internal sealed class HexPitstopEventModalDocumentController
     private PanelSettings panelSettings;
     private VisualTreeAsset layoutAsset;
     private StyleSheet styleSheet;
+    private GameObject uiRootObject;
     private UIDocument document;
     private VisualElement modalRoot;
     private VisualElement shellElement;
@@ -346,9 +347,17 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
-        document ??= owner.GetComponent<UIDocument>() ?? owner.gameObject.AddComponent<UIDocument>();
+        uiRootObject ??= new GameObject("Pitstop Event Modal UI");
+        if (uiRootObject.transform.parent != owner.transform)
+        {
+            uiRootObject.transform.SetParent(owner.transform, false);
+        }
+
+        uiRootObject.layer = owner.gameObject.layer;
+
+        document ??= uiRootObject.GetComponent<UIDocument>() ?? uiRootObject.AddComponent<UIDocument>();
         document.panelSettings = panelSettings;
-        document.sortingOrder = 0;
+        document.sortingOrder = 150;
 
         VisualElement root = document.rootVisualElement;
         root.Clear();
