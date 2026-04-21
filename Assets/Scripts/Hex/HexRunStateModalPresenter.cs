@@ -17,8 +17,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     [Header("Layout")]
     [Min(260f)] [SerializeField] private float panelWidth = 680f;
     [Min(320f)] [SerializeField] private float panelHeight = 760f;
-    [Min(640f)] [SerializeField] private float transitionIntermissionPanelWidth = 780f;
-    [Min(520f)] [SerializeField] private float transitionIntermissionPanelHeight = 620f;
+    [Min(640f)] [SerializeField] private float transitionIntermissionPanelWidth = 840f;
+    [Min(520f)] [SerializeField] private float transitionIntermissionPanelHeight = 760f;
     [Min(820f)] [SerializeField] private float transitionSelectionPanelWidth = 980f;
     [Min(560f)] [SerializeField] private float transitionSelectionPanelHeight = 660f;
     [Min(220f)] [SerializeField] private float transitionCardWidth = 240f;
@@ -32,6 +32,17 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     [SerializeField] private Color metaColor = new(0.8f, 0.73f, 0.58f, 0.74f);
     [SerializeField] private Color bodyColor = new(0.86f, 0.89f, 0.92f, 0.92f);
     [SerializeField] private Color mutedBodyColor = new(0.73f, 0.78f, 0.83f, 0.78f);
+    [SerializeField] private Color journalPageColor = new(0.81f, 0.78f, 0.71f, 0.98f);
+    [SerializeField] private Color journalPageBorderColor = new(0.45f, 0.39f, 0.31f, 0.7f);
+    [SerializeField] private Color journalTitleColor = new(0.16f, 0.18f, 0.2f, 1f);
+    [SerializeField] private Color journalMetaColor = new(0.43f, 0.34f, 0.22f, 0.94f);
+    [SerializeField] private Color journalBodyColor = new(0.19f, 0.21f, 0.24f, 0.96f);
+    [SerializeField] private Color journalMutedBodyColor = new(0.31f, 0.33f, 0.36f, 0.82f);
+    [SerializeField] private Color journalDividerColor = new(0.54f, 0.47f, 0.37f, 0.42f);
+    [SerializeField] private Color journalImageFrameColor = new(0.63f, 0.58f, 0.49f, 0.62f);
+    [SerializeField] private Color journalImageInsetColor = new(0.68f, 0.64f, 0.57f, 0.92f);
+    [SerializeField] private Color journalChipColor = new(0.16f, 0.19f, 0.23f, 0.95f);
+    [SerializeField] private Color journalChipBorderColor = new(0.36f, 0.31f, 0.24f, 0.72f);
     [SerializeField] private Color chipColor = new(0.12f, 0.16f, 0.21f, 0.94f);
     [SerializeField] private Color chipBorderColor = new(0.22f, 0.27f, 0.34f, 0.96f);
     [SerializeField] private Color buttonColor = new(0.12f, 0.15f, 0.19f, 0.96f);
@@ -66,6 +77,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private Text transitionMetaText;
     private Text transitionTitleText;
     private Text transitionBodyText;
+    private Text transitionSummaryLabelText;
     private Text transitionGrantLabelText;
     private Text transitionGrantEmptyText;
     private Text transitionResourceLabelText;
@@ -319,140 +331,154 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         transitionIntermissionRect.gameObject.SetActive(false);
 
         transitionIntermissionContentRect = CreateRectTransform("Transition Intermission Content", transitionIntermissionRect);
-        transitionIntermissionContentRect.anchorMin = new Vector2(0f, 0f);
-        transitionIntermissionContentRect.anchorMax = new Vector2(1f, 1f);
-        transitionIntermissionContentRect.offsetMin = Vector2.zero;
-        transitionIntermissionContentRect.offsetMax = Vector2.zero;
+        StretchToParent(transitionIntermissionContentRect);
+        Image pageImage = transitionIntermissionContentRect.gameObject.AddComponent<Image>();
+        pageImage.color = journalPageColor;
+        Outline pageOutline = transitionIntermissionContentRect.gameObject.AddComponent<Outline>();
+        pageOutline.effectColor = journalPageBorderColor;
+        pageOutline.effectDistance = new Vector2(1f, -1f);
 
         VerticalLayoutGroup intermissionLayout = transitionIntermissionContentRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        intermissionLayout.padding = new RectOffset(0, 0, 0, 0);
-        intermissionLayout.spacing = 14f;
+        intermissionLayout.padding = new RectOffset(52, 52, 38, 34);
+        intermissionLayout.spacing = 16f;
         intermissionLayout.childAlignment = TextAnchor.UpperCenter;
         intermissionLayout.childControlHeight = true;
         intermissionLayout.childControlWidth = true;
         intermissionLayout.childForceExpandHeight = false;
         intermissionLayout.childForceExpandWidth = true;
 
-        transitionMetaText = CreateText("Transition Meta", transitionIntermissionContentRect, 11, FontStyle.Bold, metaColor);
+        transitionMetaText = CreateText("Transition Meta", transitionIntermissionContentRect, 12, FontStyle.Bold, journalMetaColor);
         LayoutElement metaLayout = transitionMetaText.gameObject.AddComponent<LayoutElement>();
-        metaLayout.preferredHeight = 16f;
+        metaLayout.preferredHeight = 18f;
         transitionMetaText.alignment = TextAnchor.MiddleCenter;
 
-        transitionTitleText = CreateText("Transition Title", transitionIntermissionContentRect, 34, FontStyle.Bold, titleColor);
+        transitionTitleText = CreateText("Transition Title", transitionIntermissionContentRect, 36, FontStyle.Bold, journalTitleColor);
         LayoutElement transitionTitleLayout = transitionTitleText.gameObject.AddComponent<LayoutElement>();
-        transitionTitleLayout.preferredHeight = 42f;
+        transitionTitleLayout.preferredHeight = 46f;
         transitionTitleText.alignment = TextAnchor.MiddleCenter;
+
+        CreateDivider("Transition Header Divider", transitionIntermissionContentRect, journalDividerColor);
+
+        RectTransform narrativeBlockRect = CreateRectTransform("Transition Narrative Block", transitionIntermissionContentRect);
+        LayoutElement narrativeBlockLayout = narrativeBlockRect.gameObject.AddComponent<LayoutElement>();
+        narrativeBlockLayout.preferredHeight = 84f;
+        HorizontalLayoutGroup narrativeBlockLayoutGroup = narrativeBlockRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        narrativeBlockLayoutGroup.padding = new RectOffset(42, 42, 0, 0);
+        narrativeBlockLayoutGroup.spacing = 0;
+        narrativeBlockLayoutGroup.childAlignment = TextAnchor.UpperCenter;
+        narrativeBlockLayoutGroup.childControlHeight = true;
+        narrativeBlockLayoutGroup.childControlWidth = true;
+        narrativeBlockLayoutGroup.childForceExpandHeight = false;
+        narrativeBlockLayoutGroup.childForceExpandWidth = true;
+
+        transitionBodyText = CreateText("Transition Body", narrativeBlockRect, 17, FontStyle.Normal, journalBodyColor);
+        LayoutElement transitionBodyLayout = transitionBodyText.gameObject.AddComponent<LayoutElement>();
+        transitionBodyLayout.preferredHeight = 84f;
+        transitionBodyText.alignment = TextAnchor.UpperLeft;
+        transitionBodyText.lineSpacing = 1.12f;
+        transitionBodyText.verticalOverflow = VerticalWrapMode.Truncate;
 
         RectTransform illustrationRect = CreateRectTransform("Transition Illustration", transitionIntermissionContentRect);
         LayoutElement illustrationLayout = illustrationRect.gameObject.AddComponent<LayoutElement>();
-        illustrationLayout.preferredHeight = 188f;
+        illustrationLayout.preferredHeight = 236f;
         Image illustrationFrame = illustrationRect.gameObject.AddComponent<Image>();
-        illustrationFrame.color = artPanelColor;
+        illustrationFrame.color = journalImageFrameColor;
         Outline illustrationOutline = illustrationRect.gameObject.AddComponent<Outline>();
-        illustrationOutline.effectColor = chipBorderColor;
+        illustrationOutline.effectColor = journalPageBorderColor;
         illustrationOutline.effectDistance = new Vector2(1f, -1f);
 
         RectTransform illustrationInsetRect = CreateRectTransform("Transition Illustration Inset", illustrationRect);
-        StretchToParent(illustrationInsetRect, 2f, 2f);
+        StretchToParent(illustrationInsetRect, 10f, 10f);
         Image illustrationInset = illustrationInsetRect.gameObject.AddComponent<Image>();
-        illustrationInset.color = new Color(0.09f, 0.11f, 0.14f, 0.98f);
+        illustrationInset.color = journalImageInsetColor;
 
         RectTransform illustrationImageRect = CreateRectTransform("Transition Illustration Image", illustrationInsetRect);
-        StretchToParent(illustrationImageRect, 10f, 10f);
+        StretchToParent(illustrationImageRect, 12f, 12f);
         transitionIllustrationImage = illustrationImageRect.gameObject.AddComponent<Image>();
         transitionIllustrationImage.preserveAspect = true;
-        transitionIllustrationImage.color = Color.white;
+        transitionIllustrationImage.color = new Color(1f, 1f, 1f, 0.96f);
 
-        transitionIllustrationFallbackText = CreateText("Transition Illustration Placeholder", illustrationInsetRect, 20, FontStyle.Bold, mutedBodyColor);
-        StretchToParent(transitionIllustrationFallbackText.rectTransform, 18f, 18f);
+        transitionIllustrationFallbackText = CreateText("Transition Illustration Placeholder", illustrationInsetRect, 16, FontStyle.Italic, journalMutedBodyColor);
+        StretchToParent(transitionIllustrationFallbackText.rectTransform, 24f, 24f);
         transitionIllustrationFallbackText.alignment = TextAnchor.MiddleCenter;
+        transitionIllustrationFallbackText.text = "placeholder";
 
-        transitionBodyText = CreateText("Transition Body", transitionIntermissionContentRect, 18, FontStyle.Italic, bodyColor);
-        LayoutElement transitionBodyLayout = transitionBodyText.gameObject.AddComponent<LayoutElement>();
-        transitionBodyLayout.preferredHeight = 76f;
-        transitionBodyText.alignment = TextAnchor.MiddleCenter;
-        transitionBodyText.lineSpacing = 1.08f;
-        transitionBodyText.verticalOverflow = VerticalWrapMode.Truncate;
+        CreateDivider("Transition Summary Divider", transitionIntermissionContentRect, journalDividerColor);
 
-        RectTransform summaryRowRect = CreateRectTransform("Transition Summary Row", transitionIntermissionContentRect);
-        LayoutElement summaryRowLayout = summaryRowRect.gameObject.AddComponent<LayoutElement>();
-        summaryRowLayout.preferredHeight = 124f;
-        HorizontalLayoutGroup summaryRowLayoutGroup = summaryRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
-        summaryRowLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
-        summaryRowLayoutGroup.spacing = 16f;
-        summaryRowLayoutGroup.childAlignment = TextAnchor.UpperCenter;
-        summaryRowLayoutGroup.childControlHeight = true;
-        summaryRowLayoutGroup.childControlWidth = true;
-        summaryRowLayoutGroup.childForceExpandHeight = false;
-        summaryRowLayoutGroup.childForceExpandWidth = true;
+        transitionSummaryLabelText = CreateText("Transition Summary Label", transitionIntermissionContentRect, 12, FontStyle.Bold, journalMetaColor);
+        LayoutElement summaryLabelLayout = transitionSummaryLabelText.gameObject.AddComponent<LayoutElement>();
+        summaryLabelLayout.preferredHeight = 18f;
+        transitionSummaryLabelText.alignment = TextAnchor.MiddleLeft;
+        transitionSummaryLabelText.text = "Travel provisions";
 
-        RectTransform carryOverPanelRect = CreateInfoSurface("Carry Over Summary", summaryRowRect);
-        LayoutElement carryOverPanelLayout = carryOverPanelRect.GetComponent<LayoutElement>();
-        carryOverPanelLayout.flexibleWidth = 1f;
-        VerticalLayoutGroup carryOverLayout = carryOverPanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        carryOverLayout.padding = new RectOffset(16, 16, 14, 14);
-        carryOverLayout.spacing = 8f;
-        carryOverLayout.childAlignment = TextAnchor.UpperCenter;
-        carryOverLayout.childControlHeight = true;
-        carryOverLayout.childControlWidth = true;
-        carryOverLayout.childForceExpandHeight = false;
-        carryOverLayout.childForceExpandWidth = true;
+        RectTransform carryOverRowRect = CreateRectTransform("Carry Over Row", transitionIntermissionContentRect);
+        LayoutElement carryOverRowLayout = carryOverRowRect.gameObject.AddComponent<LayoutElement>();
+        carryOverRowLayout.preferredHeight = 30f;
+        HorizontalLayoutGroup carryOverRowLayoutGroup = carryOverRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        carryOverRowLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        carryOverRowLayoutGroup.spacing = 12f;
+        carryOverRowLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
+        carryOverRowLayoutGroup.childControlHeight = true;
+        carryOverRowLayoutGroup.childControlWidth = true;
+        carryOverRowLayoutGroup.childForceExpandHeight = false;
+        carryOverRowLayoutGroup.childForceExpandWidth = false;
 
-        transitionResourceLabelText = CreateText("Carry Over Label", carryOverPanelRect, 12, FontStyle.Bold, metaColor);
+        transitionResourceLabelText = CreateText("Carry Over Label", carryOverRowRect, 13, FontStyle.Bold, journalBodyColor);
         LayoutElement resourceLabelLayout = transitionResourceLabelText.gameObject.AddComponent<LayoutElement>();
-        resourceLabelLayout.preferredHeight = 16f;
-        transitionResourceLabelText.alignment = TextAnchor.MiddleCenter;
-        transitionResourceLabelText.text = "Carry-over resources";
+        resourceLabelLayout.preferredWidth = 136f;
+        resourceLabelLayout.preferredHeight = 20f;
+        transitionResourceLabelText.alignment = TextAnchor.MiddleLeft;
+        transitionResourceLabelText.text = "Carry-over";
 
-        transitionResourceChipContainerRect = CreateRectTransform("Carry Over Chips", carryOverPanelRect);
+        transitionResourceChipContainerRect = CreateRectTransform("Carry Over Chips", carryOverRowRect);
         LayoutElement resourceChipLayout = transitionResourceChipContainerRect.gameObject.AddComponent<LayoutElement>();
-        resourceChipLayout.preferredHeight = 60f;
+        resourceChipLayout.preferredHeight = 28f;
         HorizontalLayoutGroup resourceChipLayoutGroup = transitionResourceChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
         resourceChipLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
         resourceChipLayoutGroup.spacing = 8f;
-        resourceChipLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+        resourceChipLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
         resourceChipLayoutGroup.childControlHeight = true;
         resourceChipLayoutGroup.childControlWidth = true;
         resourceChipLayoutGroup.childForceExpandHeight = false;
         resourceChipLayoutGroup.childForceExpandWidth = false;
 
-        RectTransform grantPanelRect = CreateInfoSurface("Grant Summary", summaryRowRect);
-        LayoutElement grantPanelLayout = grantPanelRect.GetComponent<LayoutElement>();
-        grantPanelLayout.flexibleWidth = 1f;
-        VerticalLayoutGroup grantLayout = grantPanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
-        grantLayout.padding = new RectOffset(16, 16, 14, 14);
-        grantLayout.spacing = 8f;
-        grantLayout.childAlignment = TextAnchor.UpperCenter;
-        grantLayout.childControlHeight = true;
-        grantLayout.childControlWidth = true;
-        grantLayout.childForceExpandHeight = false;
-        grantLayout.childForceExpandWidth = true;
+        RectTransform grantRowRect = CreateRectTransform("Grant Row", transitionIntermissionContentRect);
+        LayoutElement grantRowLayout = grantRowRect.gameObject.AddComponent<LayoutElement>();
+        grantRowLayout.preferredHeight = 30f;
+        HorizontalLayoutGroup grantRowLayoutGroup = grantRowRect.gameObject.AddComponent<HorizontalLayoutGroup>();
+        grantRowLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
+        grantRowLayoutGroup.spacing = 12f;
+        grantRowLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
+        grantRowLayoutGroup.childControlHeight = true;
+        grantRowLayoutGroup.childControlWidth = true;
+        grantRowLayoutGroup.childForceExpandHeight = false;
+        grantRowLayoutGroup.childForceExpandWidth = false;
 
-        transitionGrantLabelText = CreateText("Grant Label", grantPanelRect, 12, FontStyle.Bold, metaColor);
+        transitionGrantLabelText = CreateText("Grant Label", grantRowRect, 13, FontStyle.Bold, journalBodyColor);
         LayoutElement grantLabelLayout = transitionGrantLabelText.gameObject.AddComponent<LayoutElement>();
-        grantLabelLayout.preferredHeight = 16f;
-        transitionGrantLabelText.alignment = TextAnchor.MiddleCenter;
-        transitionGrantLabelText.text = "Between-act grant";
+        grantLabelLayout.preferredWidth = 136f;
+        grantLabelLayout.preferredHeight = 20f;
+        transitionGrantLabelText.alignment = TextAnchor.MiddleLeft;
+        transitionGrantLabelText.text = "Fresh supplies";
 
-        transitionGrantChipContainerRect = CreateRectTransform("Grant Chips", grantPanelRect);
+        transitionGrantChipContainerRect = CreateRectTransform("Grant Chips", grantRowRect);
         LayoutElement grantChipLayout = transitionGrantChipContainerRect.gameObject.AddComponent<LayoutElement>();
-        grantChipLayout.preferredHeight = 30f;
+        grantChipLayout.preferredHeight = 28f;
         HorizontalLayoutGroup grantChipLayoutGroup = transitionGrantChipContainerRect.gameObject.AddComponent<HorizontalLayoutGroup>();
         grantChipLayoutGroup.padding = new RectOffset(0, 0, 0, 0);
         grantChipLayoutGroup.spacing = 8f;
-        grantChipLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+        grantChipLayoutGroup.childAlignment = TextAnchor.MiddleLeft;
         grantChipLayoutGroup.childControlHeight = true;
         grantChipLayoutGroup.childControlWidth = true;
         grantChipLayoutGroup.childForceExpandHeight = false;
         grantChipLayoutGroup.childForceExpandWidth = false;
 
-        transitionGrantEmptyText = CreateText("Grant Empty", grantPanelRect, 13, FontStyle.Normal, mutedBodyColor);
+        transitionGrantEmptyText = CreateText("Grant Empty", grantRowRect, 12, FontStyle.Italic, journalMutedBodyColor);
         LayoutElement grantEmptyLayout = transitionGrantEmptyText.gameObject.AddComponent<LayoutElement>();
         grantEmptyLayout.preferredHeight = 18f;
-        transitionGrantEmptyText.alignment = TextAnchor.MiddleCenter;
-        transitionGrantEmptyText.text = "No between-act grant";
+        transitionGrantEmptyText.alignment = TextAnchor.MiddleLeft;
+        transitionGrantEmptyText.text = "No fresh provisions";
         transitionGrantEmptyText.gameObject.SetActive(false);
-
     }
 
     private void BuildTransitionSelectionUi()
@@ -976,9 +1002,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         transitionIllustrationImage.sprite = null;
         transitionIllustrationImage.enabled = false;
-        transitionIllustrationFallbackText.text = activeTransitionDisplayData.NextActNumber > 0
-            ? $"Road to Act {activeTransitionDisplayData.NextActNumber}"
-            : "Road Omen";
+        transitionIllustrationFallbackText.text = "placeholder";
         transitionIllustrationFallbackText.gameObject.SetActive(true);
     }
 
@@ -1023,9 +1047,9 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private void RebuildIntermissionCarryOverSummary(CaravanResourceSnapshot currentResources)
     {
         ClearChildren(transitionResourceChipContainerRect);
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Food", currentResources.Food.ToString(), new Color(0.56f, 0.35f, 0.18f, 1f), compact: false);
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Morale", currentResources.Morale.ToString(), new Color(0.51f, 0.21f, 0.24f, 1f), compact: false);
-        CreateResourceSummaryChip(transitionResourceChipContainerRect, "Gold", currentResources.Gold.ToString(), new Color(0.57f, 0.43f, 0.12f, 1f), compact: false);
+        CreateIntermissionSummaryChip(transitionResourceChipContainerRect, "Food", currentResources.Food.ToString(), new Color(0.56f, 0.35f, 0.18f, 1f));
+        CreateIntermissionSummaryChip(transitionResourceChipContainerRect, "Morale", currentResources.Morale.ToString(), new Color(0.51f, 0.21f, 0.24f, 1f));
+        CreateIntermissionSummaryChip(transitionResourceChipContainerRect, "Gold", currentResources.Gold.ToString(), new Color(0.57f, 0.43f, 0.12f, 1f));
     }
 
     private void RebuildSelectionCarryOverSummary(CaravanResourceSnapshot currentResources)
@@ -1101,7 +1125,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         Text artFallbackText = CreateText("Art Placeholder", artInsetRect, 18, FontStyle.Bold, mutedBodyColor);
         StretchToParent(artFallbackText.rectTransform, 16f, 16f);
         artFallbackText.alignment = TextAnchor.MiddleCenter;
-        artFallbackText.text = "Illustration";
+        artFallbackText.text = "placeholder";
 
         Text effectText = CreateText("Effect", surfaceRect, 15, FontStyle.Bold, bodyColor);
         LayoutElement effectLayout = effectText.gameObject.AddComponent<LayoutElement>();
@@ -1160,7 +1184,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             card.FamilyBadgeText.text = "Unavailable";
             card.ArtImage.sprite = null;
             card.ArtImage.enabled = false;
-            card.ArtFallbackText.text = "Missing";
+            card.ArtFallbackText.text = "placeholder";
             card.ArtFallbackText.gameObject.SetActive(true);
             card.FamilyBadgeImage.color = chipColor;
             return;
@@ -1175,20 +1199,11 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         card.FamilyBadgeImage.color = Color.Lerp(accentColor, chipColor, 0.48f);
         card.ArtFrameImage.color = Color.Lerp(accentColor, artPanelColor, 0.72f);
 
-        if (boon.icon != null)
-        {
-            card.ArtImage.sprite = boon.icon;
-            card.ArtImage.enabled = true;
-            card.ArtFallbackText.gameObject.SetActive(false);
-        }
-        else
-        {
-            card.ArtImage.sprite = null;
-            card.ArtImage.enabled = false;
-            card.ArtFallbackText.text = $"{FormatArchetype(boon.archetypeFamily)}\nPath";
-            card.ArtFallbackText.color = Color.Lerp(accentColor, Color.white, 0.3f);
-            card.ArtFallbackText.gameObject.SetActive(true);
-        }
+        card.ArtImage.sprite = null;
+        card.ArtImage.enabled = false;
+        card.ArtFallbackText.text = "placeholder";
+        card.ArtFallbackText.color = mutedBodyColor;
+        card.ArtFallbackText.gameObject.SetActive(true);
     }
 
     private HexBoonDefinition GetFocusedTransitionBoon()
@@ -1217,12 +1232,12 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         RectTransform chipRect = CreateRectTransform($"{label} Grant Chip", parent);
         LayoutElement chipLayout = chipRect.gameObject.AddComponent<LayoutElement>();
         string chipCopy = $"{FormatSigned(value)} {label}";
-        chipLayout.preferredWidth = Mathf.Max(86f, 32f + chipCopy.Length * 6f);
-        chipLayout.preferredHeight = 26f;
+        chipLayout.preferredWidth = Mathf.Max(94f, 36f + chipCopy.Length * 6f);
+        chipLayout.preferredHeight = 28f;
         Image chipImage = chipRect.gameObject.AddComponent<Image>();
-        chipImage.color = chipColor;
+        chipImage.color = Color.Lerp(journalChipColor, GetSummaryAccent(label), 0.2f);
         Outline chipOutline = chipRect.gameObject.AddComponent<Outline>();
-        chipOutline.effectColor = chipBorderColor;
+        chipOutline.effectColor = journalChipBorderColor;
         chipOutline.effectDistance = new Vector2(1f, -1f);
 
         Text chipText = CreateText("Text", chipRect, 12, FontStyle.Bold, titleColor);
@@ -1230,6 +1245,25 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         chipText.alignment = TextAnchor.MiddleCenter;
         chipText.text = chipCopy;
         return 1;
+    }
+
+    private void CreateIntermissionSummaryChip(Transform parent, string label, string value, Color accentColor)
+    {
+        RectTransform chipRect = CreateRectTransform($"{label} Journal Resource", parent);
+        LayoutElement chipLayout = chipRect.gameObject.AddComponent<LayoutElement>();
+        string chipCopy = $"{label} {value}";
+        chipLayout.preferredWidth = Mathf.Max(94f, 36f + chipCopy.Length * 6f);
+        chipLayout.preferredHeight = 28f;
+        Image chipImage = chipRect.gameObject.AddComponent<Image>();
+        chipImage.color = Color.Lerp(journalChipColor, accentColor, 0.2f);
+        Outline chipOutline = chipRect.gameObject.AddComponent<Outline>();
+        chipOutline.effectColor = journalChipBorderColor;
+        chipOutline.effectDistance = new Vector2(1f, -1f);
+
+        Text chipText = CreateText("Text", chipRect, 12, FontStyle.Bold, titleColor);
+        StretchToParent(chipText.rectTransform, 10f, 5f);
+        chipText.alignment = TextAnchor.MiddleCenter;
+        chipText.text = chipCopy;
     }
 
     private void CreateResourceSummaryChip(Transform parent, string label, string value, Color accentColor, bool compact)
@@ -1303,6 +1337,16 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         trigger.triggers.Add(entry);
     }
 
+    private Image CreateDivider(string name, Transform parent, Color color, float height = 1f)
+    {
+        RectTransform dividerRect = CreateRectTransform(name, parent);
+        LayoutElement dividerLayout = dividerRect.gameObject.AddComponent<LayoutElement>();
+        dividerLayout.preferredHeight = height;
+        Image dividerImage = dividerRect.gameObject.AddComponent<Image>();
+        dividerImage.color = color;
+        return dividerImage;
+    }
+
     private RectTransform CreateInfoSurface(string name, Transform parent)
     {
         RectTransform rect = CreateRectTransform(name, parent);
@@ -1337,8 +1381,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private Vector2 ResolveTransitionIntermissionPanelSize()
     {
         return new Vector2(
-            Mathf.Max(640f, transitionIntermissionPanelWidth),
-            Mathf.Max(676f, transitionIntermissionPanelHeight));
+            Mathf.Max(840f, transitionIntermissionPanelWidth),
+            Mathf.Max(760f, transitionIntermissionPanelHeight));
     }
 
     private Vector2 ResolveTransitionSelectionPanelSize()
@@ -1410,6 +1454,17 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private static string FormatSigned(int value)
     {
         return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private static Color GetSummaryAccent(string label)
+    {
+        return label switch
+        {
+            "Food" => new Color(0.56f, 0.35f, 0.18f, 1f),
+            "Morale" => new Color(0.51f, 0.21f, 0.24f, 1f),
+            "Gold" => new Color(0.57f, 0.43f, 0.12f, 1f),
+            _ => new Color(0.42f, 0.46f, 0.52f, 1f)
+        };
     }
 
     private Color GetArchetypeAccent(HexNemesisArchetype archetype)
