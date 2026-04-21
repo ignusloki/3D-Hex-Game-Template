@@ -20,6 +20,12 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 2
   isEnabled: 1
+  cardSummary: Growth + Concealment
+  keywords:
+  - label: Growth
+    explanation: Grass terrain becomes more common in Act 3.
+  - label: Concealment
+    explanation: The Hunter is hidden while it stands in grass.
   passive:
     effectType: 0
     magnitude: 0

@@ -21,6 +21,10 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 0
   isEnabled: 1
+  cardSummary: Hazard Sight
+  keywords:
+  - label: Sight
+    explanation: Reveal one extra hex ahead of the caravan.
   passive:
     effectType: 1
     magnitude: 1

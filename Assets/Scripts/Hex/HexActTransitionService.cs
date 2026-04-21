@@ -163,6 +163,42 @@ public static class HexActTransitionService
         currentSession = null;
     }
 
+    public static void DebugConfigureRunSession(
+        int currentActNumber,
+        CaravanResourceSnapshot currentResources,
+        HexNemesisArchetype lockedBoonFamily = HexNemesisArchetype.None,
+        IReadOnlyList<HexBoonDefinition> selectedBoons = null)
+    {
+        currentSession = new HexActRunSessionState
+        {
+            CurrentActNumber = Mathf.Max(1, currentActNumber),
+            CurrentResources = currentResources,
+            LockedBoonFamily = currentActNumber >= 2 ? lockedBoonFamily : HexNemesisArchetype.None
+        };
+
+        if (selectedBoons == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < selectedBoons.Count; index++)
+        {
+            HexBoonDefinition boon = selectedBoons[index];
+            if (boon == null)
+            {
+                continue;
+            }
+
+            boon.Validate();
+            if (!boon.isEnabled)
+            {
+                continue;
+            }
+
+            StoreSelectedBoon(boon);
+        }
+    }
+
     public static bool UsesActTransitionBoonState()
     {
         HexActTransitionConfigAsset config = LoadConfig();

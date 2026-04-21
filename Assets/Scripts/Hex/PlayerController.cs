@@ -639,18 +639,60 @@ public class PlayerController : MonoBehaviour
         }
 
         HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(caravanResources.ToSnapshot());
-        isRunOver = true;
-        ClearHighlights();
-        selectedTile = null;
-        previewPath = null;
-        caravanSelectionActive = false;
-        travelTimePresenter.Reset();
-        pitstopEventController?.HideActiveModal();
-        mockQuestMarkerController?.HideActiveModal();
-        RefreshTileDetails(currentTile);
+        PrepareForActTransitionModalState();
         hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
         runStateModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
         return true;
+    }
+
+    [ContextMenu("Debug/Open Act 2 -> Act 3 Boon Screen")]
+    public void DebugOpenAct2ToAct3BoonPreview()
+    {
+        DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype.Hunter);
+    }
+
+    public void DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype lockedFamily)
+    {
+        EnsureRuntimeReferences();
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[ActTransitionPreview] Enter Play Mode before opening the Act 2 -> Act 3 boon preview.", this);
+            return;
+        }
+
+        if (runStateModalPresenter == null)
+        {
+            Debug.LogWarning("[ActTransitionPreview] Missing HexRunStateModalPresenter. Unable to open the boon preview.", this);
+            return;
+        }
+
+        HexNemesisArchetype resolvedFamily = lockedFamily == HexNemesisArchetype.None
+            ? HexNemesisArchetype.Hunter
+            : lockedFamily;
+        CaravanResourceSnapshot previewResources = ResolveDebugPreviewResources();
+
+        HexActTransitionService.DebugConfigureRunSession(2, previewResources, resolvedFamily);
+        HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(previewResources);
+
+        PrepareForActTransitionModalState();
+        hudPresenter.ShowHint($"Debug preview: Act 2 complete. Inspecting {resolvedFamily} family boon options.");
+
+        if (displayData.RequiresBoonSelection)
+        {
+            runStateModalPresenter.ShowTransitionSelection(displayData, ContinueToNextAct);
+        }
+        else
+        {
+            runStateModalPresenter.ShowTransition(displayData, ContinueToNextAct);
+            Debug.LogWarning(
+                $"[ActTransitionPreview] No boon options were available for the {resolvedFamily} family. Showing the intermission screen instead.",
+                this);
+        }
+
+        Debug.Log(
+            $"[ActTransitionPreview] Opened Act 2 -> Act 3 preview. family={resolvedFamily} options={displayData.BoonOptions.Length} food={previewResources.Food} morale={previewResources.Morale} gold={previewResources.Gold}.",
+            this);
     }
 
     private void EndRunAsDefeat(string defeatReason)
@@ -699,6 +741,36 @@ public class PlayerController : MonoBehaviour
         string nemesisDetails = nemesisController != null ? nemesisController.GetTileDetails(tile.Coordinates) : string.Empty;
 
         hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle, nemesisDetails);
+    }
+
+    private void PrepareForActTransitionModalState()
+    {
+        isRunOver = true;
+        ClearHighlights();
+        selectedTile = null;
+        previewPath = null;
+        caravanSelectionActive = false;
+        travelTimePresenter.Reset();
+        pitstopEventController?.HideActiveModal();
+        mockQuestMarkerController?.HideActiveModal();
+        RefreshTileDetails(currentTile);
+    }
+
+    private CaravanResourceSnapshot ResolveDebugPreviewResources()
+    {
+        if (resourcesInitialized)
+        {
+            return caravanResources.ToSnapshot();
+        }
+
+        CaravanResourceSnapshot configuredStartingResources = caravanMetricsController != null
+            ? caravanMetricsController.GetConfiguredSnapshot()
+            : new CaravanResourceSnapshot(startingFood, startingMorale, startingGold);
+        CaravanResourceSnapshot previewResources = HexActTransitionService.GetStartingResources(configuredStartingResources);
+        caravanResources.Initialize(previewResources.Food, previewResources.Morale, previewResources.Gold);
+        resourcesInitialized = true;
+        UpdateResourcesText();
+        return caravanResources.ToSnapshot();
     }
 
     private void InitializeFogOfWar()

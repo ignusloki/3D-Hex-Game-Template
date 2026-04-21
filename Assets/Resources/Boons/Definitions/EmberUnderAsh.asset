@@ -20,6 +20,12 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 0
   isEnabled: 1
+  cardSummary: Supply Surge + Pursuit
+  keywords:
+  - label: Supply Surge
+    explanation: Gain +5 Food, +3 Morale, and +3 Gold at the start of Act 3.
+  - label: Pursuit
+    explanation: The Hunter begins Act 3 two hexes closer to the caravan.
   passive:
     effectType: 0
     magnitude: 0

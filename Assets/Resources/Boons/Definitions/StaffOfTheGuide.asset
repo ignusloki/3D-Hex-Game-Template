@@ -21,6 +21,12 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 1
   isEnabled: 1
+  cardSummary: Detour + Recharge
+  keywords:
+  - label: Detour
+    explanation: Ignore the penalty from one obstacle tile.
+  - label: Recharge
+    explanation: Restore the charge at the next pitstop.
   passive:
     effectType: 0
     magnitude: 0

@@ -86,6 +86,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private Text transitionIllustrationFallbackText;
     private Text transitionSelectionDetailMetaText;
     private Text transitionSelectionDetailTitleText;
+    private Text transitionSelectionDetailKeywordText;
     private Text transitionSelectionDetailEffectText;
     private Text transitionSelectionDetailLoreText;
     private Button actionButton;
@@ -99,6 +100,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     private HexBoonDefinition[] transitionBoonOptions = Array.Empty<HexBoonDefinition>();
     private HexBoonDefinition selectedTransitionBoon;
     private HexBoonDefinition hoveredTransitionBoon;
+    private HexBoonDefinition focusedTransitionBoon;
     private TransitionScreenMode transitionScreenMode;
 
     public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
@@ -119,6 +121,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         public Image FamilyBadgeImage;
         public Text FamilyBadgeText;
         public bool IsHovered;
+        public bool IsFocused;
         public float TargetScale = 1f;
         public float TargetLift;
     }
@@ -166,6 +169,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         transitionBoonOptions = displayData.BoonOptions ?? Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
         hoveredTransitionBoon = null;
+        focusedTransitionBoon = null;
         transitionScreenMode = TransitionScreenMode.None;
 
         SetModalVisibility(true);
@@ -176,6 +180,17 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         ShowTransitionScreen(TransitionScreenMode.Intermission);
     }
 
+    public void ShowTransitionSelection(HexActTransitionDisplayData displayData, Action<HexBoonDefinition> onContinueRequested)
+    {
+        ShowTransition(displayData, onContinueRequested);
+        if (overlayRoot == null || !activeTransitionDisplayData.RequiresBoonSelection)
+        {
+            return;
+        }
+
+        ShowTransitionScreen(TransitionScreenMode.Selection);
+    }
+
     public void Hide()
     {
         actionCallback = null;
@@ -184,6 +199,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         transitionBoonOptions = Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
         hoveredTransitionBoon = null;
+        focusedTransitionBoon = null;
         transitionScreenMode = TransitionScreenMode.None;
         SetModalVisibility(false);
     }
@@ -202,6 +218,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         transitionBoonOptions = Array.Empty<HexBoonDefinition>();
         selectedTransitionBoon = null;
         hoveredTransitionBoon = null;
+        focusedTransitionBoon = null;
         transitionScreenMode = TransitionScreenMode.None;
         SetModalVisibility(true);
         ApplyPanelMode(isTransitionLayout: false);
@@ -578,10 +595,10 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
         transitionSelectionDetailRect = CreateInfoSurface("Transition Detail Panel", transitionSelectionRect);
         LayoutElement detailLayout = transitionSelectionDetailRect.GetComponent<LayoutElement>();
-        detailLayout.preferredHeight = 112f;
+        detailLayout.preferredHeight = 236f;
         VerticalLayoutGroup detailLayoutGroup = transitionSelectionDetailRect.gameObject.AddComponent<VerticalLayoutGroup>();
         detailLayoutGroup.padding = new RectOffset(18, 18, 16, 16);
-        detailLayoutGroup.spacing = 4f;
+        detailLayoutGroup.spacing = 6f;
         detailLayoutGroup.childAlignment = TextAnchor.UpperLeft;
         detailLayoutGroup.childControlHeight = true;
         detailLayoutGroup.childControlWidth = true;
@@ -598,15 +615,22 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         detailTitleLayout.preferredHeight = 24f;
         transitionSelectionDetailTitleText.alignment = TextAnchor.MiddleLeft;
 
-        transitionSelectionDetailEffectText = CreateText("Transition Detail Effect", transitionSelectionDetailRect, 15, FontStyle.Normal, bodyColor);
+        transitionSelectionDetailKeywordText = CreateText("Transition Detail Keywords", transitionSelectionDetailRect, 13, FontStyle.Bold, bodyColor);
+        LayoutElement detailKeywordLayout = transitionSelectionDetailKeywordText.gameObject.AddComponent<LayoutElement>();
+        detailKeywordLayout.preferredHeight = 20f;
+        transitionSelectionDetailKeywordText.alignment = TextAnchor.MiddleLeft;
+        transitionSelectionDetailKeywordText.verticalOverflow = VerticalWrapMode.Truncate;
+
+        transitionSelectionDetailEffectText = CreateText("Transition Detail Effect", transitionSelectionDetailRect, 14, FontStyle.Normal, bodyColor);
         LayoutElement detailEffectLayout = transitionSelectionDetailEffectText.gameObject.AddComponent<LayoutElement>();
-        detailEffectLayout.preferredHeight = 20f;
-        transitionSelectionDetailEffectText.alignment = TextAnchor.MiddleLeft;
+        detailEffectLayout.preferredHeight = 58f;
+        transitionSelectionDetailEffectText.alignment = TextAnchor.UpperLeft;
         transitionSelectionDetailEffectText.verticalOverflow = VerticalWrapMode.Truncate;
+        transitionSelectionDetailEffectText.lineSpacing = 1.05f;
 
         transitionSelectionDetailLoreText = CreateText("Transition Detail Lore", transitionSelectionDetailRect, 13, FontStyle.Italic, mutedBodyColor);
         LayoutElement detailLoreLayout = transitionSelectionDetailLoreText.gameObject.AddComponent<LayoutElement>();
-        detailLoreLayout.preferredHeight = 32f;
+        detailLoreLayout.preferredHeight = 72f;
         transitionSelectionDetailLoreText.alignment = TextAnchor.UpperLeft;
         transitionSelectionDetailLoreText.verticalOverflow = VerticalWrapMode.Truncate;
         transitionSelectionDetailLoreText.lineSpacing = 1.05f;
@@ -826,6 +850,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             TransitionBoonCardUi card = transitionCards[index];
             card.RootRect.gameObject.SetActive(shouldBeVisible);
             card.IsHovered = false;
+            card.IsFocused = false;
             card.TargetScale = 1f;
             card.TargetLift = 0f;
             card.MotionRect.localScale = Vector3.one;
@@ -887,6 +912,36 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         RefreshTransitionDetailPanel();
     }
 
+    private void HandleTransitionOptionFocusChanged(int optionIndex, bool isFocused)
+    {
+        if (transitionBoonOptions == null || optionIndex < 0 || optionIndex >= transitionBoonOptions.Length)
+        {
+            return;
+        }
+
+        if (optionIndex >= transitionCards.Count)
+        {
+            return;
+        }
+
+        TransitionBoonCardUi card = transitionCards[optionIndex];
+        card.IsFocused = isFocused;
+
+        if (isFocused)
+        {
+            focusedTransitionBoon = transitionBoonOptions[optionIndex];
+        }
+        else if (focusedTransitionBoon != null
+                 && transitionBoonOptions[optionIndex] != null
+                 && string.Equals(focusedTransitionBoon.id, transitionBoonOptions[optionIndex].id, StringComparison.OrdinalIgnoreCase))
+        {
+            focusedTransitionBoon = null;
+        }
+
+        ApplyTransitionSelectionVisuals();
+        RefreshTransitionDetailPanel();
+    }
+
     private void ApplyTransitionSelectionVisuals()
     {
         for (int index = 0; index < transitionCards.Count; index++)
@@ -903,7 +958,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             bool isSelected = selectedTransitionBoon != null
                 && option != null
                 && string.Equals(option.id, selectedTransitionBoon.id, StringComparison.OrdinalIgnoreCase);
-            bool isHovered = card.IsHovered;
+            bool isHovered = card.IsHovered || card.IsFocused;
             Color accentColor = option != null ? GetArchetypeAccent(option.archetypeFamily) : cardSelectedFrameColor;
 
             if (isSelected)
@@ -947,27 +1002,44 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         HexBoonDefinition focusedBoon = GetFocusedTransitionBoon();
         if (focusedBoon == null)
         {
-            transitionSelectionDetailMetaText.text = "Transition Detail";
+            transitionSelectionDetailMetaText.text = "Boon Inspect";
             transitionSelectionDetailTitleText.text = "Hover a boon to inspect it.";
+            if (transitionSelectionDetailKeywordText != null)
+            {
+                transitionSelectionDetailKeywordText.text = "Keywords appear here.";
+            }
+
             transitionSelectionDetailEffectText.text = !string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote)
                 ? activeTransitionDisplayData.SelectionContextNote.Trim()
-                : "Choose one boon to carry into the next act.";
-            transitionSelectionDetailLoreText.text = string.Empty;
-            transitionSelectionDetailLoreText.gameObject.SetActive(false);
+                : "Select a boon to view its full effect.";
+            transitionSelectionDetailLoreText.text = "Full effect and family notes appear below the cards.";
+            transitionSelectionDetailLoreText.gameObject.SetActive(true);
             return;
         }
 
         focusedBoon.Validate();
         transitionSelectionDetailMetaText.text = BuildSelectionDetailMeta(focusedBoon);
         transitionSelectionDetailTitleText.text = focusedBoon.GetResolvedDisplayName();
-        transitionSelectionDetailEffectText.text = GetExpandedBoonEffect(focusedBoon.description);
+        if (transitionSelectionDetailKeywordText != null)
+        {
+            transitionSelectionDetailKeywordText.text = BuildSelectionKeywordHeading(focusedBoon);
+        }
+
+        transitionSelectionDetailEffectText.text = BuildSelectionDescription(focusedBoon);
 
         string lore = NormalizeInlineText(focusedBoon.flavorText);
-        if (!string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote))
+        string keywordExplanation = focusedBoon.GetKeywordExplanationText();
+        if (!string.IsNullOrWhiteSpace(keywordExplanation))
         {
             lore = string.IsNullOrWhiteSpace(lore)
-                ? activeTransitionDisplayData.SelectionContextNote.Trim()
-                : $"{lore}\n{activeTransitionDisplayData.SelectionContextNote.Trim()}";
+                ? keywordExplanation
+                : $"{keywordExplanation}\n{lore}";
+        }
+
+        string familyNote = BuildSelectionFamilyNote(focusedBoon);
+        if (!string.IsNullOrWhiteSpace(familyNote))
+        {
+            lore = string.IsNullOrWhiteSpace(lore) ? familyNote : $"{lore}\n{familyNote}";
         }
 
         transitionSelectionDetailLoreText.text = lore;
@@ -980,7 +1052,9 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             && string.Equals(selectedTransitionBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
         bool isHovered = hoveredTransitionBoon != null
             && string.Equals(hoveredTransitionBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
-        string stateLabel = isSelected ? "Selected path" : isHovered ? "Previewing path" : "Available path";
+        bool isFocused = focusedTransitionBoon != null
+            && string.Equals(focusedTransitionBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
+        string stateLabel = isSelected ? "Selected path" : (isHovered || isFocused) ? "Inspecting path" : "Available path";
         return $"{stateLabel} · {FormatArchetype(boon.archetypeFamily)} family";
     }
 
@@ -1127,10 +1201,10 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         artFallbackText.alignment = TextAnchor.MiddleCenter;
         artFallbackText.text = "placeholder";
 
-        Text effectText = CreateText("Effect", surfaceRect, 15, FontStyle.Bold, bodyColor);
+        Text effectText = CreateText("Effect", surfaceRect, 14, FontStyle.Bold, bodyColor);
         LayoutElement effectLayout = effectText.gameObject.AddComponent<LayoutElement>();
-        effectLayout.preferredHeight = 42f;
-        effectText.alignment = TextAnchor.UpperLeft;
+        effectLayout.preferredHeight = 36f;
+        effectText.alignment = TextAnchor.MiddleLeft;
         effectText.verticalOverflow = VerticalWrapMode.Truncate;
         effectText.lineSpacing = 1.05f;
 
@@ -1150,6 +1224,8 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         EventTrigger eventTrigger = cardRect.gameObject.AddComponent<EventTrigger>();
         AddEventTrigger(eventTrigger, EventTriggerType.PointerEnter, _ => HandleTransitionOptionHoverChanged(capturedIndex, true));
         AddEventTrigger(eventTrigger, EventTriggerType.PointerExit, _ => HandleTransitionOptionHoverChanged(capturedIndex, false));
+        AddEventTrigger(eventTrigger, EventTriggerType.Select, _ => HandleTransitionOptionFocusChanged(capturedIndex, true));
+        AddEventTrigger(eventTrigger, EventTriggerType.Deselect, _ => HandleTransitionOptionFocusChanged(capturedIndex, false));
 
         return new TransitionBoonCardUi
         {
@@ -1194,7 +1270,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
         card.Button.interactable = boon.isEnabled;
         Color accentColor = GetArchetypeAccent(boon.archetypeFamily);
         card.TitleText.text = boon.GetResolvedDisplayName();
-        card.EffectText.text = GetCompactBoonEffect(boon.description);
+        card.EffectText.text = boon.GetCardSummary();
         card.FamilyBadgeText.text = $"{FormatArchetype(boon.archetypeFamily)} Family";
         card.FamilyBadgeImage.color = Color.Lerp(accentColor, chipColor, 0.48f);
         card.ArtFrameImage.color = Color.Lerp(accentColor, artPanelColor, 0.72f);
@@ -1208,7 +1284,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     private HexBoonDefinition GetFocusedTransitionBoon()
     {
-        return hoveredTransitionBoon ?? selectedTransitionBoon;
+        return hoveredTransitionBoon ?? focusedTransitionBoon ?? selectedTransitionBoon;
     }
 
     private void SetModalVisibility(bool visible)
@@ -1389,7 +1465,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
     {
         return new Vector2(
             Mathf.Max(820f, transitionSelectionPanelWidth),
-            Mathf.Max(560f, transitionSelectionPanelHeight));
+            Mathf.Max(840f, transitionSelectionPanelHeight));
     }
 
     private static string BuildTransitionMetaLabel(HexActTransitionDisplayData displayData)
@@ -1409,32 +1485,27 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
             : "Choose one boon for the next act.";
     }
 
-    private static string GetCompactBoonEffect(string rawDescription)
+    private static string BuildSelectionKeywordHeading(HexBoonDefinition boon)
     {
-        string normalized = NormalizeInlineText(rawDescription);
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return "No boon effect listed.";
-        }
-
-        int sentenceBreak = normalized.IndexOf('.');
-        if (sentenceBreak > 0 && sentenceBreak < 68)
-        {
-            normalized = normalized[..(sentenceBreak + 1)];
-        }
-
-        if (normalized.Length > 68)
-        {
-            normalized = $"{normalized[..65].TrimEnd()}...";
-        }
-
-        return normalized;
+        string keywordLine = boon?.GetKeywordLine() ?? string.Empty;
+        return string.IsNullOrWhiteSpace(keywordLine) ? "Keywords: None listed." : $"Keywords: {keywordLine}";
     }
 
-    private static string GetExpandedBoonEffect(string rawDescription)
+    private static string BuildSelectionDescription(HexBoonDefinition boon)
     {
-        string normalized = NormalizeInlineText(rawDescription);
+        string normalized = NormalizeInlineText(boon?.description);
         return string.IsNullOrWhiteSpace(normalized) ? "No gameplay bonus described." : normalized;
+    }
+
+    private string BuildSelectionFamilyNote(HexBoonDefinition boon)
+    {
+        string familyNote = $"Family: {FormatArchetype(boon.archetypeFamily)} Family.";
+        if (string.IsNullOrWhiteSpace(activeTransitionDisplayData.SelectionContextNote))
+        {
+            return familyNote;
+        }
+
+        return $"{familyNote}\n{activeTransitionDisplayData.SelectionContextNote.Trim()}";
     }
 
     private static string NormalizeInlineText(string rawText)

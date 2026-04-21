@@ -21,6 +21,12 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 2
   isEnabled: 1
+  cardSummary: Pitstop Expansion
+  keywords:
+  - label: Pitstop
+    explanation: Add one extra pitstop to the next act.
+  - label: Mid Route
+    explanation: Place the extra stop in the middle stretch of the road.
   passive:
     effectType: 0
     magnitude: 0

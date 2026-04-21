@@ -20,6 +20,12 @@ MonoBehaviour:
   archetypeFamily: 1
   category: 0
   isEnabled: 1
+  cardSummary: Slow Pursuit + Guarded Goal
+  keywords:
+  - label: Slow Pursuit
+    explanation: The Hunter moves only one hex per activation.
+  - label: Guarded Goal
+    explanation: The Hunter begins Act 3 on the goal itself.
   passive:
     effectType: 0
     magnitude: 0
