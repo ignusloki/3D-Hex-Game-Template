@@ -1,0 +1,65 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="hud-root">
+        <ui:VisualElement name="top-bar">
+            <ui:VisualElement name="top-bar-left">
+                <ui:Label name="run-context-label" text="Act 1" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="top-bar-center">
+                <ui:VisualElement name="center-status-pocket">
+                    <ui:Label name="selection-status" text="Select a departure tile." class="status-line" />
+                    <ui:VisualElement name="status-meta-row">
+                        <ui:Label name="travel-time" text="Travel Time: --" class="travel-chip" />
+                        <ui:Label name="hint-text" text="" class="hint-copy" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="top-bar-right">
+                <ui:VisualElement name="resource-strip">
+                    <ui:VisualElement name="resource-food" class="resource-chip">
+                        <ui:VisualElement name="resource-food-icon" class="resource-icon">
+                            <ui:Label text="F" class="resource-icon-glyph" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="resource-copy">
+                            <ui:Label text="Food" class="resource-name" />
+                            <ui:Label name="resource-food-value" text="0" class="resource-value" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="resource-morale" class="resource-chip">
+                        <ui:VisualElement name="resource-morale-icon" class="resource-icon">
+                            <ui:Label text="M" class="resource-icon-glyph" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="resource-copy">
+                            <ui:Label text="Morale" class="resource-name" />
+                            <ui:Label name="resource-morale-value" text="0" class="resource-value" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="resource-gold" class="resource-chip">
+                        <ui:VisualElement name="resource-gold-icon" class="resource-icon">
+                            <ui:Label text="G" class="resource-icon-glyph" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="resource-copy">
+                            <ui:Label text="Gold" class="resource-name" />
+                            <ui:Label name="resource-gold-value" text="0" class="resource-value" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label name="boon-status" text="" />
+
+        <ui:VisualElement name="tile-inspector-panel" class="hud-card">
+            <ui:Label text="Tile Inspector" class="panel-kicker" />
+            <ui:Label name="tile-details" text="Click a tile to inspect terrain cost." class="body-copy" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="pitstop-panel" class="hud-card">
+            <ui:Label text="Pitstop Intel" class="panel-kicker" />
+            <ui:Label name="pitstop-info" text="Pitstop Info&#10;Select a pitstop to inspect its stop effect." class="body-copy" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

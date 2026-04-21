@@ -4,15 +4,27 @@ using UnityEngine.UI;
 public sealed class HexTravelTimePresenter
 {
     private readonly Text travelTimeText;
+    private readonly IHexTravelTimeView runtimeView;
 
     public HexTravelTimePresenter(Text travelTimeText)
     {
         this.travelTimeText = travelTimeText;
     }
 
+    public HexTravelTimePresenter(Text travelTimeText, IHexTravelTimeView runtimeView)
+    {
+        this.travelTimeText = travelTimeText;
+        this.runtimeView = runtimeView;
+    }
+
+    public HexTravelTimePresenter(IHexTravelTimeView runtimeView)
+    {
+        this.runtimeView = runtimeView;
+    }
+
     public void ShowPath(IReadOnlyList<HexTileData> path)
     {
-        if (travelTimeText == null)
+        if (travelTimeText == null && runtimeView == null)
         {
             return;
         }
@@ -24,16 +36,21 @@ public sealed class HexTravelTimePresenter
         }
 
         int totalTravelTime = HexPathMetrics.GetTravelCost(path);
-        travelTimeText.text = "Travel Time: " + totalTravelTime + " days";
+        SetTravelTimeText("Travel Time: " + totalTravelTime + " days");
     }
 
     public void Reset()
     {
-        if (travelTimeText == null)
+        SetTravelTimeText("Travel Time: --");
+    }
+
+    private void SetTravelTimeText(string value)
+    {
+        if (travelTimeText != null)
         {
-            return;
+            travelTimeText.text = value;
         }
 
-        travelTimeText.text = "Travel Time: --";
+        runtimeView?.SetTravelTimeText(value);
     }
 }

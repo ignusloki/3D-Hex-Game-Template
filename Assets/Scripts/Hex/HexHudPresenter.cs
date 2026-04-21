@@ -7,6 +7,7 @@ public sealed class HexHudPresenter
     private readonly Text tileDetailsText;
     private readonly Text hintText;
     private readonly Text pitstopInfoText;
+    private readonly IHexHudView runtimeView;
 
     public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText, Text pitstopInfoText = null)
     {
@@ -16,9 +17,23 @@ public sealed class HexHudPresenter
         this.pitstopInfoText = pitstopInfoText;
     }
 
+    public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText, Text pitstopInfoText, IHexHudView runtimeView)
+    {
+        this.statusText = statusText;
+        this.tileDetailsText = tileDetailsText;
+        this.hintText = hintText;
+        this.pitstopInfoText = pitstopInfoText;
+        this.runtimeView = runtimeView;
+    }
+
+    public HexHudPresenter(IHexHudView runtimeView)
+    {
+        this.runtimeView = runtimeView;
+    }
+
     public void ShowAwaitingStart()
     {
-        SetText(statusText, "Select a departure tile.");
+        SetStatusText("Select a departure tile.");
         ClearHintText();
     }
 
@@ -26,13 +41,12 @@ public sealed class HexHudPresenter
     {
         if (caravanTile == null)
         {
-            SetText(statusText, "Caravan ready.");
+            SetStatusText("Caravan ready.");
             ClearHintText();
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Caravan ready at {FormatCoordinates(caravanTile.Coordinates)}.");
         ClearHintText();
     }
@@ -45,8 +59,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Inspecting {FormatCoordinates(tile.Coordinates)} ({FormatBiome(tile.TileData?.Biome ?? Biome.grass)}).");
         ClearHintText();
     }
@@ -59,8 +72,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Inspecting {FormatCoordinates(tile.Coordinates)} (Unknown).");
         ClearHintText();
     }
@@ -73,8 +85,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Caravan selected at {FormatCoordinates(caravanTile.Coordinates)}.");
         ClearHintText();
     }
@@ -87,8 +98,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Origin: {FormatCoordinates(startTile.Coordinates)} ({FormatBiome(startTile.TileData?.Biome ?? Biome.grass)})");
         ClearHintText();
     }
@@ -105,8 +115,7 @@ public sealed class HexHudPresenter
         int stepCount = path.Count - 1;
         int totalTravelCost = HexPathMetrics.GetTravelCost(path);
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Route ready: {stepCount} steps to {FormatCoordinates(destination.Coordinates)}.");
         ClearHintText();
     }
@@ -122,8 +131,7 @@ public sealed class HexHudPresenter
         int stepCount = path.Count - 1;
         int totalTravelCost = HexPathMetrics.GetTravelCost(path);
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Previewing route to {FormatCoordinates(destinationTile.Coordinates)}.");
         ClearHintText();
     }
@@ -136,8 +144,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"No route to {FormatCoordinates(destinationTile.Coordinates)}.");
         ClearHintText();
     }
@@ -150,8 +157,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Tile {FormatCoordinates(destinationTile.Coordinates)} is outside caravan range.");
         ClearHintText();
     }
@@ -164,8 +170,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"The Echo seals {FormatCoordinates(destinationTile.Coordinates)}. Choose another route.");
         ClearHintText();
     }
@@ -178,8 +183,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Not enough food for {FormatCoordinates(destinationTile.Coordinates)}.");
         ClearHintText();
     }
@@ -192,8 +196,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Caravan moved to {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
@@ -209,14 +212,14 @@ public sealed class HexHudPresenter
         if (turnResult.DestroyedPitstops.Count > 0)
         {
             HexCoordinates coordinates = turnResult.DestroyedPitstops[0].Coordinates;
-            SetText(statusText, $"Corruptor ruined a pitstop at {FormatCoordinates(coordinates)}.");
+            SetStatusText($"Corruptor ruined a pitstop at {FormatCoordinates(coordinates)}.");
             ClearHintText();
             return;
         }
 
         if (turnResult.Archetype == HexNemesisArchetype.Echo && turnResult.EchoBlockedCoordinates.HasValue)
         {
-            SetText(statusText, $"Echo seals {FormatCoordinates(turnResult.EchoBlockedCoordinates.Value)} behind the caravan.");
+            SetStatusText($"Echo seals {FormatCoordinates(turnResult.EchoBlockedCoordinates.Value)} behind the caravan.");
             ClearHintText();
             return;
         }
@@ -225,15 +228,15 @@ public sealed class HexHudPresenter
         {
             if (turnResult.CurrentCoordinatesVisibilityMode == HexBoonNemesisVisibilityMode.Hidden)
             {
-                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} slips out of sight.");
+                SetStatusText($"{FormatNemesisArchetype(turnResult.Archetype)} slips out of sight.");
             }
             else if (turnResult.CurrentCoordinatesVisibilityMode == HexBoonNemesisVisibilityMode.Obscured)
             {
-                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} is obscured at {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+                SetStatusText($"{FormatNemesisArchetype(turnResult.Archetype)} is obscured at {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
             }
             else
             {
-                SetText(statusText, $"{FormatNemesisArchetype(turnResult.Archetype)} advances to {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
+                SetStatusText($"{FormatNemesisArchetype(turnResult.Archetype)} advances to {FormatCoordinates(turnResult.CurrentCoordinates.Value)}.");
             }
 
             ClearHintText();
@@ -257,9 +260,8 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(pitstopInfoText, FormatPitstopPanel(eventResult.Site, eventResult));
-        SetText(
-            statusText,
+        SetPitstopInfoText(FormatPitstopPanel(eventResult.Site, eventResult));
+        SetStatusText(
             $"{eventResult.Title} at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
@@ -272,14 +274,14 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(pitstopInfoText, FormatPitstopPanel(eventResult.Site, eventResult));
+        SetPitstopInfoText(FormatPitstopPanel(eventResult.Site, eventResult));
         string title = eventResult.Title;
         if (eventResult.SelectedOption != null)
         {
             title = $"{title}: {eventResult.SelectedOption.label}";
         }
 
-        SetText(statusText, title);
+        SetStatusText(title);
         ClearHintText();
     }
 
@@ -291,9 +293,8 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetText(pitstopInfoText, FormatPitstopPanel(site));
-        SetText(
-            statusText,
+        SetPitstopInfoText(FormatPitstopPanel(site));
+        SetStatusText(
             $"Returned to {site.EventTitle} at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
@@ -309,8 +310,7 @@ public sealed class HexHudPresenter
         string resourceLabel = FormatResourceType(contactResult.AffectedResource);
         string fallbackText = contactResult.UsedFallbackResource ? " Fallback penalty applied." : string.Empty;
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"{contactResult.Obstacle.Definition.displayName} struck at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
@@ -319,13 +319,12 @@ public sealed class HexHudPresenter
     {
         if (tile == null)
         {
-            SetText(statusText, "Goal reached.");
+            SetStatusText("Goal reached.");
             ClearHintText();
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"Goal reached at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
@@ -334,20 +333,19 @@ public sealed class HexHudPresenter
     {
         if (tile == null)
         {
-            SetText(statusText, defeatReason);
+            SetStatusText(defeatReason);
             ClearHintText();
             return;
         }
 
-        SetText(
-            statusText,
+        SetStatusText(
             $"{defeatReason} at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
     }
 
     public void ShowNoPath()
     {
-        SetText(statusText, "No route found for that pair of tiles.");
+        SetStatusText("No route found for that pair of tiles.");
         ClearHintText();
     }
 
@@ -367,8 +365,8 @@ public sealed class HexHudPresenter
         details = AppendObstacleDetails(details, visibleObstacle);
         details = AppendExtraDetails(details, extraDetails);
 
-        SetText(tileDetailsText, details);
-        SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
+        SetTileDetailsText(details);
+        SetPitstopInfoText(FormatPitstopPanel(pitstopSite));
     }
 
     public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, string extraDetails = null)
@@ -381,17 +379,41 @@ public sealed class HexHudPresenter
 
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: Unknown\nTravel Cost: Unknown\nVisibility: Unseen";
         details = AppendExtraDetails(details, extraDetails);
-        SetText(tileDetailsText, details);
-        SetText(pitstopInfoText, FormatPitstopPanel(pitstopSite));
+        SetTileDetailsText(details);
+        SetPitstopInfoText(FormatPitstopPanel(pitstopSite));
     }
 
     public void ResetTileDetails()
     {
-        SetText(tileDetailsText, "Click a tile to inspect terrain cost.");
-        SetText(pitstopInfoText, DefaultPitstopPanelText);
+        SetTileDetailsText("Click a tile to inspect terrain cost.");
+        SetPitstopInfoText(DefaultPitstopPanelText);
     }
 
     private const string DefaultPitstopPanelText = "Pitstop Info\nSelect a pitstop to inspect its stop effect.";
+
+    private void SetStatusText(string value)
+    {
+        SetText(statusText, value);
+        runtimeView?.SetStatusText(value);
+    }
+
+    private void SetTileDetailsText(string value)
+    {
+        SetText(tileDetailsText, value);
+        runtimeView?.SetTileDetailsText(value);
+    }
+
+    private void SetHintText(string value)
+    {
+        SetText(hintText, value);
+        runtimeView?.SetHintText(value);
+    }
+
+    private void SetPitstopInfoText(string value)
+    {
+        SetText(pitstopInfoText, value);
+        runtimeView?.SetPitstopInfoText(value);
+    }
 
     private static void SetText(Text target, string value)
     {
@@ -403,12 +425,12 @@ public sealed class HexHudPresenter
 
     private void ClearHintText()
     {
-        SetText(hintText, string.Empty);
+        SetHintText(string.Empty);
     }
 
     public void ShowHint(string message)
     {
-        SetText(hintText, string.IsNullOrWhiteSpace(message) ? string.Empty : message);
+        SetHintText(string.IsNullOrWhiteSpace(message) ? string.Empty : message);
     }
 
     private static string FormatCoordinates(HexCoordinates coordinates)

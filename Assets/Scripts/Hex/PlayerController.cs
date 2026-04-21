@@ -29,6 +29,7 @@ public class PlayerController : MonoBehaviour
     private HexPathHighlighter pathHighlighter;
     private HexTravelTimePresenter travelTimePresenter;
     private HexHudPresenter hudPresenter;
+    private HexHudDocumentController hudDocumentController;
     private MapGenerator mapGenerator;
     private CaravanMetricsController caravanMetricsController;
     private PitstopSpawner pitstopSpawner;
@@ -67,6 +68,7 @@ public class PlayerController : MonoBehaviour
     private void OnValidate()
     {
         AutoAssignTextReferences();
+        hudDocumentController = GetComponent<HexHudDocumentController>();
         startingFood = Mathf.Max(1, startingFood);
         startingMorale = Mathf.Max(1, startingMorale);
         startingGold = Mathf.Max(0, startingGold);
@@ -575,22 +577,32 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateResourcesText()
     {
+        string boonLine = boonRuntime != null && boonRuntime.HasActiveBoon
+            ? boonRuntime.GetStatusLine()
+            : string.Empty;
+
         if (resourcesText != null)
         {
             string resourceLine =
                 $"Food: {Mathf.Max(caravanResources.Food, 0)}  Morale: {Mathf.Max(caravanResources.Morale, 0)}  Gold: {Mathf.Max(caravanResources.Gold, 0)}";
 
-            if (boonRuntime != null && boonRuntime.HasActiveBoon)
+            if (!string.IsNullOrWhiteSpace(boonLine))
             {
-                string boonLine = boonRuntime.GetStatusLine();
                 resourcesText.text = string.IsNullOrWhiteSpace(boonLine)
                     ? resourceLine
                     : $"{resourceLine}\n{boonLine}";
-                return;
             }
-
-            resourcesText.text = resourceLine;
+            else
+            {
+                resourcesText.text = resourceLine;
+            }
         }
+
+        hudDocumentController?.SetResources(
+            caravanResources.Food,
+            caravanResources.Morale,
+            caravanResources.Gold,
+            boonLine);
     }
 
     private void EndRunAsVictory()
@@ -797,11 +809,14 @@ public class PlayerController : MonoBehaviour
     private void EnsureRuntimeReferences()
     {
         AutoAssignTextReferences();
+        hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
+        hudDocumentController?.EnsureInitialized();
+        hudDocumentController?.RefreshRunContext();
 
         inputService ??= new HexTileInputService();
         pathHighlighter ??= new HexPathHighlighter();
-        travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText);
-        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText, pitstopInfoText);
+        travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText, hudDocumentController);
+        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText, pitstopInfoText, hudDocumentController);
         mapGenerator ??= FindAnyObjectByType<MapGenerator>();
         caravanMetricsController ??= GetComponentInChildren<CaravanMetricsController>(true);
         pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
