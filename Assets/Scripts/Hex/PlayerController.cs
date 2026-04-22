@@ -677,6 +677,7 @@ public class PlayerController : MonoBehaviour
 
         HexActTransitionService.DebugConfigureRunSession(2, previewResources, resolvedFamily);
         HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(previewResources);
+        hudDocumentController?.RefreshRunContext();
 
         PrepareForActTransitionModalState();
         hudPresenter.ShowHint($"Debug preview: Act 2 complete. Inspecting {resolvedFamily} family boon options.");
@@ -888,7 +889,6 @@ public class PlayerController : MonoBehaviour
         gameplayUiRootController?.EnsureInitialized();
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
         hudDocumentController?.EnsureInitialized();
-        hudDocumentController?.RefreshRunContext();
 
         inputService ??= new HexTileInputService();
         pathHighlighter ??= new HexPathHighlighter();

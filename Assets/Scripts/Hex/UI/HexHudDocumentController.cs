@@ -47,6 +47,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     private VisualElement goldIconElement;
     private bool isGameplayModalActive;
     private bool isInitialized;
+    private int lastResolvedActNumber = -1;
 
     public bool IsReady => isInitialized;
 
@@ -143,7 +144,15 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
     public void RefreshRunContext()
     {
-        runContextLabel = $"Act {HexActTransitionService.GetCurrentActNumber()}";
+        int currentActNumber = HexActTransitionService.GetCurrentActNumber();
+        string nextLabel = $"Act {currentActNumber}";
+        if (currentActNumber == lastResolvedActNumber && string.Equals(runContextLabel, nextLabel, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastResolvedActNumber = currentActNumber;
+        runContextLabel = nextLabel;
         if (runContextLabelElement != null)
         {
             runContextLabelElement.text = runContextLabel;
@@ -170,20 +179,20 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         boonStatusLabel.text = string.IsNullOrWhiteSpace(boonLine) ? string.Empty : boonLine.Trim();
         RefreshBoonStatusVisibility();
-        LogDiagnostic($"SetResources food={food} morale={morale} gold={gold} boonVisible={!string.IsNullOrWhiteSpace(boonLine)}.");
+        LogDiagnostic($"SetResources food={food} morale={morale} gold={gold} boonVisible={!string.IsNullOrWhiteSpace(boonLine)}.", true);
     }
 
     public void SetStatusText(string value)
     {
         SetLabelText(selectionStatusLabel, value);
-        LogDiagnostic($"SetStatusText value='{value}'.");
+        LogDiagnostic($"SetStatusText value='{value}'.", true);
     }
 
     public void SetTileDetailsText(string value)
     {
         SetLabelText(tileDetailsLabel, value);
         RefreshTileInspectorVisibility();
-        LogDiagnostic($"SetTileDetailsText visible={tileInspectorPanel?.resolvedStyle.display.ToString() ?? "unknown"} value='{value}'.");
+        LogDiagnostic($"SetTileDetailsText value='{value}'.", true);
     }
 
     public void SetHintText(string value)
@@ -194,14 +203,14 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
             hintLabel.style.display = string.IsNullOrWhiteSpace(value) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
-        LogDiagnostic($"SetHintText visible={!string.IsNullOrWhiteSpace(value)} value='{value}'.");
+        LogDiagnostic($"SetHintText visible={!string.IsNullOrWhiteSpace(value)} value='{value}'.", true);
     }
 
     public void SetPitstopInfoText(string value)
     {
         SetLabelText(pitstopInfoLabel, value);
         RefreshPitstopPanelVisibility();
-        LogDiagnostic($"SetPitstopInfoText value='{value}'.");
+        LogDiagnostic($"SetPitstopInfoText value='{value}'.", true);
     }
 
     public void SetTravelTimeText(string value)
@@ -212,7 +221,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
             travelTimeLabel.style.display = ShouldShowTravelTime(value) ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        LogDiagnostic($"SetTravelTimeText visible={ShouldShowTravelTime(value)} value='{value}'.");
+        LogDiagnostic($"SetTravelTimeText visible={ShouldShowTravelTime(value)} value='{value}'.", true);
     }
 
     public void SetGameplayModalState(bool active)
@@ -289,7 +298,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         bool shouldDisplay = !isGameplayModalActive && ShouldShowTileInspector(tileDetailsLabel?.text);
         tileInspectorPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
-        LogDiagnostic($"RefreshTileInspectorVisibility visible={shouldDisplay}.");
+        LogDiagnostic($"RefreshTileInspectorVisibility visible={shouldDisplay}.", true);
     }
 
     private void RefreshPitstopPanelVisibility()
@@ -301,7 +310,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         bool shouldDisplay = !isGameplayModalActive && ShouldShowPitstopPanel(pitstopInfoLabel?.text);
         pitstopPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
-        LogDiagnostic($"RefreshPitstopPanelVisibility visible={shouldDisplay}.");
+        LogDiagnostic($"RefreshPitstopPanelVisibility visible={shouldDisplay}.", true);
     }
 
     private static bool ShouldShowTravelTime(string value)
@@ -334,9 +343,9 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         }
     }
 
-    private void LogDiagnostic(string message)
+    private void LogDiagnostic(string message, bool verbose = false)
     {
-        gameplayUiRootController?.LogDiagnostic(DiagnosticScope, message, this);
+        gameplayUiRootController?.LogDiagnostic(DiagnosticScope, message, this, verbose);
     }
 }
 
@@ -353,6 +362,7 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
     [SerializeField] private StyleSheet styleSheet;
     [SerializeField] private int sortingOrder = 100;
     [SerializeField] private bool enableRuntimeDiagnostics = true;
+    [SerializeField] private bool enableVerboseRuntimeDiagnostics;
 
     private readonly Dictionary<HexGameplayUiLayerId, VisualElement> layers = new();
     private GameObject uiRootObject;
@@ -483,9 +493,14 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
         LogDiagnostic("Root", $"Registered layer '{layerId}'.", this);
     }
 
-    public void LogDiagnostic(string scope, string message, Object context = null)
+    public void LogDiagnostic(string scope, string message, Object context = null, bool verbose = false)
     {
         if (!enableRuntimeDiagnostics)
+        {
+            return;
+        }
+
+        if (verbose && !enableVerboseRuntimeDiagnostics)
         {
             return;
         }
