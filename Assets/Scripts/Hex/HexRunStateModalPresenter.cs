@@ -3,6 +3,63 @@ using System.Collections.Generic;
 using UnityEngine;
 using UIE = UnityEngine.UIElements;
 
+[CreateAssetMenu(
+    fileName = "ActTransitionPlaceholderArtLibrary",
+    menuName = "Hex/Acts/Act Transition Placeholder Art Library")]
+public sealed class HexActTransitionPlaceholderArtLibrary : ScriptableObject
+{
+    public Texture2D[] act1ToAct2 = Array.Empty<Texture2D>();
+    public Texture2D[] act2ToAct3 = Array.Empty<Texture2D>();
+
+    public Texture2D GetRandomTextureForCompletedAct(int completedAct)
+    {
+        Texture2D[] pool = completedAct switch
+        {
+            1 => act1ToAct2,
+            2 => act2ToAct3,
+            _ => Array.Empty<Texture2D>()
+        };
+
+        if (pool == null || pool.Length == 0)
+        {
+            return null;
+        }
+
+        int validCount = 0;
+        for (int index = 0; index < pool.Length; index++)
+        {
+            if (pool[index] != null)
+            {
+                validCount++;
+            }
+        }
+
+        if (validCount == 0)
+        {
+            return null;
+        }
+
+        int chosenIndex = UnityEngine.Random.Range(0, validCount);
+        for (int index = 0; index < pool.Length; index++)
+        {
+            Texture2D texture = pool[index];
+            if (texture == null)
+            {
+                continue;
+            }
+
+            if (chosenIndex == 0)
+            {
+                return texture;
+            }
+
+            chosenIndex--;
+        }
+
+        return null;
+    }
+}
+
 public sealed class HexActTransitionModalPresenter : MonoBehaviour
 {
     private HexActTransitionModalDocumentController documentController;
@@ -66,6 +123,7 @@ internal sealed class HexActTransitionModalDocumentController
     private const string LayoutResourcePath = "UI/Modal/HexActTransitionModal";
     private const string StyleSheetResourcePath = "UI/Modal/HexActTransitionModalStyles";
     private const string ModalMountName = "act-transition-modal-mount";
+    private const string PlaceholderArtLibraryResourcePath = "Acts/ActTransitionPlaceholderArtLibrary";
 
     private enum TransitionScreenMode
     {
@@ -79,6 +137,7 @@ internal sealed class HexActTransitionModalDocumentController
 
     private UIE.VisualTreeAsset layoutAsset;
     private UIE.StyleSheet styleSheet;
+    private HexActTransitionPlaceholderArtLibrary placeholderArtLibrary;
     private HexGameplayUiRootController gameplayUiRootController;
     private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
@@ -143,6 +202,7 @@ internal sealed class HexActTransitionModalDocumentController
 
         layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
+        placeholderArtLibrary ??= Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
         if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexActTransitionModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
@@ -183,6 +243,10 @@ internal sealed class HexActTransitionModalDocumentController
         intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-body");
         intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(modalMount, "act-transition-intermission-illustration-image");
         intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-illustration-placeholder");
+        if (intermissionIllustrationImage != null)
+        {
+            intermissionIllustrationImage.scaleMode = ScaleMode.ScaleAndCrop;
+        }
         carryOverChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-carry-chips");
         grantChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-grant-chips");
         grantEmptyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-grant-empty");
@@ -458,9 +522,9 @@ internal sealed class HexActTransitionModalDocumentController
 
         UIE.Image artImage = new();
         artImage.AddToClassList("act-transition-card-art-image");
-        artImage.scaleMode = ScaleMode.ScaleToFit;
+        artImage.scaleMode = ScaleMode.ScaleAndCrop;
 
-        UIE.Label artPlaceholderLabel = new("placeholder");
+        UIE.Label artPlaceholderLabel = new(string.Empty);
         artPlaceholderLabel.AddToClassList("act-transition-card-art-placeholder");
 
         artInset.Add(artImage);
@@ -480,9 +544,10 @@ internal sealed class HexActTransitionModalDocumentController
         root.Add(summaryLabel);
         root.Add(familyLabel);
 
-        if (boon.icon != null)
+        Texture cardTexture = boon.icon != null ? boon.icon.texture : ResolveRandomPlaceholderTexture();
+        if (cardTexture != null)
         {
-            artImage.image = boon.icon.texture;
+            artImage.image = cardTexture;
             artImage.style.display = UIE.DisplayStyle.Flex;
             artPlaceholderLabel.style.display = UIE.DisplayStyle.None;
         }
@@ -618,25 +683,10 @@ internal sealed class HexActTransitionModalDocumentController
                 && view.Boon != null
                 && string.Equals(selectedBoon.id, view.Boon.id, StringComparison.OrdinalIgnoreCase);
             bool isHovered = view.IsHovered || view.IsFocused;
-            Color accentColor = view.Boon != null ? GetArchetypeAccent(view.Boon.archetypeFamily) : new Color(0.42f, 0.46f, 0.52f, 1f);
-            Color frameColor = isSelected
-                ? Color.Lerp(accentColor, new Color(0.78f, 0.67f, 0.42f, 1f), 0.3f)
-                : isHovered
-                    ? Color.Lerp(new Color(0.22f, 0.27f, 0.34f, 0.98f), accentColor, 0.35f)
-                    : new Color(0.22f, 0.27f, 0.34f, 0.98f);
 
             view.Root.EnableInClassList("act-transition-card--selected", isSelected);
             view.Root.EnableInClassList("act-transition-card--hovered", isHovered);
             view.Root.EnableInClassList("act-transition-card--disabled", view.Boon == null || !view.Boon.isEnabled);
-
-            view.Root.style.borderLeftColor = frameColor;
-            view.Root.style.borderRightColor = frameColor;
-            view.Root.style.borderTopColor = frameColor;
-            view.Root.style.borderBottomColor = frameColor;
-            view.Root.style.backgroundColor = isSelected
-                ? new Color(0.16f, 0.2f, 0.25f, 1f)
-                : isHovered ? new Color(0.16f, 0.2f, 0.26f, 1f) : new Color(0.12f, 0.15f, 0.2f, 0.98f);
-            view.FamilyLabel.style.backgroundColor = Color.Lerp(accentColor, new Color(0.12f, 0.16f, 0.21f, 0.94f), 0.48f);
         }
     }
 
@@ -700,9 +750,10 @@ internal sealed class HexActTransitionModalDocumentController
             return;
         }
 
-        if (illustration != null)
+        Texture illustrationTexture = illustration != null ? illustration.texture : ResolveRandomPlaceholderTexture();
+        if (illustrationTexture != null)
         {
-            intermissionIllustrationImage.image = illustration.texture;
+            intermissionIllustrationImage.image = illustrationTexture;
             intermissionIllustrationImage.style.display = UIE.DisplayStyle.Flex;
             intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.None;
             return;
@@ -710,8 +761,23 @@ internal sealed class HexActTransitionModalDocumentController
 
         intermissionIllustrationImage.image = null;
         intermissionIllustrationImage.style.display = UIE.DisplayStyle.None;
-        intermissionIllustrationPlaceholderLabel.text = "placeholder";
+        intermissionIllustrationPlaceholderLabel.text = string.Empty;
         intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.Flex;
+    }
+
+    private Texture2D ResolveRandomPlaceholderTexture()
+    {
+        if (placeholderArtLibrary == null)
+        {
+            placeholderArtLibrary = Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
+        }
+
+        if (placeholderArtLibrary == null)
+        {
+            return null;
+        }
+
+        return placeholderArtLibrary.GetRandomTextureForCompletedAct(activeDisplayData.CompletedActNumber);
     }
 
     private UIE.VisualElement CreateJournalChip(string label, string value)
@@ -835,17 +901,6 @@ internal sealed class HexActTransitionModalDocumentController
     private static string FormatSigned(int value)
     {
         return value > 0 ? $"+{value}" : value.ToString();
-    }
-
-    private static Color GetArchetypeAccent(HexNemesisArchetype archetype)
-    {
-        return archetype switch
-        {
-            HexNemesisArchetype.Hunter => new Color(0.65f, 0.47f, 0.22f, 1f),
-            HexNemesisArchetype.Echo => new Color(0.33f, 0.55f, 0.7f, 1f),
-            HexNemesisArchetype.Corruptor => new Color(0.57f, 0.27f, 0.35f, 1f),
-            _ => new Color(0.42f, 0.46f, 0.52f, 1f)
-        };
     }
 
     private static string FormatArchetype(HexNemesisArchetype archetype)

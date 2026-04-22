@@ -254,7 +254,7 @@
 }
 
 .modal-muted {
-    opacity: 0.72;
+    opacity: 0.32;
 }
 
 .hud-card {

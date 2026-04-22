@@ -1,7 +1,9 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="act-transition-modal-root">
-        <ui:VisualElement name="act-transition-modal-overlay">
-            <ui:VisualElement name="act-transition-intermission-shell">
+        <ui:VisualElement name="act-transition-modal-overlay" class="act-transition-overlay">
+            <ui:VisualElement
+                name="act-transition-intermission-shell"
+                class="act-transition-page-shell act-transition-page-shell--narrow">
                 <ui:Label name="act-transition-intermission-meta" text="ROAD INTERMISSION" />
                 <ui:Label name="act-transition-intermission-title" text="Act Complete" />
                 <ui:VisualElement class="act-transition-divider" />
@@ -34,11 +36,16 @@
                 </ui:VisualElement>
 
                 <ui:VisualElement class="act-transition-actions act-transition-actions--center">
-                    <ui:Button name="act-transition-intermission-button" text="Choose a Boon" />
+                    <ui:Button
+                        name="act-transition-intermission-button"
+                        class="act-transition-primary-button"
+                        text="Choose a Boon" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="act-transition-selection-shell">
+            <ui:VisualElement
+                name="act-transition-selection-shell"
+                class="act-transition-page-shell act-transition-page-shell--wide">
                 <ui:VisualElement name="act-transition-selection-header">
                     <ui:VisualElement name="act-transition-selection-copy">
                         <ui:Label
@@ -70,7 +77,10 @@
                 </ui:VisualElement>
 
                 <ui:VisualElement class="act-transition-actions act-transition-actions--center">
-                    <ui:Button name="act-transition-selection-button" text="Begin Act 2" />
+                    <ui:Button
+                        name="act-transition-selection-button"
+                        class="act-transition-primary-button"
+                        text="Begin Act 2" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
