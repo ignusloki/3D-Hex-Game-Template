@@ -124,6 +124,7 @@ internal sealed class HexActTransitionModalDocumentController
     private const string StyleSheetResourcePath = "UI/Modal/HexActTransitionModalStyles";
     private const string ModalMountName = "act-transition-modal-mount";
     private const string PlaceholderArtLibraryResourcePath = "Acts/ActTransitionPlaceholderArtLibrary";
+    private const string RimouskiFontEditorAssetPath = "Assets/Art/Fonts/rimouski sb.otf";
 
     private enum TransitionScreenMode
     {
@@ -138,6 +139,7 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.VisualTreeAsset layoutAsset;
     private UIE.StyleSheet styleSheet;
     private HexActTransitionPlaceholderArtLibrary placeholderArtLibrary;
+    private Font rimouskiFont;
     private HexGameplayUiRootController gameplayUiRootController;
     private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
@@ -146,6 +148,7 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.Label intermissionMetaLabel;
     private UIE.Label intermissionTitleLabel;
     private UIE.Label intermissionBodyLabel;
+    private UIE.Label intermissionSummaryLabel;
     private UIE.Image intermissionIllustrationImage;
     private UIE.Label intermissionIllustrationPlaceholderLabel;
     private UIE.VisualElement carryOverChipsContainer;
@@ -203,6 +206,7 @@ internal sealed class HexActTransitionModalDocumentController
         layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
         placeholderArtLibrary ??= Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
+        rimouskiFont ??= LoadRimouskiFont();
         if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexActTransitionModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
@@ -241,6 +245,7 @@ internal sealed class HexActTransitionModalDocumentController
         intermissionMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-meta");
         intermissionTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-title");
         intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-body");
+        intermissionSummaryLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-summary-label");
         intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(modalMount, "act-transition-intermission-illustration-image");
         intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-illustration-placeholder");
         if (intermissionIllustrationImage != null)
@@ -262,6 +267,7 @@ internal sealed class HexActTransitionModalDocumentController
         detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-effect");
         detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-lore");
         selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-selection-button");
+        ApplyIntermissionTypographyTheme();
 
         if (intermissionContinueButton != null)
         {
@@ -351,7 +357,7 @@ internal sealed class HexActTransitionModalDocumentController
             : activeDisplayData.Title.Trim();
         intermissionBodyLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.Body)
             ? "The caravan gathers itself for the road ahead."
-            : activeDisplayData.Body.Trim();
+            : NormalizeIntermissionBody(activeDisplayData.Body);
 
         ApplyIntermissionIllustration(activeDisplayData.IntermissionIllustration);
         RebuildIntermissionCarryOverSummary(activeDisplayData.CurrentResources);
@@ -788,6 +794,7 @@ internal sealed class HexActTransitionModalDocumentController
 
         UIE.Label chipLabel = new($"{label} {value}");
         chipLabel.AddToClassList("act-transition-journal-chip-label");
+        ApplyRimouskiFont(chipLabel);
         chip.Add(chipLabel);
         return chip;
     }
@@ -805,6 +812,7 @@ internal sealed class HexActTransitionModalDocumentController
 
         UIE.Label chipLabel = new($"{FormatSigned(value)} {label}");
         chipLabel.AddToClassList("act-transition-journal-chip-label");
+        ApplyRimouskiFont(chipLabel);
         chip.Add(chipLabel);
         parent.Add(chip);
         return 1;
@@ -898,6 +906,11 @@ internal sealed class HexActTransitionModalDocumentController
             .Trim();
     }
 
+    private static string NormalizeIntermissionBody(string rawText)
+    {
+        return NormalizeInlineText(rawText);
+    }
+
     private static string FormatSigned(int value)
     {
         return value > 0 ? $"+{value}" : value.ToString();
@@ -912,6 +925,34 @@ internal sealed class HexActTransitionModalDocumentController
             HexNemesisArchetype.Corruptor => "Corruptor",
             _ => "None"
         };
+    }
+
+    private void ApplyIntermissionTypographyTheme()
+    {
+        ApplyRimouskiFont(intermissionMetaLabel);
+        ApplyRimouskiFont(intermissionTitleLabel);
+        ApplyRimouskiFont(intermissionSummaryLabel);
+        ApplyRimouskiFont(intermissionContinueButton);
+    }
+
+    private void ApplyRimouskiFont(UIE.VisualElement element)
+    {
+        if (element == null || rimouskiFont == null)
+        {
+            return;
+        }
+
+        element.style.unityFont = new UIE.StyleFont(rimouskiFont);
+        element.style.unityFontDefinition = UIE.FontDefinition.FromFont(rimouskiFont);
+    }
+
+    private static Font LoadRimouskiFont()
+    {
+#if UNITY_EDITOR
+        return UnityEditor.AssetDatabase.LoadAssetAtPath<Font>(RimouskiFontEditorAssetPath);
+#else
+        return null;
+#endif
     }
 
     private void SetModalVisibility(bool visible)
