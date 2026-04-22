@@ -29,6 +29,7 @@ public class PlayerController : MonoBehaviour
     private HexPathHighlighter pathHighlighter;
     private HexTravelTimePresenter travelTimePresenter;
     private HexHudPresenter hudPresenter;
+    private HexGameplayUiRootController gameplayUiRootController;
     private HexHudDocumentController hudDocumentController;
     private MapGenerator mapGenerator;
     private CaravanMetricsController caravanMetricsController;
@@ -883,6 +884,8 @@ public class PlayerController : MonoBehaviour
     private void EnsureRuntimeReferences()
     {
         AutoAssignTextReferences();
+        gameplayUiRootController ??= GetComponent<HexGameplayUiRootController>() ?? gameObject.AddComponent<HexGameplayUiRootController>();
+        gameplayUiRootController?.EnsureInitialized();
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
         hudDocumentController?.EnsureInitialized();
         hudDocumentController?.RefreshRunContext();
