@@ -157,6 +157,7 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.Button intermissionContinueButton;
     private UIE.Label selectionPromptLabel;
     private UIE.Label selectionNoteLabel;
+    private UIE.Label selectionResourceLabel;
     private UIE.VisualElement selectionResourceStripContainer;
     private UIE.VisualElement selectionCardsRow;
     private UIE.Label detailMetaLabel;
@@ -259,6 +260,7 @@ internal sealed class HexActTransitionModalDocumentController
 
         selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-prompt");
         selectionNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-note");
+        selectionResourceLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-resource-label");
         selectionResourceStripContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-resource-strip");
         selectionCardsRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-card-row");
         detailMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-meta");
@@ -268,6 +270,7 @@ internal sealed class HexActTransitionModalDocumentController
         detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-lore");
         selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-selection-button");
         ApplyIntermissionTypographyTheme();
+        ApplySelectionTypographyTheme();
 
         if (intermissionContinueButton != null)
         {
@@ -379,13 +382,14 @@ internal sealed class HexActTransitionModalDocumentController
             return;
         }
 
-        selectionPromptLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.SelectionPrompt)
-            ? BuildDefaultSelectionPrompt(activeDisplayData.NextActNumber)
-            : activeDisplayData.SelectionPrompt.Trim();
-        selectionNoteLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote)
-            ? string.Empty
-            : activeDisplayData.SelectionContextNote.Trim();
-        selectionNoteLabel.style.display = string.IsNullOrWhiteSpace(selectionNoteLabel.text) ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+        selectionPromptLabel.text = BuildSelectionHeaderTitle(activeDisplayData.NextActNumber);
+        if (selectionNoteLabel != null)
+        {
+            string supportLine = BuildSelectionSupportLine(activeDisplayData);
+            selectionNoteLabel.text = supportLine;
+            selectionNoteLabel.style.display = string.IsNullOrWhiteSpace(supportLine) ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+        }
+
         RebuildSelectionCarryOverSummary(activeDisplayData.CurrentResources);
         RebuildSelectionCards();
         RefreshSelectionActionState();
@@ -477,9 +481,9 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         selectionResourceStripContainer.Clear();
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("F", currentResources.Food.ToString(), "act-transition-resource-mini--food"));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("M", currentResources.Morale.ToString(), "act-transition-resource-mini--morale"));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("G", currentResources.Gold.ToString(), "act-transition-resource-mini--gold"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Food", currentResources.Food.ToString(), "act-transition-resource-mini--food"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Morale", currentResources.Morale.ToString(), "act-transition-resource-mini--morale"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Gold", currentResources.Gold.ToString(), "act-transition-resource-mini--gold"));
     }
 
     private void RebuildSelectionCards()
@@ -519,6 +523,7 @@ internal sealed class HexActTransitionModalDocumentController
         UIE.Label titleLabel = new();
         titleLabel.AddToClassList("act-transition-card-title");
         titleLabel.text = boon.GetResolvedDisplayName();
+        ApplyRimouskiFont(titleLabel);
 
         UIE.VisualElement artFrame = new();
         artFrame.AddToClassList("act-transition-card-art-frame");
@@ -544,6 +549,7 @@ internal sealed class HexActTransitionModalDocumentController
         UIE.Label familyLabel = new();
         familyLabel.AddToClassList("act-transition-card-family");
         familyLabel.text = $"{FormatArchetype(boon.archetypeFamily)} Family";
+        ApplyRimouskiFont(familyLabel);
 
         root.Add(titleLabel);
         root.Add(artFrame);
@@ -828,6 +834,8 @@ internal sealed class HexActTransitionModalDocumentController
         labelElement.AddToClassList("act-transition-resource-mini-label");
         UIE.Label valueElement = new(value);
         valueElement.AddToClassList("act-transition-resource-mini-value");
+        ApplyRimouskiFont(labelElement);
+        ApplyRimouskiFont(valueElement);
 
         module.Add(labelElement);
         module.Add(valueElement);
@@ -862,11 +870,33 @@ internal sealed class HexActTransitionModalDocumentController
         return "ROAD INTERMISSION";
     }
 
-    private static string BuildDefaultSelectionPrompt(int nextActNumber)
+    private static string BuildSelectionHeaderTitle(int nextActNumber)
     {
         return nextActNumber > 0
-            ? $"Choose one boon for Act {nextActNumber}."
-            : "Choose one boon for the next act.";
+            ? $"Choose one boon for Act {nextActNumber}"
+            : "Choose one boon for the next act";
+    }
+
+    private static string BuildSelectionSupportLine(HexActTransitionDisplayData displayData)
+    {
+        string contextNote = NormalizeInlineText(displayData.SelectionContextNote);
+        if (!string.IsNullOrWhiteSpace(contextNote))
+        {
+            if (contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This choice determines the family for Act 3.";
+            }
+
+            return contextNote;
+        }
+
+        string prompt = NormalizeInlineText(displayData.SelectionPrompt);
+        if (prompt.IndexOf("locked family", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return "Choose from the locked family for the final stretch ahead.";
+        }
+
+        return string.Empty;
     }
 
     private static string BuildSelectionKeywordHeading(HexBoonDefinition boon)
@@ -933,6 +963,13 @@ internal sealed class HexActTransitionModalDocumentController
         ApplyRimouskiFont(intermissionTitleLabel);
         ApplyRimouskiFont(intermissionSummaryLabel);
         ApplyRimouskiFont(intermissionContinueButton);
+    }
+
+    private void ApplySelectionTypographyTheme()
+    {
+        ApplyRimouskiFont(selectionPromptLabel);
+        ApplyRimouskiFont(selectionResourceLabel);
+        ApplyRimouskiFont(selectionContinueButton);
     }
 
     private void ApplyRimouskiFont(UIE.VisualElement element)
