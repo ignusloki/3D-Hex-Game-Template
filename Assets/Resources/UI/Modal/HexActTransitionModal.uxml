@@ -65,15 +65,13 @@
                 <ui:VisualElement name="act-transition-selection-card-row" />
 
                 <ui:VisualElement name="act-transition-selection-detail-panel">
-                    <ui:Label name="act-transition-selection-detail-meta" text="Boon Inspect" />
-                    <ui:Label name="act-transition-selection-detail-title" text="Hover a boon to inspect it." />
+                    <ui:Label name="act-transition-selection-detail-meta" text="Inspect" />
+                    <ui:Label name="act-transition-selection-detail-title" text="Select a boon to inspect it." />
                     <ui:Label name="act-transition-selection-detail-keywords" text="Keywords appear here." />
-                    <ui:Label
-                        name="act-transition-selection-detail-effect"
-                        text="Select a boon to view its full effect." />
-                    <ui:Label
-                        name="act-transition-selection-detail-lore"
-                        text="Full effect and family notes appear below the cards." />
+                    <ui:Label name="act-transition-selection-detail-effect" text="Select a boon to inspect it." />
+                    <ui:VisualElement name="act-transition-selection-detail-glossary" />
+                    <ui:Label name="act-transition-selection-detail-flavor" text="" />
+                    <ui:Label name="act-transition-selection-detail-note" text="" />
                 </ui:VisualElement>
 
                 <ui:VisualElement class="act-transition-actions act-transition-actions--center">

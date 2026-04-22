@@ -164,7 +164,9 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.Label detailTitleLabel;
     private UIE.Label detailKeywordLabel;
     private UIE.Label detailEffectLabel;
-    private UIE.Label detailLoreLabel;
+    private UIE.VisualElement detailGlossaryContainer;
+    private UIE.Label detailFlavorLabel;
+    private UIE.Label detailNoteLabel;
     private UIE.Button selectionContinueButton;
     private HexHudDocumentController hudDocumentController;
     private Action<HexBoonDefinition> continueRequested;
@@ -267,7 +269,9 @@ internal sealed class HexActTransitionModalDocumentController
         detailTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-title");
         detailKeywordLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-keywords");
         detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-effect");
-        detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-lore");
+        detailGlossaryContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-detail-glossary");
+        detailFlavorLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-flavor");
+        detailNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-note");
         selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-selection-button");
         ApplyIntermissionTypographyTheme();
         ApplySelectionTypographyTheme();
@@ -712,47 +716,30 @@ internal sealed class HexActTransitionModalDocumentController
         HexBoonDefinition inspectBoon = hoveredBoon ?? focusedBoon ?? selectedBoon;
         if (inspectBoon == null)
         {
-            detailMetaLabel.text = "Boon Inspect";
-            detailTitleLabel.text = "Hover a boon to inspect it.";
-            detailKeywordLabel.text = "Keywords appear here.";
-            detailEffectLabel.text = !string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote)
-                ? activeDisplayData.SelectionContextNote.Trim()
-                : "Select a boon to view its full effect.";
-            detailLoreLabel.text = "Full effect and family notes appear below the cards.";
+            detailMetaLabel.text = "Inspect";
+            detailTitleLabel.text = "Select a boon to inspect it.";
+            SetDetailLabel(detailKeywordLabel, string.Empty);
+            SetDetailLabel(detailEffectLabel, string.Empty);
+            RebuildSelectionGlossary(null);
+            SetDetailLabel(detailFlavorLabel, string.Empty);
+            SetDetailLabel(detailNoteLabel, string.Empty);
             return;
         }
 
         inspectBoon.Validate();
         detailMetaLabel.text = BuildSelectionDetailMeta(inspectBoon);
         detailTitleLabel.text = inspectBoon.GetResolvedDisplayName();
-        detailKeywordLabel.text = BuildSelectionKeywordHeading(inspectBoon);
-        detailEffectLabel.text = BuildSelectionDescription(inspectBoon);
-
-        string lore = NormalizeInlineText(inspectBoon.flavorText);
-        string keywordExplanation = inspectBoon.GetKeywordExplanationText();
-        if (!string.IsNullOrWhiteSpace(keywordExplanation))
-        {
-            lore = string.IsNullOrWhiteSpace(lore)
-                ? keywordExplanation
-                : $"{keywordExplanation}\n{lore}";
-        }
-
-        string familyNote = BuildSelectionFamilyNote(inspectBoon);
-        if (!string.IsNullOrWhiteSpace(familyNote))
-        {
-            lore = string.IsNullOrWhiteSpace(lore) ? familyNote : $"{lore}\n{familyNote}";
-        }
-
-        detailLoreLabel.text = lore;
+        SetDetailLabel(detailKeywordLabel, BuildSelectionKeywordHeading(inspectBoon));
+        SetDetailLabel(detailEffectLabel, BuildSelectionDescription(inspectBoon));
+        RebuildSelectionGlossary(inspectBoon);
+        SetDetailLabel(detailFlavorLabel, NormalizeInlineText(inspectBoon.flavorText));
+        SetDetailLabel(detailNoteLabel, BuildSelectionFamilyNote(inspectBoon));
     }
 
     private string BuildSelectionDetailMeta(HexBoonDefinition boon)
     {
         bool isSelected = selectedBoon != null && string.Equals(selectedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
-        bool isHovered = hoveredBoon != null && string.Equals(hoveredBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
-        bool isFocused = focusedBoon != null && string.Equals(focusedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
-        string stateLabel = isSelected ? "Selected path" : (isHovered || isFocused) ? "Inspecting path" : "Available path";
-        return $"{stateLabel} · {FormatArchetype(boon.archetypeFamily)} family";
+        return isSelected ? "Selected boon" : "Inspect";
     }
 
     private void ApplyIntermissionIllustration(Sprite illustration)
@@ -842,6 +829,69 @@ internal sealed class HexActTransitionModalDocumentController
         return module;
     }
 
+    private void RebuildSelectionGlossary(HexBoonDefinition boon)
+    {
+        if (detailGlossaryContainer == null)
+        {
+            return;
+        }
+
+        detailGlossaryContainer.Clear();
+        if (boon?.keywords == null || boon.keywords.Length == 0)
+        {
+            detailGlossaryContainer.style.display = UIE.DisplayStyle.None;
+            return;
+        }
+
+        int rowCount = 0;
+        for (int index = 0; index < boon.keywords.Length; index++)
+        {
+            HexBoonKeywordPresentationData keyword = boon.keywords[index];
+            if (keyword == null || !keyword.IsUsable)
+            {
+                continue;
+            }
+
+            UIE.VisualElement row = CreateSelectionGlossaryRow(keyword);
+            detailGlossaryContainer.Add(row);
+            rowCount++;
+        }
+
+        detailGlossaryContainer.style.display = rowCount == 0 ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+    }
+
+    private UIE.VisualElement CreateSelectionGlossaryRow(HexBoonKeywordPresentationData keyword)
+    {
+        UIE.VisualElement row = new();
+        row.AddToClassList("act-transition-glossary-row");
+
+        UIE.Label termLabel = new(keyword.label.Trim());
+        termLabel.AddToClassList("act-transition-glossary-term");
+        ApplyRimouskiFont(termLabel);
+
+        UIE.Label descriptionLabel = new(
+            string.IsNullOrWhiteSpace(keyword.explanation)
+                ? "No explanation listed."
+                : NormalizeInlineText(keyword.explanation));
+        descriptionLabel.AddToClassList("act-transition-glossary-text");
+
+        row.Add(termLabel);
+        row.Add(descriptionLabel);
+        return row;
+    }
+
+    private static void SetDetailLabel(UIE.Label label, string text)
+    {
+        if (label == null)
+        {
+            return;
+        }
+
+        bool hasText = !string.IsNullOrWhiteSpace(text);
+        label.text = hasText ? text.Trim() : string.Empty;
+        label.style.display = hasText ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+    }
+
     private static void AddResourceModifierClass(UIE.VisualElement element, string label)
     {
         switch (label)
@@ -902,7 +952,7 @@ internal sealed class HexActTransitionModalDocumentController
     private static string BuildSelectionKeywordHeading(HexBoonDefinition boon)
     {
         string keywordLine = boon?.GetKeywordLine() ?? string.Empty;
-        return string.IsNullOrWhiteSpace(keywordLine) ? "Keywords: None listed." : $"Keywords: {keywordLine}";
+        return string.IsNullOrWhiteSpace(keywordLine) ? string.Empty : $"Keywords: {keywordLine}";
     }
 
     private static string BuildSelectionDescription(HexBoonDefinition boon)
@@ -913,13 +963,24 @@ internal sealed class HexActTransitionModalDocumentController
 
     private string BuildSelectionFamilyNote(HexBoonDefinition boon)
     {
-        string familyNote = $"Family: {FormatArchetype(boon.archetypeFamily)} Family.";
-        if (string.IsNullOrWhiteSpace(activeDisplayData.SelectionContextNote))
+        string familyNote = $"Family: {FormatArchetype(boon.archetypeFamily)}.";
+        string contextNote = NormalizeInlineText(activeDisplayData.SelectionContextNote);
+        if (string.IsNullOrWhiteSpace(contextNote))
         {
             return familyNote;
         }
 
-        return $"{familyNote}\n{activeDisplayData.SelectionContextNote.Trim()}";
+        if (contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return $"{familyNote} This choice determines the Act 3 family.";
+        }
+
+        if (contextNote.StartsWith("Locked family:", StringComparison.OrdinalIgnoreCase))
+        {
+            return familyNote;
+        }
+
+        return $"{familyNote} {contextNote}";
     }
 
     private static string NormalizeInlineText(string rawText)
@@ -969,6 +1030,8 @@ internal sealed class HexActTransitionModalDocumentController
     {
         ApplyRimouskiFont(selectionPromptLabel);
         ApplyRimouskiFont(selectionResourceLabel);
+        ApplyRimouskiFont(detailMetaLabel);
+        ApplyRimouskiFont(detailTitleLabel);
         ApplyRimouskiFont(selectionContinueButton);
     }
 
