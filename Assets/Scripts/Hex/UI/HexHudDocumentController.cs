@@ -118,10 +118,14 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         hudTree = layoutAsset.CloneTree();
         hudTree.styleSheets.Add(styleSheet);
+        StretchToFill(hudTree);
+        hudTree.pickingMode = PickingMode.Ignore;
         hudLayer.Add(hudTree);
 
         contextTree = contextLayoutAsset.CloneTree();
         contextTree.styleSheets.Add(contextStyleSheet);
+        StretchToFill(contextTree);
+        contextTree.pickingMode = PickingMode.Ignore;
         contextMount.Add(contextTree);
 
         VisualElement root = hudTree.Q<VisualElement>("hud-root");
@@ -233,6 +237,8 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     {
         SetLabelText(tileDetailsLabel, value);
         RefreshTileInspectorVisibility();
+        bool usesDefaultText = string.Equals(value?.Trim(), DefaultTileDetailsText, System.StringComparison.Ordinal);
+        LogDiagnostic($"SetTileDetailsText applied. default={usesDefaultText} hasValue={!string.IsNullOrWhiteSpace(value)}.");
         LogDiagnostic($"SetTileDetailsText value='{value}'.", true);
     }
 
@@ -310,6 +316,20 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         }
     }
 
+    private static void StretchToFill(VisualElement element)
+    {
+        if (element == null)
+        {
+            return;
+        }
+
+        element.style.position = Position.Absolute;
+        element.style.left = 0f;
+        element.style.top = 0f;
+        element.style.right = 0f;
+        element.style.bottom = 0f;
+    }
+
     private static void SetLabelText(Label target, string value)
     {
         if (target != null)
@@ -339,6 +359,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         bool shouldDisplay = !isGameplayModalActive && ShouldShowTileInspector(tileDetailsLabel?.text);
         tileInspectorPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
+        LogDiagnostic($"Tile inspector visibility resolved. visible={shouldDisplay} modalActive={isGameplayModalActive}.");
         LogDiagnostic($"RefreshTileInspectorVisibility visible={shouldDisplay}.", true);
     }
 
@@ -437,7 +458,10 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
             return null;
         }
 
-        sharedInstance = owner.GetComponent<HexGameplayUiRootController>() ?? owner.gameObject.AddComponent<HexGameplayUiRootController>();
+        sharedInstance =
+            owner.GetComponentInParent<HexGameplayUiRootController>()
+            ?? owner.GetComponent<HexGameplayUiRootController>()
+            ?? owner.gameObject.AddComponent<HexGameplayUiRootController>();
         return sharedInstance;
     }
 

@@ -147,6 +147,7 @@ public class PlayerController : MonoBehaviour
 
         if (inputService.TryGetClickedTile(Camera.main, Input.mousePosition, out HexagonTile tile))
         {
+            LogUiDiagnostic("TileDetails", $"Tile click detected at {FormatCoordinates(tile.Coordinates)}.");
             HandleTileClick(tile);
         }
     }
@@ -155,11 +156,17 @@ public class PlayerController : MonoBehaviour
     {
         if (clickedTile == null || !(clickedTile.TileData?.IsPassable ?? clickedTile.canTravelThrough))
         {
+            LogUiDiagnostic("TileDetails", "Ignored tile click because the tile was null or not passable.");
             return;
         }
 
+        LogUiDiagnostic(
+            "TileDetails",
+            $"HandleTileClick tile={FormatCoordinates(clickedTile.Coordinates)} current={(currentTile != null ? FormatCoordinates(currentTile.Coordinates) : "none")} selected={(selectedTile != null ? FormatCoordinates(selectedTile.Coordinates) : "none")} caravanSelectionActive={caravanSelectionActive}.");
+
         if (selectedTile == clickedTile)
         {
+            LogUiDiagnostic("TileDetails", $"Repeated tile selection at {FormatCoordinates(clickedTile.Coordinates)}.");
             HandleRepeatedSelection(clickedTile);
             return;
         }
@@ -420,7 +427,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
-        hudPresenter.ResetTileDetails();
+        RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
         RefreshHighlights();
     }
@@ -774,6 +781,7 @@ public class PlayerController : MonoBehaviour
     {
         if (tile == null)
         {
+            LogUiDiagnostic("TileDetails", "RefreshTileDetails reset because tile was null.");
             hudPresenter.ResetTileDetails();
             return;
         }
@@ -793,6 +801,10 @@ public class PlayerController : MonoBehaviour
         }
 
         string nemesisDetails = nemesisController != null ? nemesisController.GetTileDetails(tile.Coordinates) : string.Empty;
+
+        LogUiDiagnostic(
+            "TileDetails",
+            $"RefreshTileDetails tile={FormatCoordinates(tile.Coordinates)} pitstop={(pitstopSite != null ? pitstopSite.Kind.ToString() : "none")} obstacle={(visibleObstacle?.Definition?.displayName ?? "none")} hasNemesisDetails={!string.IsNullOrWhiteSpace(nemesisDetails)}.");
 
         hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle, nemesisDetails);
     }
@@ -930,6 +942,17 @@ public class PlayerController : MonoBehaviour
 
         GameObject textObject = GameObject.Find(objectName);
         return textObject != null ? textObject.GetComponent<Text>() : null;
+    }
+
+    private static string FormatCoordinates(HexCoordinates coordinates)
+    {
+        return $"{coordinates.Row},{coordinates.Column}";
+    }
+
+    private void LogUiDiagnostic(string scope, string message, bool verbose = false)
+    {
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this, createIfMissing: false);
+        gameplayUiRootController?.LogDiagnostic(scope, message, this, verbose);
     }
 
     private void EnsureRuntimeReferences()
