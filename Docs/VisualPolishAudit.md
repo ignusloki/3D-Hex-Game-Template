@@ -1,8 +1,14 @@
 # Visual Polish Audit
 
-Last updated: 2026-04-19
-Project snapshot: `main` at commit `7352afb`
+Last updated: 2026-04-22
+Project snapshot: `codex/visual-pixel-direction-audit` at commit `91f4984`
 Purpose: handoff document for a future AI or collaborator focused on improving presentation quality without reworking the gameplay foundation.
+
+Important compatibility note:
+
+- `Docs/UIArchitecture.md` is the source of truth for gameplay UI structure
+- this audit should guide visual quality and polish direction on top of that architecture
+- future UI work should extend the shared UI Toolkit root and layer model, not reintroduce legacy gameplay UGUI or scene-owned gameplay canvases
 
 ## 1. Scope And Intent
 
@@ -42,14 +48,17 @@ Within the loaded scene:
 
 - there is `1` active camera
 - there is `1` active directional light
-- there is `1` overlay canvas
+- there is `0` gameplay overlay canvas in the scene
+- there is `1` scene `EventSystem`
 - there are `0` scene audio sources
 - there are `0` scene animators
 - there are `0` scene particle systems
 
+Gameplay UI is now created through the shared UI Toolkit runtime root rather than a scene canvas.
+
 Important implication:
 
-- the game currently has almost no audiovisual feedback layer beyond mesh visibility, text, and material color
+- the game currently has almost no audiovisual feedback layer beyond mesh visibility, UI state changes, and material color
 
 ### 2.2 Rendering Facts
 
@@ -80,58 +89,66 @@ Immediate read:
 
 ### 2.3 UI Facts
 
-The scene UI is still extremely lightweight.
+The gameplay UI architecture is now UI Toolkit-first.
 
 Static scene UI currently contains:
 
-- `7` legacy `UnityEngine.UI.Text` elements
-- `2` `Image` elements
-- `0` TMPro text components in the loaded scene
-- `0` static scene buttons
-- `0` static scene layout groups on the HUD panels
+- `0` legacy gameplay `UnityEngine.UI.Text` elements
+- `0` legacy gameplay `Image` elements
+- `0` gameplay overlay canvases
+- `1` scene `EventSystem`
 
-The canvas does use:
+Gameplay UI is created and mounted at runtime through:
 
-- `CanvasScaler`
-- `Scale With Screen Size`
-- reference resolution `1920x1080`
+- `HexGameplayUiRootController`
+- `HexHudDocumentController`
+- shared `UIDocument` + UXML + USS assets in `Assets/Resources/UI/*`
 
-The HUD is mostly text blocks inside:
+The shared gameplay root currently contains these layers:
 
-- `HUD Panel`
-- `Pitstop Info Panel`
+- `hud-layer`
+- `context-layer`
+- `modal-layer`
+- `debug-layer`
+
+The persistent gameplay UI now has a stable structural separation between:
+
+- top HUD
+- tile/context inspection
+- gameplay modals
 
 Key issue:
 
-- the persistent HUD is still a text-first debug-style interface rather than a production-quality game HUD
+- the architecture is now correct, but the visual kit still needs stronger identity, typography, iconography, and final-art treatment
 
 ### 2.4 Modal UI Facts
 
-The pitstop event modal and run-state modal are not prefab-based UI screens.
+Gameplay modals now live inside the shared UI Toolkit `modal-layer`.
 
-They are assembled in code at runtime in:
+Current gameplay modal presenters are:
 
 - `Assets/Scripts/Hex/PitstopEventModalPresenter.cs`
 - `Assets/Scripts/Hex/HexRunStateModalPresenter.cs`
 
+Those presenters now load and bind UI Toolkit assets from:
+
+- `Assets/Resources/UI/Modal/HexPitstopEventModal.*`
+- `Assets/Resources/UI/Modal/HexActTransitionModal.*`
+- `Assets/Resources/UI/Modal/HexSimpleActionModal.*`
+
 Important technical detail:
 
-- both presenters still use legacy `Text`
-- both presenters resolve the builtin font through `Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")`
-- this is one of the reasons the UI still feels prototype-grade and required repeated overlap fixes
+- gameplay modals no longer use legacy runtime `Text`
+- gameplay modals no longer depend on scene canvas sorting to receive input
+- the shared root owns modal visibility and interaction state
 
-The run-state modal is in better shape structurally than the HUD because it now creates:
+That removes the old architecture problem.
 
-- scroll areas
-- a vertical layout group
-- content size fitting
+The remaining problem is visual quality:
 
-But visually it is still:
-
-- flat
-- text-heavy
-- very dark
-- not strongly themed
+- some screens still lean too dark and too flat
+- placeholder art is still present in some card and journal/image regions
+- the UI kit is structurally coherent, but it still needs stronger themed polish
 
 ### 2.5 Audio Facts
 
@@ -254,19 +271,19 @@ The weakest current presentation qualities are:
 
 Current issues:
 
-- legacy text instead of a deliberate typography system
-- manual runtime-built panels instead of reusable UI prefabs
-- text-heavy presentation
-- weak hierarchy between title, body, reward summary, and action
-- no iconography for resources
-- HUD looks like debug output rather than a shipping strategy/survival interface
+- shared UI Toolkit structure exists, but the visual language still needs refinement
+- typography hierarchy is still serviceable rather than distinctive
+- some modal surfaces are still flatter and darker than they should be
+- placeholder art areas still need real image content
+- iconography and accent language are still limited
+- HUD readability is improved structurally, but it still needs more production-grade polish
 
 Most important UI goals:
 
 - build a consistent UI language
 - make act transition and boon selection feel ceremonial and important
 - make resources, warnings, and route state readable at a glance
-- stop solving layout with manual rect math whenever a prefab/layout solution would be cleaner
+- keep layout ownership in UXML and USS instead of reintroducing runtime layout patches
 
 ### 4.2 Lighting And Rendering
 
@@ -345,10 +362,14 @@ These are the first files another AI should inspect before changing presentation
 
 ### 5.2 UI
 
-- `Assets/Scripts/Hex/HexHudPresenter.cs`
-- `Assets/Scripts/Hex/HexRunStateModalPresenter.cs`
+- `Assets/Scripts/Hex/UI/HexHudDocumentController.cs`
 - `Assets/Scripts/Hex/PitstopEventModalPresenter.cs`
-- `Assets/Scripts/Hex/CaravanMetricsController.cs`
+- `Assets/Scripts/Hex/HexRunStateModalPresenter.cs`
+- `Assets/Resources/UI/Gameplay/*`
+- `Assets/Resources/UI/Hud/*`
+- `Assets/Resources/UI/Context/*`
+- `Assets/Resources/UI/Modal/*`
+- `Docs/UIArchitecture.md`
 
 ### 5.3 Tile, Fog, And Board Readability
 
@@ -472,14 +493,14 @@ Current scope decision:
 
 ### Pass 1: UI Foundation
 
-Do this first because it is visible everywhere and currently the weakest polished layer.
+Do this first because the architecture is now in place and the next gain is visual quality.
 
 Tasks:
 
-- replace legacy `Text` with a consistent text system
-- create a reusable modal prefab style instead of building every screen procedurally
+- refine the shared UI Toolkit design language instead of replacing the architecture
+- strengthen typography, spacing, iconography, and accent use across the existing shared layers
 - create resource row with icons and stronger hierarchy
-- make boon options look like selectable cards, not stacked text blocks
+- replace remaining placeholder art regions with deliberate content
 - improve spacing, padding, and readability on all overlays
 - define one visual UI kit for:
   - HUD
@@ -491,7 +512,8 @@ Tasks:
 Important caution:
 
 - do not break current gameplay flow while reworking the visuals
-- if possible, keep existing presenters but let them drive prefab-based UI
+- do not reintroduce separate gameplay canvases or legacy gameplay UGUI
+- prefer extending the current UXML + USS + shared-root approach
 
 ### Pass 2: Lighting And Stylization Foundation
 
@@ -728,6 +750,8 @@ If another AI session is going to implement polish work, it should be told:
 - prefer improving presentation on top of existing systems
 - prefer existing asset libraries already inside the repo before importing new art
 - inspect `Main.unity`, the modal presenters, the HUD presenter, the tile system, and the nemesis presenter first
+- treat `Docs/UIArchitecture.md` as the baseline for all gameplay UI work
+- do not reintroduce gameplay overlay canvases, legacy gameplay `Text`, or per-screen document ownership
 - keep changes testable in small slices
 - preserve editor configurability where possible
 - audio is intentionally deferred for now
