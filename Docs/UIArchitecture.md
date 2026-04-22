@@ -242,11 +242,17 @@ Current implementation status:
 - slice 3 complete: pitstop event choice/result migrated to the shared modal layer
 - slice 4 complete: act intermission and boon selection migrated to the shared modal layer
 - slice 5 complete: run-end modal flow migrated to the shared modal layer
-- slice 6 complete: tile inspector and pitstop intel moved into the shared context layer
+- slice 6 complete: tile inspector and pitstop intel moved into the shared context layer, and the legacy scene HUD canvas was removed
 - slice 7 complete: gameplay HUD flow no longer depends on legacy UGUI `Text` references
-- slice 8 complete in active runtime flow: run-end and transition modal usage no longer routes through the legacy run-state presenter
+- slice 8 complete: run-end and transition modal usage no longer routes through the legacy run-state presenter, and the remaining compatibility-only gameplay UI scripts were removed
 
-Remaining migration work is now cleanup-focused:
+Gameplay UI migration is now complete:
 
-- remove dead legacy UGUI modal implementation code that is no longer referenced at runtime
-- remove unused UGUI scene objects and compatibility-only scripts once final QA is complete
+- the shared UI Toolkit root owns the HUD, context panels, and gameplay modals
+- the legacy gameplay UGUI canvas and text objects are gone from the main scene
+- the old compatibility selector and run-state modal implementation are no longer part of the gameplay runtime
+
+Remaining work is no longer architectural migration work. It is standard QA and polish:
+
+- full gameplay regression pass across startup, pitstops, act transitions, boon selection, victory, and defeat
+- visual polish or layout adjustments discovered during testing
