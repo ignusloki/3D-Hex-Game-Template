@@ -1,21 +1,8 @@
 using System.Collections.Generic;
-using UnityEngine.UI;
 
 public sealed class HexTravelTimePresenter
 {
-    private readonly Text travelTimeText;
     private readonly IHexTravelTimeView runtimeView;
-
-    public HexTravelTimePresenter(Text travelTimeText)
-    {
-        this.travelTimeText = travelTimeText;
-    }
-
-    public HexTravelTimePresenter(Text travelTimeText, IHexTravelTimeView runtimeView)
-    {
-        this.travelTimeText = travelTimeText;
-        this.runtimeView = runtimeView;
-    }
 
     public HexTravelTimePresenter(IHexTravelTimeView runtimeView)
     {
@@ -24,7 +11,7 @@ public sealed class HexTravelTimePresenter
 
     public void ShowPath(IReadOnlyList<HexTileData> path)
     {
-        if (travelTimeText == null && runtimeView == null)
+        if (runtimeView == null)
         {
             return;
         }
@@ -46,11 +33,6 @@ public sealed class HexTravelTimePresenter
 
     private void SetTravelTimeText(string value)
     {
-        if (travelTimeText != null)
-        {
-            travelTimeText.text = value;
-        }
-
         runtimeView?.SetTravelTimeText(value);
     }
 }

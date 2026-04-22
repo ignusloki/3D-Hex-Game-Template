@@ -2,16 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
-    public Text resourcesText;
-    public Text travelTimeText;
-    public Text selectionStatusText;
-    public Text tileDetailsText;
-    public Text hintText;
-    public Text pitstopInfoText;
     public Transform caravanVisual;
     public Transform goalVisual;
     [Min(1)] public int startingFood = 30;
@@ -38,7 +31,7 @@ public class PlayerController : MonoBehaviour
     private HexFogOfWarController fogOfWarController;
     private HexObstacleController obstacleController;
     private HexNemesisController nemesisController;
-    private HexRunStateModalPresenter runStateModalPresenter;
+    private HexRunEndModalPresenter runEndModalPresenter;
     private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
@@ -69,7 +62,6 @@ public class PlayerController : MonoBehaviour
 
     private void OnValidate()
     {
-        AutoAssignTextReferences();
         hudDocumentController = GetComponent<HexHudDocumentController>();
         startingFood = Mathf.Max(1, startingFood);
         startingMorale = Mathf.Max(1, startingMorale);
@@ -137,7 +129,7 @@ public class PlayerController : MonoBehaviour
 
         if (!isReady
             || isRunOver
-            || (runStateModalPresenter != null && runStateModalPresenter.IsOpen)
+            || (runEndModalPresenter != null && runEndModalPresenter.IsOpen)
             || (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
             || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
             || (mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen))
@@ -591,23 +583,6 @@ public class PlayerController : MonoBehaviour
             ? boonRuntime.GetStatusLine()
             : string.Empty;
 
-        if (resourcesText != null)
-        {
-            string resourceLine =
-                $"Food: {Mathf.Max(caravanResources.Food, 0)}  Morale: {Mathf.Max(caravanResources.Morale, 0)}  Gold: {Mathf.Max(caravanResources.Gold, 0)}";
-
-            if (!string.IsNullOrWhiteSpace(boonLine))
-            {
-                resourcesText.text = string.IsNullOrWhiteSpace(boonLine)
-                    ? resourceLine
-                    : $"{resourceLine}\n{boonLine}";
-            }
-            else
-            {
-                resourcesText.text = resourceLine;
-            }
-        }
-
         hudDocumentController?.SetResources(
             caravanResources.Food,
             caravanResources.Morale,
@@ -638,7 +613,7 @@ public class PlayerController : MonoBehaviour
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runStateModalPresenter?.ShowVictory(RetryCurrentScene);
+        runEndModalPresenter?.ShowVictory(RetryCurrentScene);
     }
 
     private bool TryBeginActTransition()
@@ -673,7 +648,7 @@ public class PlayerController : MonoBehaviour
         }
 
         hudPresenter?.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runStateModalPresenter?.ShowVictory(RetryCurrentScene);
+        runEndModalPresenter?.ShowVictory(RetryCurrentScene);
     }
 
     [ContextMenu("Debug/Open Defeat Modal")]
@@ -689,7 +664,7 @@ public class PlayerController : MonoBehaviour
 
         string previewReason = "Debug defeat preview";
         hudPresenter?.ShowDefeat(currentTile, previewReason);
-        runStateModalPresenter?.ShowDefeat(RetryCurrentScene);
+        runEndModalPresenter?.ShowDefeat(RetryCurrentScene);
     }
 
     [ContextMenu("Debug/Open Mock Quest Modal")]
@@ -774,7 +749,7 @@ public class PlayerController : MonoBehaviour
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile, defeatReason);
-        runStateModalPresenter?.ShowDefeat(RetryCurrentScene);
+        runEndModalPresenter?.ShowDefeat(RetryCurrentScene);
     }
 
     private void RefreshTileDetails(HexagonTile tile)
@@ -923,27 +898,6 @@ public class PlayerController : MonoBehaviour
         return HexPathMetrics.GetTravelCost(path);
     }
 
-    private void AutoAssignTextReferences()
-    {
-        resourcesText = FindTextReference(resourcesText, "Resources Text");
-        travelTimeText = FindTextReference(travelTimeText, "Travel Time Text");
-        selectionStatusText = FindTextReference(selectionStatusText, "Selection Status Text");
-        tileDetailsText = FindTextReference(tileDetailsText, "Tile Details Text");
-        hintText = FindTextReference(hintText, "Hint Text");
-        pitstopInfoText = FindTextReference(pitstopInfoText, "Pitstop Info Text");
-    }
-
-    private static Text FindTextReference(Text currentValue, string objectName)
-    {
-        if (currentValue != null)
-        {
-            return currentValue;
-        }
-
-        GameObject textObject = GameObject.Find(objectName);
-        return textObject != null ? textObject.GetComponent<Text>() : null;
-    }
-
     private static string FormatCoordinates(HexCoordinates coordinates)
     {
         return $"{coordinates.Row},{coordinates.Column}";
@@ -957,7 +911,6 @@ public class PlayerController : MonoBehaviour
 
     private void EnsureRuntimeReferences()
     {
-        AutoAssignTextReferences();
         gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this);
         gameplayUiRootController?.EnsureInitialized();
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
@@ -965,8 +918,8 @@ public class PlayerController : MonoBehaviour
 
         inputService ??= new HexTileInputService();
         pathHighlighter ??= new HexPathHighlighter();
-        travelTimePresenter ??= new HexTravelTimePresenter(travelTimeText, hudDocumentController);
-        hudPresenter ??= new HexHudPresenter(selectionStatusText, tileDetailsText, hintText, pitstopInfoText, hudDocumentController);
+        travelTimePresenter ??= new HexTravelTimePresenter(hudDocumentController);
+        hudPresenter ??= new HexHudPresenter(hudDocumentController);
         mapGenerator ??= FindAnyObjectByType<MapGenerator>();
         caravanMetricsController ??= GetComponentInChildren<CaravanMetricsController>(true);
         pitstopSpawner ??= FindAnyObjectByType<PitstopSpawner>();
@@ -974,7 +927,7 @@ public class PlayerController : MonoBehaviour
         obstacleController ??= FindAnyObjectByType<HexObstacleController>();
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
         nemesisController ??= FindAnyObjectByType<HexNemesisController>();
-        runStateModalPresenter ??= GetComponent<HexRunStateModalPresenter>() ?? gameObject.AddComponent<HexRunStateModalPresenter>();
+        runEndModalPresenter ??= GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
     }

@@ -22,7 +22,9 @@ public class HexCameraController : MonoBehaviour
     private float yawOffset;
     private float zoomMultiplier = 1f;
     private PitstopEventController pitstopEventController;
-    private HexRunStateModalPresenter runStateModalPresenter;
+    private HexRunEndModalPresenter runEndModalPresenter;
+    private HexActTransitionModalPresenter actTransitionModalPresenter;
+    private HexMockQuestMarkerController mockQuestMarkerController;
 
     private void Awake()
     {
@@ -73,11 +75,15 @@ public class HexCameraController : MonoBehaviour
     private bool IsModalBlockingCamera()
     {
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
-        runStateModalPresenter ??= FindAnyObjectByType<HexRunStateModalPresenter>();
+        runEndModalPresenter ??= FindAnyObjectByType<HexRunEndModalPresenter>();
+        actTransitionModalPresenter ??= FindAnyObjectByType<HexActTransitionModalPresenter>();
+        mockQuestMarkerController ??= FindAnyObjectByType<HexMockQuestMarkerController>();
 
         bool pitstopModalOpen = pitstopEventController != null && pitstopEventController.IsChoiceModalOpen;
-        bool runStateModalOpen = runStateModalPresenter != null && runStateModalPresenter.IsOpen;
-        return pitstopModalOpen || runStateModalOpen;
+        bool runEndModalOpen = runEndModalPresenter != null && runEndModalPresenter.IsOpen;
+        bool actTransitionModalOpen = actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen;
+        bool questModalOpen = mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen;
+        return pitstopModalOpen || runEndModalOpen || actTransitionModalOpen || questModalOpen;
     }
 
     private void HandleMovement()

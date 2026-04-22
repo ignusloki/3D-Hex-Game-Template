@@ -241,5 +241,12 @@ Current implementation status:
 - slice 2 complete: top status bar migrated to the shared HUD layer
 - slice 3 complete: pitstop event choice/result migrated to the shared modal layer
 - slice 4 complete: act intermission and boon selection migrated to the shared modal layer
-- slice 5 in progress: run-end modal migration
-- slice 6 in progress: context-layer extraction and final gameplay UI cleanup
+- slice 5 complete: run-end modal flow migrated to the shared modal layer
+- slice 6 complete: tile inspector and pitstop intel moved into the shared context layer
+- slice 7 complete: gameplay HUD flow no longer depends on legacy UGUI `Text` references
+- slice 8 complete in active runtime flow: run-end and transition modal usage no longer routes through the legacy run-state presenter
+
+Remaining migration work is now cleanup-focused:
+
+- remove dead legacy UGUI modal implementation code that is no longer referenced at runtime
+- remove unused UGUI scene objects and compatibility-only scripts once final QA is complete

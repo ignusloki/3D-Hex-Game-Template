@@ -26,8 +26,9 @@ public class TileSelector : MonoBehaviour
         inputService = new HexTileInputService();
         selectionState = new HexPathSelectionState();
         pathHighlighter = new HexPathHighlighter();
-        travelTimePresenter = new HexTravelTimePresenter(travelTimeText);
-        hudPresenter = new HexHudPresenter(selectionStatusText, tileDetailsText, hintText);
+        LegacyHexTextUiBridge legacyView = new(travelTimeText, selectionStatusText, tileDetailsText, hintText);
+        travelTimePresenter = new HexTravelTimePresenter(legacyView);
+        hudPresenter = new HexHudPresenter(legacyView);
         mapGenerator = FindAnyObjectByType<MapGenerator>();
         travelTimePresenter.Reset();
         hudPresenter.ShowAwaitingStart();
@@ -136,5 +137,57 @@ public class TileSelector : MonoBehaviour
 
         GameObject textObject = GameObject.Find(objectName);
         return textObject != null ? textObject.GetComponent<Text>() : null;
+    }
+
+    private sealed class LegacyHexTextUiBridge : IHexHudView, IHexTravelTimeView
+    {
+        private readonly Text travelTimeText;
+        private readonly Text selectionStatusText;
+        private readonly Text tileDetailsText;
+        private readonly Text hintText;
+
+        public LegacyHexTextUiBridge(Text travelTimeText, Text selectionStatusText, Text tileDetailsText, Text hintText)
+        {
+            this.travelTimeText = travelTimeText;
+            this.selectionStatusText = selectionStatusText;
+            this.tileDetailsText = tileDetailsText;
+            this.hintText = hintText;
+        }
+
+        public void SetStatusText(string value)
+        {
+            if (selectionStatusText != null)
+            {
+                selectionStatusText.text = value;
+            }
+        }
+
+        public void SetTileDetailsText(string value)
+        {
+            if (tileDetailsText != null)
+            {
+                tileDetailsText.text = value;
+            }
+        }
+
+        public void SetHintText(string value)
+        {
+            if (hintText != null)
+            {
+                hintText.text = value;
+            }
+        }
+
+        public void SetPitstopInfoText(string value)
+        {
+        }
+
+        public void SetTravelTimeText(string value)
+        {
+            if (travelTimeText != null)
+            {
+                travelTimeText.text = value;
+            }
+        }
     }
 }

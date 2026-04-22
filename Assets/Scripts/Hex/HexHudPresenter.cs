@@ -1,30 +1,8 @@
 using System.Collections.Generic;
-using UnityEngine.UI;
 
 public sealed class HexHudPresenter
 {
-    private readonly Text statusText;
-    private readonly Text tileDetailsText;
-    private readonly Text hintText;
-    private readonly Text pitstopInfoText;
     private readonly IHexHudView runtimeView;
-
-    public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText, Text pitstopInfoText = null)
-    {
-        this.statusText = statusText;
-        this.tileDetailsText = tileDetailsText;
-        this.hintText = hintText;
-        this.pitstopInfoText = pitstopInfoText;
-    }
-
-    public HexHudPresenter(Text statusText, Text tileDetailsText, Text hintText, Text pitstopInfoText, IHexHudView runtimeView)
-    {
-        this.statusText = statusText;
-        this.tileDetailsText = tileDetailsText;
-        this.hintText = hintText;
-        this.pitstopInfoText = pitstopInfoText;
-        this.runtimeView = runtimeView;
-    }
 
     public HexHudPresenter(IHexHudView runtimeView)
     {
@@ -393,34 +371,22 @@ public sealed class HexHudPresenter
 
     private void SetStatusText(string value)
     {
-        SetText(statusText, value);
         runtimeView?.SetStatusText(value);
     }
 
     private void SetTileDetailsText(string value)
     {
-        SetText(tileDetailsText, value);
         runtimeView?.SetTileDetailsText(value);
     }
 
     private void SetHintText(string value)
     {
-        SetText(hintText, value);
         runtimeView?.SetHintText(value);
     }
 
     private void SetPitstopInfoText(string value)
     {
-        SetText(pitstopInfoText, value);
         runtimeView?.SetPitstopInfoText(value);
-    }
-
-    private static void SetText(Text target, string value)
-    {
-        if (target != null)
-        {
-            target.text = value;
-        }
     }
 
     private void ClearHintText()
