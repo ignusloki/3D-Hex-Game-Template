@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="simple-action-modal-root">
+        <ui:VisualElement name="simple-action-modal-overlay">
+            <ui:VisualElement name="simple-action-modal-shell">
+                <ui:Label name="simple-action-modal-title" text="Modal Title" />
+                <ui:Label name="simple-action-modal-body" text="Modal body copy." />
+                <ui:VisualElement name="simple-action-modal-actions">
+                    <ui:Button name="simple-action-modal-button" text="Continue" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

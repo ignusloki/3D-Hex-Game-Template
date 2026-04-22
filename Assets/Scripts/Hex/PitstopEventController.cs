@@ -101,6 +101,16 @@ public sealed class PitstopEventController : MonoBehaviour
         LogDebug($"Presenting encounter '{eventResult.Encounter.eventId}' at {eventResult.Site?.Coordinates.ToString() ?? "unknown"} with {eventResult.Encounter.options.Count} option(s).");
         modalPresenter.ShowChoice(eventResult, resourceSnapshot, optionIndex =>
         {
+            LogDebug($"Modal callback invoked for encounter '{eventResult.Encounter.eventId}' with optionIndex={optionIndex}.");
+
+            if (optionIndex < 0 || optionIndex >= eventResult.Encounter.options.Count)
+            {
+                Debug.LogError(
+                    $"[PitstopEvent] Received invalid option index {optionIndex} for encounter '{eventResult.Encounter.eventId}' with {eventResult.Encounter.options.Count} option(s).",
+                    this);
+                return;
+            }
+
             if (!eventResult.Encounter.options[optionIndex].CanAfford(resources.ToSnapshot()))
             {
                 LogDebug($"Rejected option {optionIndex} for encounter '{eventResult.Encounter.eventId}' because the caravan cannot afford it.");
@@ -113,9 +123,11 @@ public sealed class PitstopEventController : MonoBehaviour
 
             if (modalPresenter == null || !modalPresenter.IsOpen)
             {
+                LogDebug($"Skipping resolution modal for encounter '{eventResult.Encounter.eventId}' because the presenter is not open anymore.");
                 return;
             }
 
+            LogDebug($"Showing resolution modal for encounter '{eventResult.Encounter.eventId}'.");
             modalPresenter.ShowResolution(resolvedResult, resources.ToSnapshot(), null);
         });
     }

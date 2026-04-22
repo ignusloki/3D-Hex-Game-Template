@@ -654,6 +654,56 @@ public class PlayerController : MonoBehaviour
         DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype.Hunter);
     }
 
+    [ContextMenu("Debug/Open Victory Modal")]
+    public void DebugOpenVictoryModal()
+    {
+        EnsureRuntimeReferences();
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[RunEndPreview] Enter Play Mode before opening the victory modal preview.", this);
+            return;
+        }
+
+        hudPresenter?.ShowVictory(goalTile, caravanResources.ToSnapshot());
+        runStateModalPresenter?.ShowVictory(RetryCurrentScene);
+    }
+
+    [ContextMenu("Debug/Open Defeat Modal")]
+    public void DebugOpenDefeatModal()
+    {
+        EnsureRuntimeReferences();
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[RunEndPreview] Enter Play Mode before opening the defeat modal preview.", this);
+            return;
+        }
+
+        string previewReason = "Debug defeat preview";
+        hudPresenter?.ShowDefeat(currentTile, previewReason);
+        runStateModalPresenter?.ShowDefeat(RetryCurrentScene);
+    }
+
+    [ContextMenu("Debug/Open Mock Quest Modal")]
+    public void DebugOpenMockQuestModal()
+    {
+        EnsureRuntimeReferences();
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[QuestModalPreview] Enter Play Mode before opening the mock quest modal preview.", this);
+            return;
+        }
+
+        HexMockQuestMarkerModalPresenter previewPresenter =
+            GetComponent<HexMockQuestMarkerModalPresenter>() ?? gameObject.AddComponent<HexMockQuestMarkerModalPresenter>();
+        previewPresenter.Show(
+            "Quest Marker",
+            "This is a mock quest marker placeholder.\n\nLocation: Debug preview",
+            null);
+    }
+
     public void DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype lockedFamily)
     {
         EnsureRuntimeReferences();
@@ -885,7 +935,7 @@ public class PlayerController : MonoBehaviour
     private void EnsureRuntimeReferences()
     {
         AutoAssignTextReferences();
-        gameplayUiRootController ??= GetComponent<HexGameplayUiRootController>() ?? gameObject.AddComponent<HexGameplayUiRootController>();
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this);
         gameplayUiRootController?.EnsureInitialized();
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
         hudDocumentController?.EnsureInitialized();

@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 public sealed class PitstopEventModalPresenter : MonoBehaviour
 {
     private HexPitstopEventModalDocumentController documentController;
+    private HexGameplayUiRootController gameplayUiRootController;
 
     public bool IsOpen => documentController != null && documentController.IsOpen;
 
@@ -15,6 +16,9 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         {
             return;
         }
+
+        LogDebug(
+            $"ShowChoice title='{eventResult.Title}' encounter='{eventResult.Encounter.eventId}' optionCount={eventResult.Encounter.options?.Count ?? 0} food={resources.Food} morale={resources.Morale} gold={resources.Gold}.");
 
         EnsureView();
         if (documentController == null)
@@ -38,6 +42,9 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
         {
             return;
         }
+
+        LogDebug(
+            $"ShowResolution title='{eventResult.Title}' selectedOption='{eventResult.SelectedOption?.label ?? "none"}' food={resources.Food} morale={resources.Morale} gold={resources.Gold}.");
 
         EnsureView();
         if (documentController == null)
@@ -63,6 +70,7 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
 
     public void Hide()
     {
+        LogDebug("Hide requested.");
         documentController?.Hide();
     }
 
@@ -70,6 +78,19 @@ public sealed class PitstopEventModalPresenter : MonoBehaviour
     {
         documentController ??= new HexPitstopEventModalDocumentController(this);
         documentController.EnsureInitialized();
+    }
+
+    internal void LogDebug(string message, bool verbose = false)
+    {
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this, createIfMissing: false);
+        gameplayUiRootController?.EnsureInitialized();
+        if (gameplayUiRootController != null)
+        {
+            gameplayUiRootController.LogDiagnostic("PitstopModal", message, this, verbose);
+            return;
+        }
+
+        Debug.Log($"[PitstopEventModal] {message}", this);
     }
 
     private static List<HexPitstopOptionViewData> BuildOptionViewData(
@@ -295,16 +316,16 @@ internal readonly struct HexPitstopResourceViewData
 
 internal sealed class HexPitstopEventModalDocumentController
 {
-    private const string PanelSettingsResourcePath = "UI/Hud/HexHudPanelSettings";
     private const string LayoutResourcePath = "UI/Modal/HexPitstopEventModal";
     private const string StyleSheetResourcePath = "UI/Modal/HexPitstopEventModalStyles";
+    private const string ModalMountName = "pitstop-modal-mount";
 
     private readonly MonoBehaviour owner;
-    private PanelSettings panelSettings;
     private VisualTreeAsset layoutAsset;
     private StyleSheet styleSheet;
-    private GameObject uiRootObject;
-    private UIDocument document;
+    private HexGameplayUiRootController gameplayUiRootController;
+    private VisualElement modalLayer;
+    private VisualElement modalMount;
     private VisualElement modalRoot;
     private VisualElement shellElement;
     private Label metaLabel;
@@ -338,56 +359,75 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
-        panelSettings ??= Resources.Load<PanelSettings>(PanelSettingsResourcePath);
         layoutAsset ??= Resources.Load<VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<StyleSheet>(StyleSheetResourcePath);
-        if (panelSettings == null || layoutAsset == null || styleSheet == null)
+        if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexPitstopEventModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
             return;
         }
 
-        uiRootObject ??= new GameObject("Pitstop Event Modal UI");
-        if (uiRootObject.transform.parent != owner.transform)
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(owner);
+        if (gameplayUiRootController == null)
         {
-            uiRootObject.transform.SetParent(owner.transform, false);
+            Debug.LogError("HexPitstopEventModalDocumentController could not resolve the shared gameplay UI root.", owner);
+            return;
         }
 
-        uiRootObject.layer = owner.gameObject.layer;
+        gameplayUiRootController.EnsureInitialized();
+        modalLayer = gameplayUiRootController.GetLayer(HexGameplayUiLayerId.Modal);
+        modalMount = gameplayUiRootController.RequestLayerMount(
+            HexGameplayUiLayerId.Modal,
+            ModalMountName,
+            nameof(HexPitstopEventModalDocumentController),
+            false,
+            owner);
 
-        document ??= uiRootObject.GetComponent<UIDocument>() ?? uiRootObject.AddComponent<UIDocument>();
-        document.panelSettings = panelSettings;
-        document.sortingOrder = 150;
+        if (modalLayer == null || modalMount == null)
+        {
+            Debug.LogError("HexPitstopEventModalDocumentController could not bind to the shared modal layer.", owner);
+            return;
+        }
 
-        VisualElement root = document.rootVisualElement;
-        root.Clear();
-        root.styleSheets.Clear();
-        root.styleSheets.Add(styleSheet);
-        layoutAsset.CloneTree(root);
+        modalMount.Clear();
+        modalMount.styleSheets.Clear();
+        modalMount.styleSheets.Add(styleSheet);
+        layoutAsset.CloneTree(modalMount);
 
-        modalRoot = root.Q<VisualElement>("pitstop-modal-root");
-        shellElement = root.Q<VisualElement>("pitstop-modal-shell");
-        metaLabel = root.Q<Label>("pitstop-modal-meta");
-        titleLabel = root.Q<Label>("pitstop-modal-title");
-        descriptionLabel = root.Q<Label>("pitstop-modal-description");
-        arrivalChipsContainer = root.Q<VisualElement>("pitstop-arrival-chips");
-        resourceStripContainer = root.Q<VisualElement>("pitstop-modal-resource-strip");
-        optionsSection = root.Q<VisualElement>("pitstop-options-section");
-        optionsList = root.Q<VisualElement>("pitstop-options-list");
-        resolutionSection = root.Q<VisualElement>("pitstop-resolution-section");
-        resolutionChoiceLabel = root.Q<Label>("pitstop-resolution-choice");
-        resolutionChipsContainer = root.Q<VisualElement>("pitstop-resolution-chips");
-        continueButton = root.Q<Button>("pitstop-continue-button");
+        modalRoot = modalMount.Q<VisualElement>("pitstop-modal-root");
+        shellElement = modalMount.Q<VisualElement>("pitstop-modal-shell");
+        metaLabel = modalMount.Q<Label>("pitstop-modal-meta");
+        titleLabel = modalMount.Q<Label>("pitstop-modal-title");
+        descriptionLabel = modalMount.Q<Label>("pitstop-modal-description");
+        arrivalChipsContainer = modalMount.Q<VisualElement>("pitstop-arrival-chips");
+        resourceStripContainer = modalMount.Q<VisualElement>("pitstop-modal-resource-strip");
+        optionsSection = modalMount.Q<VisualElement>("pitstop-options-section");
+        optionsList = modalMount.Q<VisualElement>("pitstop-options-list");
+        resolutionSection = modalMount.Q<VisualElement>("pitstop-resolution-section");
+        resolutionChoiceLabel = modalMount.Q<Label>("pitstop-resolution-choice");
+        resolutionChipsContainer = modalMount.Q<VisualElement>("pitstop-resolution-chips");
+        continueButton = modalMount.Q<Button>("pitstop-continue-button");
 
         if (continueButton != null)
         {
             continueButton.clicked += HandleContinueClicked;
+            continueButton.RegisterCallback<PointerEnterEvent>(_ => LogDebug("Continue button pointer enter.", true));
+            continueButton.RegisterCallback<PointerLeaveEvent>(_ => LogDebug("Continue button pointer leave.", true));
+            continueButton.RegisterCallback<PointerDownEvent>(evt => LogDebug($"Continue button pointer down at {evt.position}.", true));
+            continueButton.RegisterCallback<PointerUpEvent>(evt => LogDebug($"Continue button pointer up at {evt.position}.", true));
+            continueButton.RegisterCallback<ClickEvent>(_ => LogDebug("Continue button ClickEvent received.", true));
         }
 
         if (modalRoot != null)
         {
             modalRoot.style.display = DisplayStyle.None;
         }
+
+        LogDebug(
+            $"Initialized shared-root modal. modalLayerFound={modalLayer != null} modalRootFound={modalRoot != null} shellFound={shellElement != null} optionsListFound={optionsList != null}.");
+
+        gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Modal, false);
+        gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
 
         isInitialized = true;
     }
@@ -409,6 +449,7 @@ internal sealed class HexPitstopEventModalDocumentController
 
         optionSelected = onOptionSelected;
         continueSelected = null;
+        LogDebug($"ShowChoice internal. options={options?.Count ?? 0} callbackAssigned={optionSelected != null}.");
         SetHeader(metaText, titleText, descriptionText, arrivalChips, resources);
         PopulateOptions(options);
         PopulateChipContainer(resolutionChipsContainer, Array.Empty<HexPitstopEffectChipData>());
@@ -438,6 +479,7 @@ internal sealed class HexPitstopEventModalDocumentController
 
         optionSelected = null;
         continueSelected = onContinueSelected;
+        LogDebug($"ShowResolution internal. continueAssigned={continueSelected != null}.");
         SetHeader(metaText, titleText, descriptionText, arrivalChips, resources);
         PopulateOptions(Array.Empty<HexPitstopOptionViewData>());
         resolutionChoiceLabel.text = string.IsNullOrWhiteSpace(resolutionChoiceText) ? "Outcome" : resolutionChoiceText;
@@ -451,6 +493,7 @@ internal sealed class HexPitstopEventModalDocumentController
 
     public void Hide()
     {
+        LogDebug("Hide internal.");
         optionSelected = null;
         continueSelected = null;
         PopulateOptions(Array.Empty<HexPitstopOptionViewData>());
@@ -494,11 +537,17 @@ internal sealed class HexPitstopEventModalDocumentController
                 continue;
             }
 
+            LogDebug(
+                $"Create option row index={option.Index} label='{option.Label}' enabled={option.IsEnabled} chipCount={option.Chips?.Count ?? 0}.",
+                true);
+
+            int optionIndex = option.Index;
             Button optionButton = new();
             optionButton.text = string.Empty;
             optionButton.AddToClassList("pitstop-option");
             optionButton.SetEnabled(option.IsEnabled);
-            int optionIndex = option.Index;
+            optionButton.focusable = option.IsEnabled;
+            optionButton.tabIndex = option.IsEnabled ? 0 : -1;
             optionButton.clicked += () => HandleOptionClicked(optionIndex);
 
             Label optionLabel = new(option.Label);
@@ -509,6 +558,22 @@ internal sealed class HexPitstopEventModalDocumentController
             chipRow.AddToClassList("pitstop-option-chip-row");
             PopulateChipContainer(chipRow, option.Chips);
             optionButton.Add(chipRow);
+
+            if (option.IsEnabled)
+            {
+                optionButton.RegisterCallback<PointerEnterEvent>(_ =>
+                    LogDebug($"Option pointer enter. index={optionIndex} label='{option.Label}'.", true));
+                optionButton.RegisterCallback<PointerLeaveEvent>(_ =>
+                    LogDebug($"Option pointer leave. index={optionIndex} label='{option.Label}'.", true));
+                optionButton.RegisterCallback<PointerDownEvent>(evt =>
+                    LogDebug($"Option pointer down. index={optionIndex} label='{option.Label}' position={evt.position}.", true));
+                optionButton.RegisterCallback<PointerUpEvent>(evt =>
+                    LogDebug($"Option pointer up. index={optionIndex} label='{option.Label}' position={evt.position}.", true));
+                optionButton.RegisterCallback<FocusInEvent>(_ =>
+                    LogDebug($"Option focus in. index={optionIndex} label='{option.Label}'.", true));
+                optionButton.RegisterCallback<FocusOutEvent>(_ =>
+                    LogDebug($"Option focus out. index={optionIndex} label='{option.Label}'.", true));
+            }
 
             optionsList.Add(optionButton);
         }
@@ -633,6 +698,8 @@ internal sealed class HexPitstopEventModalDocumentController
     {
         hudDocumentController ??= UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
         hudDocumentController?.SetGameplayModalState(visible);
+        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Modal, visible);
+        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Modal, visible);
 
         if (modalRoot != null)
         {
@@ -640,18 +707,32 @@ internal sealed class HexPitstopEventModalDocumentController
         }
 
         isOpen = visible;
+        LogDebug($"SetModalVisibility visible={visible} isOpen={isOpen}.");
     }
 
     private void HandleOptionClicked(int optionIndex)
     {
+        LogDebug($"HandleOptionClicked index={optionIndex} callbackAssigned={optionSelected != null}.");
         Action<int> callback = optionSelected;
         callback?.Invoke(optionIndex);
     }
 
     private void HandleContinueClicked()
     {
+        LogDebug($"HandleContinueClicked callbackAssigned={continueSelected != null}.");
         Action callback = continueSelected;
         Hide();
         callback?.Invoke();
+    }
+
+    private void LogDebug(string message, bool verbose = false)
+    {
+        if (owner is PitstopEventModalPresenter presenter)
+        {
+            presenter.LogDebug(message, verbose);
+            return;
+        }
+
+        Debug.Log($"[PitstopEventModal] {message}", owner);
     }
 }

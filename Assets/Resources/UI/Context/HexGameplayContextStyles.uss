@@ -1,0 +1,58 @@
+#gameplay-context-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.context-card {
+    position: absolute;
+    padding-left: 11px;
+    padding-right: 11px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    background-color: rgba(10, 18, 28, 0.44);
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.03);
+    border-right-color: rgba(255, 255, 255, 0.03);
+    border-top-color: rgba(255, 255, 255, 0.03);
+    border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+
+#tile-inspector-panel {
+    left: 24px;
+    bottom: 24px;
+    width: 224px;
+}
+
+#pitstop-panel {
+    right: 24px;
+    top: 68px;
+    width: 256px;
+    display: none;
+}
+
+.panel-kicker {
+    color: rgba(241, 213, 159, 0.72);
+    font-size: 11px;
+    line-height: 12px;
+    -unity-font-style: bold;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.body-copy {
+    margin-top: 5px;
+    color: rgb(214, 225, 234);
+    font-size: 10px;
+    line-height: 12px;
+    white-space: normal;
+}

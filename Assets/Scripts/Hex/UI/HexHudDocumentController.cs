@@ -7,6 +7,9 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 {
     private const string LayoutResourcePath = "UI/Hud/HexMainHud";
     private const string StyleSheetResourcePath = "UI/Hud/HexMainHudStyles";
+    private const string ContextLayoutResourcePath = "UI/Context/HexGameplayContext";
+    private const string ContextStyleSheetResourcePath = "UI/Context/HexGameplayContextStyles";
+    private const string ContextMountName = "hud-context-mount";
     private const string DefaultTileDetailsText = "Click a tile to inspect terrain cost.";
     private const string DefaultPitstopInfoText = "Pitstop Info\nSelect a pitstop to inspect its stop effect.";
     private const string FoodIconResourcePath = "UI/Hud/Icons/resource-food";
@@ -18,6 +21,8 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     [SerializeField] private string runContextLabel = "Act 1";
     [SerializeField] private VisualTreeAsset layoutAsset;
     [SerializeField] private StyleSheet styleSheet;
+    [SerializeField] private VisualTreeAsset contextLayoutAsset;
+    [SerializeField] private StyleSheet contextStyleSheet;
     [SerializeField] private Texture2D foodIcon;
     [SerializeField] private Texture2D moraleIcon;
     [SerializeField] private Texture2D goldIcon;
@@ -27,7 +32,9 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
     private HexGameplayUiRootController gameplayUiRootController;
     private VisualElement hudLayer;
+    private VisualElement contextMount;
     private TemplateContainer hudTree;
+    private TemplateContainer contextTree;
     private VisualElement topBar;
     private VisualElement centerStatusPocket;
     private Label runContextLabelElement;
@@ -70,17 +77,25 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
         layoutAsset ??= Resources.Load<VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<StyleSheet>(StyleSheetResourcePath);
+        contextLayoutAsset ??= Resources.Load<VisualTreeAsset>(ContextLayoutResourcePath);
+        contextStyleSheet ??= Resources.Load<StyleSheet>(ContextStyleSheetResourcePath);
         foodIcon ??= Resources.Load<Texture2D>(FoodIconResourcePath);
         moraleIcon ??= Resources.Load<Texture2D>(MoraleIconResourcePath);
         goldIcon ??= Resources.Load<Texture2D>(GoldIconResourcePath);
 
-        if (layoutAsset == null || styleSheet == null)
+        if (layoutAsset == null || styleSheet == null || contextLayoutAsset == null || contextStyleSheet == null)
         {
-            Debug.LogError("HexHudDocumentController could not load the UI Toolkit HUD assets from Resources.", this);
+            Debug.LogError("HexHudDocumentController could not load the UI Toolkit HUD/context assets from Resources.", this);
             return;
         }
 
-        gameplayUiRootController ??= GetComponent<HexGameplayUiRootController>() ?? gameObject.AddComponent<HexGameplayUiRootController>();
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this);
+        if (gameplayUiRootController == null)
+        {
+            Debug.LogError("HexHudDocumentController could not resolve the shared gameplay UI root.", this);
+            return;
+        }
+
         gameplayUiRootController.EnsureInitialized();
         hudLayer = gameplayUiRootController.RequestLayer(HexGameplayUiLayerId.Hud, nameof(HexHudDocumentController), true, this);
         if (hudLayer == null)
@@ -89,9 +104,25 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
             return;
         }
 
+        contextMount = gameplayUiRootController.RequestLayerMount(
+            HexGameplayUiLayerId.Context,
+            ContextMountName,
+            nameof(HexHudDocumentController),
+            true,
+            this);
+        if (contextMount == null)
+        {
+            Debug.LogError("HexHudDocumentController could not bind to the shared context layer.", this);
+            return;
+        }
+
         hudTree = layoutAsset.CloneTree();
         hudTree.styleSheets.Add(styleSheet);
         hudLayer.Add(hudTree);
+
+        contextTree = contextLayoutAsset.CloneTree();
+        contextTree.styleSheets.Add(contextStyleSheet);
+        contextMount.Add(contextTree);
 
         VisualElement root = hudTree.Q<VisualElement>("hud-root");
         if (root == null)
@@ -101,6 +132,14 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         }
 
         root.pickingMode = PickingMode.Ignore;
+        VisualElement contextRoot = contextTree.Q<VisualElement>("gameplay-context-root");
+        if (contextRoot == null)
+        {
+            Debug.LogError("HexHudDocumentController could not find the gameplay context root inside the cloned UXML.", this);
+            return;
+        }
+
+        contextRoot.pickingMode = PickingMode.Ignore;
 
         runContextLabelElement = hudTree.Q<Label>("run-context-label");
         topBar = hudTree.Q<VisualElement>("top-bar");
@@ -111,11 +150,11 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         boonStatusLabel = hudTree.Q<Label>("boon-status");
         selectionStatusLabel = hudTree.Q<Label>("selection-status");
         travelTimeLabel = hudTree.Q<Label>("travel-time");
-        tileDetailsLabel = hudTree.Q<Label>("tile-details");
         hintLabel = hudTree.Q<Label>("hint-text");
-        pitstopInfoLabel = hudTree.Q<Label>("pitstop-info");
-        tileInspectorPanel = hudTree.Q<VisualElement>("tile-inspector-panel");
-        pitstopPanel = hudTree.Q<VisualElement>("pitstop-panel");
+        tileDetailsLabel = contextTree.Q<Label>("tile-details");
+        pitstopInfoLabel = contextTree.Q<Label>("pitstop-info");
+        tileInspectorPanel = contextTree.Q<VisualElement>("tile-inspector-panel");
+        pitstopPanel = contextTree.Q<VisualElement>("pitstop-panel");
         foodIconElement = hudTree.Q<VisualElement>("resource-food-icon");
         moraleIconElement = hudTree.Q<VisualElement>("resource-morale-icon");
         goldIconElement = hudTree.Q<VisualElement>("resource-gold-icon");
@@ -125,9 +164,11 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         ApplyIcon(goldIconElement, goldIcon);
         gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Hud, true);
         gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Hud, false);
+        gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Context, true);
+        gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Context, false);
         isInitialized = true;
         LogDiagnostic(
-            $"Bound HUD into shared root. topBarFound={topBar != null} tileInspectorFound={tileInspectorPanel != null} pitstopPanelFound={pitstopPanel != null}.");
+            $"Bound HUD into shared root. topBarFound={topBar != null} contextMounted={contextMount != null} tileInspectorFound={tileInspectorPanel != null} pitstopPanelFound={pitstopPanel != null}.");
         RefreshRunContext();
         SetResources(0, 0, 0);
         SetStatusText("Select a departure tile.");
@@ -364,6 +405,7 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
     [SerializeField] private bool enableRuntimeDiagnostics = true;
     [SerializeField] private bool enableVerboseRuntimeDiagnostics;
 
+    private static HexGameplayUiRootController sharedInstance;
     private readonly Dictionary<HexGameplayUiLayerId, VisualElement> layers = new();
     private GameObject uiRootObject;
     private UIDocument document;
@@ -377,11 +419,54 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
     public VisualElement ModalLayer => GetLayer(HexGameplayUiLayerId.Modal);
     public VisualElement DebugLayer => GetLayer(HexGameplayUiLayerId.Debug);
 
+    public static HexGameplayUiRootController ResolveShared(MonoBehaviour owner, bool createIfMissing = true)
+    {
+        if (sharedInstance != null)
+        {
+            return sharedInstance;
+        }
+
+        sharedInstance = UnityEngine.Object.FindAnyObjectByType<HexGameplayUiRootController>();
+        if (sharedInstance != null)
+        {
+            return sharedInstance;
+        }
+
+        if (!createIfMissing || owner == null)
+        {
+            return null;
+        }
+
+        sharedInstance = owner.GetComponent<HexGameplayUiRootController>() ?? owner.gameObject.AddComponent<HexGameplayUiRootController>();
+        return sharedInstance;
+    }
+
+    private void OnEnable()
+    {
+        if (sharedInstance == null)
+        {
+            sharedInstance = this;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (sharedInstance == this)
+        {
+            sharedInstance = null;
+        }
+    }
+
     public void EnsureInitialized()
     {
         if (isInitialized)
         {
             return;
+        }
+
+        if (sharedInstance == null)
+        {
+            sharedInstance = this;
         }
 
         panelSettings ??= Resources.Load<PanelSettings>(PanelSettingsResourcePath);
@@ -454,6 +539,47 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
             $"Layer request success. layer={layerId} consumer={consumerName} interactive={layer.pickingMode == PickingMode.Position} display={layer.resolvedStyle.display}.",
             context ? context : this);
         return layer;
+    }
+
+    public VisualElement RequestLayerMount(
+        HexGameplayUiLayerId layerId,
+        string mountName,
+        string consumerName,
+        bool clearChildren = false,
+        Object context = null)
+    {
+        if (string.IsNullOrWhiteSpace(mountName))
+        {
+            LogDiagnostic("Root", $"Mount request failed. layer={layerId} consumer={consumerName} mountName was empty.", context ? context : this);
+            return null;
+        }
+
+        VisualElement layer = RequestLayer(layerId, consumerName, false, context);
+        if (layer == null)
+        {
+            return null;
+        }
+
+        VisualElement mount = layer.Q<VisualElement>(mountName);
+        if (mount == null)
+        {
+            mount = new VisualElement
+            {
+                name = mountName,
+                pickingMode = PickingMode.Ignore
+            };
+            mount.AddToClassList("gameplay-ui-mount");
+            layer.Add(mount);
+            LogDiagnostic("Root", $"Created mount '{mountName}' on layer={layerId} for consumer={consumerName}.", context ? context : this);
+        }
+
+        if (clearChildren)
+        {
+            mount.Clear();
+            LogDiagnostic("Root", $"Cleared mount '{mountName}' on layer={layerId} for consumer={consumerName}.", context ? context : this, true);
+        }
+
+        return mount;
     }
 
     public void SetLayerVisible(HexGameplayUiLayerId layerId, bool visible)

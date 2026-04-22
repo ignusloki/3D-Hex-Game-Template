@@ -134,12 +134,24 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 
     public void ShowVictory(Action onRetryRequested)
     {
-        Show("You win!", string.Empty, "Retry", onRetryRequested);
+        HexRunEndModalPresenter toolkitPresenter = GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
+        if (overlayRoot != null && overlayRoot.activeSelf)
+        {
+            SetModalVisibility(false);
+        }
+
+        toolkitPresenter.ShowVictory(onRetryRequested);
     }
 
     public void ShowDefeat(Action onRetryRequested)
     {
-        Show("Game over!", string.Empty, "Retry", onRetryRequested);
+        HexRunEndModalPresenter toolkitPresenter = GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
+        if (overlayRoot != null && overlayRoot.activeSelf)
+        {
+            SetModalVisibility(false);
+        }
+
+        toolkitPresenter.ShowDefeat(onRetryRequested);
     }
 
     public void ShowTransition(string title, string body, string continueButtonLabel, Action onContinueRequested)
@@ -166,9 +178,6 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
                 SetModalVisibility(false);
             }
 
-            Debug.LogWarning(
-                "[HexRunStateModalPresenter] Legacy act transition path was invoked. Forwarding to HexActTransitionModalPresenter instead.",
-                this);
             toolkitPresenter.ShowTransition(displayData, onContinueRequested);
             return;
         }
@@ -206,9 +215,6 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
                 SetModalVisibility(false);
             }
 
-            Debug.LogWarning(
-                "[HexRunStateModalPresenter] Legacy act transition selection path was invoked. Forwarding to HexActTransitionModalPresenter instead.",
-                this);
             toolkitPresenter.ShowTransitionSelection(displayData, onContinueRequested);
             return;
         }
@@ -1612,6 +1618,7 @@ public sealed class HexRunStateModalPresenter : MonoBehaviour
 public sealed class HexActTransitionModalPresenter : MonoBehaviour
 {
     private HexActTransitionModalDocumentController documentController;
+    private HexGameplayUiRootController gameplayUiRootController;
 
     public bool IsOpen => documentController != null && documentController.IsOpen;
 
@@ -1651,13 +1658,26 @@ public sealed class HexActTransitionModalPresenter : MonoBehaviour
         documentController ??= new HexActTransitionModalDocumentController(this);
         documentController.EnsureInitialized();
     }
+
+    internal void LogDebug(string message, bool verbose = false)
+    {
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this, createIfMissing: false);
+        gameplayUiRootController?.EnsureInitialized();
+        if (gameplayUiRootController != null)
+        {
+            gameplayUiRootController.LogDiagnostic("TransitionModal", message, this, verbose);
+            return;
+        }
+
+        Debug.Log($"[GameplayUI:TransitionModal] {message}", this);
+    }
 }
 
 internal sealed class HexActTransitionModalDocumentController
 {
-    private const string PanelSettingsResourcePath = "UI/Hud/HexHudPanelSettings";
     private const string LayoutResourcePath = "UI/Modal/HexActTransitionModal";
     private const string StyleSheetResourcePath = "UI/Modal/HexActTransitionModalStyles";
+    private const string ModalMountName = "act-transition-modal-mount";
 
     private enum TransitionScreenMode
     {
@@ -1669,11 +1689,10 @@ internal sealed class HexActTransitionModalDocumentController
     private readonly MonoBehaviour owner;
     private readonly List<TransitionBoonCardView> cardViews = new();
 
-    private UIE.PanelSettings panelSettings;
     private UIE.VisualTreeAsset layoutAsset;
     private UIE.StyleSheet styleSheet;
-    private GameObject uiRootObject;
-    private UIE.UIDocument document;
+    private HexGameplayUiRootController gameplayUiRootController;
+    private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
     private UIE.VisualElement intermissionShell;
     private UIE.VisualElement selectionShell;
@@ -1734,53 +1753,63 @@ internal sealed class HexActTransitionModalDocumentController
             return;
         }
 
-        panelSettings ??= Resources.Load<UIE.PanelSettings>(PanelSettingsResourcePath);
         layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
-        if (panelSettings == null || layoutAsset == null || styleSheet == null)
+        if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexActTransitionModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
             return;
         }
 
-        uiRootObject = new GameObject("Act Transition Modal UI");
-        uiRootObject.transform.SetParent(owner.transform, false);
-        uiRootObject.layer = owner.gameObject.layer;
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(owner);
+        if (gameplayUiRootController == null)
+        {
+            Debug.LogError("HexActTransitionModalDocumentController could not resolve the shared gameplay UI root.", owner);
+            return;
+        }
 
-        document = uiRootObject.AddComponent<UIE.UIDocument>();
-        document.panelSettings = panelSettings;
-        document.sortingOrder = 150;
+        gameplayUiRootController.EnsureInitialized();
+        modalMount = gameplayUiRootController.RequestLayerMount(
+            HexGameplayUiLayerId.Modal,
+            ModalMountName,
+            nameof(HexActTransitionModalDocumentController),
+            false,
+            owner);
+        if (modalMount == null)
+        {
+            Debug.LogError("HexActTransitionModalDocumentController could not bind to the shared modal layer.", owner);
+            return;
+        }
 
-        UIE.VisualElement root = document.rootVisualElement;
-        root.Clear();
-        root.styleSheets.Clear();
-        root.styleSheets.Add(styleSheet);
-        layoutAsset.CloneTree(root);
+        modalMount.Clear();
+        modalMount.styleSheets.Clear();
+        modalMount.styleSheets.Add(styleSheet);
+        layoutAsset.CloneTree(modalMount);
 
-        modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-modal-root");
-        intermissionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-shell");
-        selectionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-shell");
+        modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-root");
+        intermissionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-shell");
+        selectionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-shell");
 
-        intermissionMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-meta");
-        intermissionTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-title");
-        intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-body");
-        intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(root, "act-transition-intermission-illustration-image");
-        intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-illustration-placeholder");
-        carryOverChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-carry-chips");
-        grantChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-intermission-grant-chips");
-        grantEmptyLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-intermission-grant-empty");
-        intermissionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(root, "act-transition-intermission-button");
+        intermissionMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-meta");
+        intermissionTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-title");
+        intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-body");
+        intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(modalMount, "act-transition-intermission-illustration-image");
+        intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-illustration-placeholder");
+        carryOverChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-carry-chips");
+        grantChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-grant-chips");
+        grantEmptyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-grant-empty");
+        intermissionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-intermission-button");
 
-        selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-prompt");
-        selectionNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-note");
-        selectionResourceStripContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-resource-strip");
-        selectionCardsRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(root, "act-transition-selection-card-row");
-        detailMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-meta");
-        detailTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-title");
-        detailKeywordLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-keywords");
-        detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-effect");
-        detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(root, "act-transition-selection-detail-lore");
-        selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(root, "act-transition-selection-button");
+        selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-prompt");
+        selectionNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-note");
+        selectionResourceStripContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-resource-strip");
+        selectionCardsRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-card-row");
+        detailMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-meta");
+        detailTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-title");
+        detailKeywordLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-keywords");
+        detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-effect");
+        detailLoreLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-lore");
+        selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-selection-button");
 
         if (intermissionContinueButton != null)
         {
@@ -1798,6 +1827,10 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Modal, false);
+        gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
+        LogDebug(
+            $"Initialized shared-root transition modal. modalRootFound={modalRoot != null} intermissionFound={intermissionShell != null} selectionFound={selectionShell != null} cardsRowFound={selectionCardsRow != null}.");
         isInitialized = true;
     }
 
@@ -1820,9 +1853,9 @@ internal sealed class HexActTransitionModalDocumentController
         PopulateIntermission();
         PopulateSelection();
 
-        modalRoot.style.display = UIE.DisplayStyle.Flex;
-        isOpen = true;
-        hudDocumentController?.SetGameplayModalState(true);
+        SetModalVisibility(true);
+        LogDebug(
+            $"ShowTransition title='{activeDisplayData.Title}' nextAct={activeDisplayData.NextActNumber} requiresSelection={activeDisplayData.RequiresBoonSelection} boonCount={boonOptions.Length} openSelectionImmediately={openSelectionImmediately}.");
 
         if (openSelectionImmediately && activeDisplayData.RequiresBoonSelection)
         {
@@ -1844,13 +1877,13 @@ internal sealed class HexActTransitionModalDocumentController
         screenMode = TransitionScreenMode.None;
         cardViews.Clear();
 
-        if (modalRoot != null)
+        if (selectionCardsRow != null)
         {
-            modalRoot.style.display = UIE.DisplayStyle.None;
+            selectionCardsRow.Clear();
         }
 
-        isOpen = false;
-        hudDocumentController?.SetGameplayModalState(false);
+        SetModalVisibility(false);
+        LogDebug("Hide transition modal.");
     }
 
     private void PopulateIntermission()
@@ -1914,10 +1947,16 @@ internal sealed class HexActTransitionModalDocumentController
         {
             selectionShell.style.display = showSelection ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
         }
+
+        LogDebug(
+            $"ShowScreen mode={mode} intermissionVisible={intermissionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex} selectionVisible={selectionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex}.",
+            true);
     }
 
     private void HandleIntermissionContinueClicked()
     {
+        LogDebug(
+            $"HandleIntermissionContinueClicked requiresSelection={activeDisplayData.RequiresBoonSelection} boonCount={boonOptions.Length} modeBefore={screenMode}.");
         if (activeDisplayData.RequiresBoonSelection)
         {
             ShowScreen(TransitionScreenMode.Selection);
@@ -1933,11 +1972,13 @@ internal sealed class HexActTransitionModalDocumentController
     {
         if (selectedBoon == null)
         {
+            LogDebug("HandleSelectionContinueClicked ignored because no boon is selected.", true);
             return;
         }
 
         Action<HexBoonDefinition> callback = continueRequested;
         HexBoonDefinition chosenBoon = selectedBoon;
+        LogDebug($"HandleSelectionContinueClicked selectedBoon='{chosenBoon.id}'.");
         Hide();
         callback?.Invoke(chosenBoon);
     }
@@ -2102,6 +2143,7 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         selectedBoon = boon;
+        LogDebug($"HandleCardClicked boon='{boon.id}'.", true);
         RefreshSelectionActionState();
         RefreshCardVisuals();
         RefreshDetailPanel();
@@ -2428,178 +2470,300 @@ internal sealed class HexActTransitionModalDocumentController
             _ => "None"
         };
     }
-}
 
-public sealed class HexMockQuestMarkerModalPresenter : MonoBehaviour
-{
-    [Header("Layout")]
-    [Min(200f)] [SerializeField] private float panelWidth = 600f;
-    [Min(140f)] [SerializeField] private float panelHeight = 380f;
-
-    [Header("Colors")]
-    [SerializeField] private Color overlayColor = new(0f, 0f, 0f, 0.88f);
-    [SerializeField] private Color titleColor = new(0.98f, 0.98f, 0.98f, 1f);
-    [SerializeField] private Color bodyColor = new(0.89f, 0.89f, 0.89f, 1f);
-    [SerializeField] private Color buttonColor = new(0.12f, 0.15f, 0.19f, 0.96f);
-    [SerializeField] private Color buttonHighlightColor = new(0.19f, 0.24f, 0.31f, 0.98f);
-    [SerializeField] private Color buttonPressedColor = new(0.28f, 0.34f, 0.42f, 1f);
-    [SerializeField] private Color buttonTextColor = new(0.96f, 0.96f, 0.96f, 1f);
-
-    private GameObject overlayRoot;
-    private Text titleText;
-    private Text bodyText;
-    private Button closeButton;
-    private Text closeButtonText;
-    private Font uiFont;
-    private Action closeCallback;
-
-    public bool IsOpen => overlayRoot != null && overlayRoot.activeSelf;
-
-    public void Show(string title, string body, Action onCloseRequested)
+    private void SetModalVisibility(bool visible)
     {
-        EnsureUi();
-        if (overlayRoot == null)
+        hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        hudDocumentController?.SetGameplayModalState(visible);
+        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Modal, visible);
+        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Modal, visible);
+
+        if (modalRoot != null)
         {
+            modalRoot.style.display = visible ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+        }
+
+        isOpen = visible;
+        LogDebug($"SetModalVisibility visible={visible} isOpen={isOpen}.");
+    }
+
+    private void LogDebug(string message, bool verbose = false)
+    {
+        if (owner is HexActTransitionModalPresenter presenter)
+        {
+            presenter.LogDebug(message, verbose);
             return;
         }
 
-        closeCallback = onCloseRequested;
-        overlayRoot.SetActive(true);
-        titleText.text = string.IsNullOrWhiteSpace(title) ? "Quest Marker" : title.Trim();
-        bodyText.text = string.IsNullOrWhiteSpace(body) ? "Mock quest marker." : body.Trim();
-        closeButtonText.text = "Close";
+        Debug.Log($"[GameplayUI:TransitionModal] {message}", owner);
+    }
+}
+
+public sealed class HexRunEndModalPresenter : MonoBehaviour
+{
+    private HexSimpleActionModalDocumentController documentController;
+    private HexGameplayUiRootController gameplayUiRootController;
+
+    public bool IsOpen => documentController != null && documentController.IsOpen;
+
+    public void ShowVictory(Action onRetryRequested)
+    {
+        LogDebug("ShowVictory requested.");
+        EnsureView();
+        documentController?.Show(
+            "Victory",
+            "The caravan completed the road and reached the next horizon.",
+            "Retry",
+            onRetryRequested);
+    }
+
+    public void ShowDefeat(Action onRetryRequested)
+    {
+        LogDebug("ShowDefeat requested.");
+        EnsureView();
+        documentController?.Show(
+            "Game Over",
+            "The caravan could not withstand the pressure of the journey.",
+            "Retry",
+            onRetryRequested);
     }
 
     public void Hide()
     {
-        closeCallback = null;
-        if (overlayRoot != null)
-        {
-            overlayRoot.SetActive(false);
-        }
+        LogDebug("Hide requested.");
+        documentController?.Hide();
     }
 
-    private void EnsureUi()
+    private void EnsureView()
     {
-        if (overlayRoot != null)
+        documentController ??= new HexSimpleActionModalDocumentController(
+            this,
+            "run-end-modal-mount",
+            "RunEndModal");
+        documentController.EnsureInitialized();
+    }
+
+    internal void LogDebug(string message, bool verbose = false)
+    {
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this, createIfMissing: false);
+        gameplayUiRootController?.EnsureInitialized();
+        if (gameplayUiRootController != null)
+        {
+            gameplayUiRootController.LogDiagnostic("RunEndModal", message, this, verbose);
+            return;
+        }
+
+        Debug.Log($"[GameplayUI:RunEndModal] {message}", this);
+    }
+}
+
+internal sealed class HexSimpleActionModalDocumentController
+{
+    private const string LayoutResourcePath = "UI/Modal/HexSimpleActionModal";
+    private const string StyleSheetResourcePath = "UI/Modal/HexSimpleActionModalStyles";
+
+    private readonly MonoBehaviour owner;
+    private readonly string mountName;
+    private readonly string diagnosticScope;
+
+    private UIE.VisualTreeAsset layoutAsset;
+    private UIE.StyleSheet styleSheet;
+    private HexGameplayUiRootController gameplayUiRootController;
+    private UIE.VisualElement modalMount;
+    private UIE.VisualElement modalRoot;
+    private UIE.VisualElement shellElement;
+    private UIE.Label titleLabel;
+    private UIE.Label bodyLabel;
+    private UIE.Button actionButton;
+    private HexHudDocumentController hudDocumentController;
+    private Action actionRequested;
+    private bool isInitialized;
+    private bool isOpen;
+
+    public HexSimpleActionModalDocumentController(MonoBehaviour owner, string mountName, string diagnosticScope)
+    {
+        this.owner = owner;
+        this.mountName = mountName;
+        this.diagnosticScope = diagnosticScope;
+    }
+
+    public bool IsOpen => isOpen;
+
+    public void EnsureInitialized()
+    {
+        if (isInitialized)
         {
             return;
         }
 
-        Canvas targetCanvas = FindAnyObjectByType<Canvas>();
-        if (targetCanvas == null)
+        layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
+        styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
+        if (layoutAsset == null || styleSheet == null)
         {
-            Debug.LogError("HexMockQuestMarkerModalPresenter requires a Canvas in the scene.", this);
+            Debug.LogError($"HexSimpleActionModalDocumentController could not load modal assets for {diagnosticScope}.", owner);
             return;
         }
 
-        uiFont = ResolveFont();
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(owner);
+        if (gameplayUiRootController == null)
+        {
+            Debug.LogError($"HexSimpleActionModalDocumentController could not resolve the shared gameplay UI root for {diagnosticScope}.", owner);
+            return;
+        }
 
-        RectTransform overlayRect = CreateRectTransform("Mock Quest Marker Overlay", targetCanvas.transform);
-        overlayRoot = overlayRect.gameObject;
-        StretchToParent(overlayRect);
+        gameplayUiRootController.EnsureInitialized();
+        modalMount = gameplayUiRootController.RequestLayerMount(
+            HexGameplayUiLayerId.Modal,
+            mountName,
+            diagnosticScope,
+            false,
+            owner);
+        if (modalMount == null)
+        {
+            Debug.LogError($"HexSimpleActionModalDocumentController could not bind to the shared modal layer for {diagnosticScope}.", owner);
+            return;
+        }
 
-        Image overlayImage = overlayRoot.AddComponent<Image>();
-        overlayImage.color = overlayColor;
-        overlayImage.raycastTarget = true;
-        overlayRoot.SetActive(false);
+        modalMount.Clear();
+        modalMount.styleSheets.Clear();
+        modalMount.styleSheets.Add(styleSheet);
+        layoutAsset.CloneTree(modalMount);
 
-        RectTransform panelRect = CreateRectTransform("Mock Quest Marker Panel", overlayRect);
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.anchoredPosition = Vector2.zero;
-        panelRect.sizeDelta = new Vector2(panelWidth, panelHeight);
+        modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "simple-action-modal-root");
+        shellElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "simple-action-modal-shell");
+        titleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "simple-action-modal-title");
+        bodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "simple-action-modal-body");
+        actionButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "simple-action-modal-button");
 
-        titleText = CreateText("Title", panelRect, 38, FontStyle.Bold, titleColor);
-        RectTransform titleRect = titleText.rectTransform;
-        titleRect.anchorMin = new Vector2(0.5f, 1f);
-        titleRect.anchorMax = new Vector2(0.5f, 1f);
-        titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.anchoredPosition = new Vector2(0f, -34f);
-        titleRect.sizeDelta = new Vector2(panelWidth - 72f, 56f);
-        titleText.alignment = TextAnchor.MiddleCenter;
+        if (actionButton != null)
+        {
+            actionButton.clicked += HandleActionClicked;
+        }
 
-        bodyText = CreateText("Body", panelRect, 22, FontStyle.Italic, bodyColor);
-        RectTransform bodyRect = bodyText.rectTransform;
-        bodyRect.anchorMin = Vector2.zero;
-        bodyRect.anchorMax = Vector2.one;
-        bodyRect.pivot = new Vector2(0.5f, 0.5f);
-        bodyRect.offsetMin = new Vector2(36f, 112f);
-        bodyRect.offsetMax = new Vector2(-36f, -108f);
-        bodyText.alignment = TextAnchor.UpperCenter;
+        if (modalRoot != null)
+        {
+            modalRoot.style.display = UIE.DisplayStyle.None;
+        }
 
-        RectTransform buttonRect = CreateRectTransform("Close Button", panelRect);
-        buttonRect.anchorMin = new Vector2(0.5f, 0f);
-        buttonRect.anchorMax = new Vector2(0.5f, 0f);
-        buttonRect.pivot = new Vector2(0.5f, 0f);
-        buttonRect.anchoredPosition = new Vector2(0f, 36f);
-        buttonRect.sizeDelta = new Vector2(220f, 56f);
-
-        Image buttonImage = buttonRect.gameObject.AddComponent<Image>();
-        buttonImage.color = buttonColor;
-        closeButton = buttonRect.gameObject.AddComponent<Button>();
-        ColorBlock buttonColors = closeButton.colors;
-        buttonColors.normalColor = buttonColor;
-        buttonColors.highlightedColor = buttonHighlightColor;
-        buttonColors.pressedColor = buttonPressedColor;
-        buttonColors.selectedColor = buttonHighlightColor;
-        buttonColors.disabledColor = buttonColor * 0.6f;
-        closeButton.colors = buttonColors;
-        closeButton.onClick.AddListener(HandleCloseClicked);
-
-        closeButtonText = CreateText("Close Button Text", buttonRect, 24, FontStyle.Bold, buttonTextColor);
-        StretchToParent(closeButtonText.rectTransform, 12f, 8f);
-        closeButtonText.alignment = TextAnchor.MiddleCenter;
+        hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Modal, false);
+        gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
+        isInitialized = true;
+        LogDebug($"Initialized modal mount='{mountName}'. shellFound={shellElement != null} actionButtonFound={actionButton != null}.");
     }
 
-    private void HandleCloseClicked()
+    public void Show(string title, string body, string actionLabel, Action onActionRequested)
     {
-        Action callback = closeCallback;
+        EnsureInitialized();
+        if (!isInitialized || modalRoot == null)
+        {
+            return;
+        }
+
+        actionRequested = onActionRequested;
+        titleLabel.text = string.IsNullOrWhiteSpace(title) ? "Modal" : title.Trim();
+        bodyLabel.text = string.IsNullOrWhiteSpace(body) ? string.Empty : body.Trim();
+        bodyLabel.style.display = string.IsNullOrWhiteSpace(bodyLabel.text) ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+        if (actionButton != null)
+        {
+            actionButton.text = string.IsNullOrWhiteSpace(actionLabel) ? "Continue" : actionLabel.Trim();
+        }
+
+        SetModalVisibility(true);
+        LogDebug($"Show title='{titleLabel.text}' bodyVisible={bodyLabel.style.display == UIE.DisplayStyle.Flex} actionLabel='{actionButton?.text ?? "Continue"}'.");
+    }
+
+    public void Hide()
+    {
+        actionRequested = null;
+        SetModalVisibility(false);
+        LogDebug("Hide modal.");
+    }
+
+    private void HandleActionClicked()
+    {
+        LogDebug($"HandleActionClicked callbackAssigned={actionRequested != null}.");
+        Action callback = actionRequested;
         Hide();
         callback?.Invoke();
     }
 
-    private Font ResolveFont()
+    private void SetModalVisibility(bool visible)
     {
-        Text existingText = FindAnyObjectByType<Text>();
-        if (existingText != null && existingText.font != null)
+        hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        hudDocumentController?.SetGameplayModalState(visible);
+        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Modal, visible);
+        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Modal, visible);
+
+        if (modalRoot != null)
         {
-            return existingText.font;
+            modalRoot.style.display = visible ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
         }
 
-        return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        isOpen = visible;
+        LogDebug($"SetModalVisibility visible={visible} isOpen={isOpen}.");
     }
 
-    private Text CreateText(string name, Transform parent, int fontSize, FontStyle fontStyle, Color color)
+    private void LogDebug(string message, bool verbose = false)
     {
-        RectTransform textRect = CreateRectTransform(name, parent);
-        Text text = textRect.gameObject.AddComponent<Text>();
-        text.font = uiFont;
-        text.fontSize = fontSize;
-        text.fontStyle = fontStyle;
-        text.color = color;
-        text.alignment = TextAnchor.UpperLeft;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        text.raycastTarget = false;
-        return text;
+        switch (owner)
+        {
+            case HexRunEndModalPresenter runEndPresenter:
+                runEndPresenter.LogDebug(message, verbose);
+                return;
+
+            case HexMockQuestMarkerModalPresenter questPresenter:
+                questPresenter.LogDebug(message, verbose);
+                return;
+        }
+
+        Debug.Log($"[GameplayUI:{diagnosticScope}] {message}", owner);
+    }
+}
+
+public sealed class HexMockQuestMarkerModalPresenter : MonoBehaviour
+{
+    private HexSimpleActionModalDocumentController documentController;
+    private HexGameplayUiRootController gameplayUiRootController;
+
+    public bool IsOpen => documentController != null && documentController.IsOpen;
+
+    public void Show(string title, string body, Action onCloseRequested)
+    {
+        LogDebug($"Show title='{title}'.");
+        EnsureView();
+        documentController?.Show(
+            string.IsNullOrWhiteSpace(title) ? "Quest Marker" : title.Trim(),
+            string.IsNullOrWhiteSpace(body) ? "Mock quest marker." : body.Trim(),
+            "Close",
+            onCloseRequested);
     }
 
-    private static RectTransform CreateRectTransform(string name, Transform parent)
+    public void Hide()
     {
-        GameObject gameObject = new(name, typeof(RectTransform));
-        gameObject.transform.SetParent(parent, false);
-        gameObject.layer = parent.gameObject.layer;
-        return gameObject.GetComponent<RectTransform>();
+        LogDebug("Hide requested.");
+        documentController?.Hide();
     }
 
-    private static void StretchToParent(RectTransform rectTransform, float horizontalPadding = 0f, float verticalPadding = 0f)
+    private void EnsureView()
     {
-        rectTransform.anchorMin = Vector2.zero;
-        rectTransform.anchorMax = Vector2.one;
-        rectTransform.offsetMin = new Vector2(horizontalPadding, verticalPadding);
-        rectTransform.offsetMax = new Vector2(-horizontalPadding, -verticalPadding);
-        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        documentController ??= new HexSimpleActionModalDocumentController(
+            this,
+            "quest-marker-modal-mount",
+            "QuestModal");
+        documentController.EnsureInitialized();
+    }
+
+    internal void LogDebug(string message, bool verbose = false)
+    {
+        gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this, createIfMissing: false);
+        gameplayUiRootController?.EnsureInitialized();
+        if (gameplayUiRootController != null)
+        {
+            gameplayUiRootController.LogDiagnostic("QuestModal", message, this, verbose);
+            return;
+        }
+
+        Debug.Log($"[GameplayUI:QuestModal] {message}", this);
     }
 }

@@ -51,15 +51,5 @@
         </ui:VisualElement>
 
         <ui:Label name="boon-status" text="" />
-
-        <ui:VisualElement name="tile-inspector-panel" class="hud-card">
-            <ui:Label text="Tile Inspector" class="panel-kicker" />
-            <ui:Label name="tile-details" text="Click a tile to inspect terrain cost." class="body-copy" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="pitstop-panel" class="hud-card">
-            <ui:Label text="Pitstop Intel" class="panel-kicker" />
-            <ui:Label name="pitstop-info" text="Pitstop Info&#10;Select a pitstop to inspect its stop effect." class="body-copy" />
-        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

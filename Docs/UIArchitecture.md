@@ -176,8 +176,7 @@ Do not migrate multiple interactive flows at once unless they share the same inf
 ### Slice 2: HUD
 
 - migrate top status bar
-- migrate tile inspector
-- migrate pitstop intel card
+- keep the top status bar in `hud-layer`
 - remove standalone HUD `UIDocument` path after validation
 
 ### Slice 3: Pitstop Modal
@@ -200,6 +199,7 @@ Do not migrate multiple interactive flows at once unless they share the same inf
 
 ### Slice 6: Cleanup
 
+- move tile inspector and pitstop intel into `context-layer`
 - remove dead UGUI gameplay UI objects
 - remove unused modal/document bootstrap code
 - remove temporary debug migration helpers
@@ -235,5 +235,11 @@ Every migrated slice must be tested before the next one starts.
 
 This document defines the target architecture and phased migration plan.
 
-Implementation status will be updated as each slice is completed.
+Current implementation status:
 
+- slice 1 complete: shared gameplay UI root and runtime layers
+- slice 2 complete: top status bar migrated to the shared HUD layer
+- slice 3 complete: pitstop event choice/result migrated to the shared modal layer
+- slice 4 complete: act intermission and boon selection migrated to the shared modal layer
+- slice 5 in progress: run-end modal migration
+- slice 6 in progress: context-layer extraction and final gameplay UI cleanup

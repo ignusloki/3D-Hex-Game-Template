@@ -1,0 +1,101 @@
+#simple-action-modal-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+#simple-action-modal-overlay {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    background-color: rgba(0, 0, 0, 0.76);
+}
+
+#simple-action-modal-shell {
+    width: 520px;
+    max-width: 90%;
+    min-width: 320px;
+    padding-left: 28px;
+    padding-right: 28px;
+    padding-top: 24px;
+    padding-bottom: 22px;
+    background-color: rgba(16, 23, 33, 0.96);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.05);
+    border-right-color: rgba(255, 255, 255, 0.05);
+    border-top-color: rgba(255, 255, 255, 0.05);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+    flex-direction: column;
+}
+
+#simple-action-modal-title {
+    color: rgba(244, 239, 228, 1);
+    font-size: 28px;
+    line-height: 30px;
+    -unity-font-style: bold;
+    unity-text-align: middle-center;
+    white-space: normal;
+}
+
+#simple-action-modal-body {
+    margin-top: 14px;
+    color: rgba(214, 225, 234, 0.94);
+    font-size: 16px;
+    line-height: 20px;
+    unity-text-align: upper-center;
+    white-space: normal;
+}
+
+#simple-action-modal-actions {
+    margin-top: 20px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+#simple-action-modal-button {
+    min-width: 140px;
+    height: 40px;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background-color: rgba(35, 53, 73, 0.96);
+    color: rgba(244, 239, 228, 1);
+    font-size: 18px;
+    line-height: 18px;
+    -unity-font-style: bold;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(255, 255, 255, 0.06);
+    border-right-color: rgba(255, 255, 255, 0.06);
+    border-top-color: rgba(255, 255, 255, 0.06);
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+#simple-action-modal-button:hover {
+    background-color: rgba(45, 67, 92, 0.98);
+}
+
+#simple-action-modal-button:active {
+    background-color: rgba(61, 84, 111, 1);
+}
