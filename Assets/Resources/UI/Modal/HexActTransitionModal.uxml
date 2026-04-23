@@ -4,15 +4,7 @@
             <ui:VisualElement
                 name="act-transition-intermission-shell"
                 class="act-transition-page-shell act-transition-page-shell--narrow">
-                <ui:Label name="act-transition-intermission-meta" text="ROAD INTERMISSION" />
                 <ui:Label name="act-transition-intermission-title" text="Act Complete" />
-                <ui:VisualElement class="act-transition-divider" />
-
-                <ui:VisualElement name="act-transition-intermission-body-wrap">
-                    <ui:Label
-                        name="act-transition-intermission-body"
-                        text="The caravan gathers itself for the road ahead." />
-                </ui:VisualElement>
 
                 <ui:VisualElement name="act-transition-intermission-illustration-frame">
                     <ui:VisualElement name="act-transition-intermission-illustration-inset">
@@ -21,18 +13,88 @@
                     </ui:VisualElement>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="act-transition-divider" />
-                <ui:Label name="act-transition-intermission-summary-label" text="Travel provisions" />
-
-                <ui:VisualElement class="act-transition-summary-row">
-                    <ui:Label name="act-transition-intermission-carry-label" text="Carry-over" />
-                    <ui:VisualElement name="act-transition-intermission-carry-chips" class="act-transition-summary-chip-row" />
+                <ui:VisualElement name="act-transition-intermission-body-wrap">
+                    <ui:Label
+                        name="act-transition-intermission-body"
+                        text="The caravan gathers itself for the road ahead." />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="act-transition-summary-row">
-                    <ui:Label name="act-transition-intermission-grant-label" text="Fresh supplies" />
-                    <ui:VisualElement name="act-transition-intermission-grant-chips" class="act-transition-summary-chip-row" />
-                    <ui:Label name="act-transition-intermission-grant-empty" text="No fresh provisions" />
+                <ui:VisualElement class="act-transition-divider" />
+
+                <ui:VisualElement name="act-transition-intermission-resource-summary">
+                    <ui:VisualElement class="act-transition-intermission-resource-column">
+                        <ui:Label
+                            name="act-transition-intermission-current-header"
+                            class="act-transition-intermission-resource-header"
+                            text="Current Resources" />
+                        <ui:VisualElement class="act-transition-intermission-resource-rows">
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Food" />
+                                <ui:Label
+                                    name="act-transition-intermission-current-food-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="0" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Morale" />
+                                <ui:Label
+                                    name="act-transition-intermission-current-morale-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="0" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Gold" />
+                                <ui:Label
+                                    name="act-transition-intermission-current-gold-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="0" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="act-transition-intermission-resource-divider" />
+
+                    <ui:VisualElement class="act-transition-intermission-resource-column">
+                        <ui:Label
+                            name="act-transition-intermission-reward-header"
+                            class="act-transition-intermission-resource-header"
+                            text="Act Reward" />
+                        <ui:VisualElement class="act-transition-intermission-resource-rows">
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Food" />
+                                <ui:Label
+                                    name="act-transition-intermission-reward-food-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="+0" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Morale" />
+                                <ui:Label
+                                    name="act-transition-intermission-reward-morale-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="+0" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="act-transition-intermission-resource-row">
+                                <ui:Label
+                                    class="act-transition-intermission-resource-label"
+                                    text="Gold" />
+                                <ui:Label
+                                    name="act-transition-intermission-reward-gold-value"
+                                    class="act-transition-intermission-resource-value"
+                                    text="+0" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="act-transition-actions act-transition-actions--center">

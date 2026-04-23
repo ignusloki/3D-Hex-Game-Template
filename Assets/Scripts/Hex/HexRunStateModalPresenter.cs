@@ -143,17 +143,19 @@ internal sealed class HexActTransitionModalDocumentController
     private HexGameplayUiRootController gameplayUiRootController;
     private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
+    private UIE.VisualElement modalOverlay;
     private UIE.VisualElement intermissionShell;
     private UIE.VisualElement selectionShell;
-    private UIE.Label intermissionMetaLabel;
     private UIE.Label intermissionTitleLabel;
     private UIE.Label intermissionBodyLabel;
-    private UIE.Label intermissionSummaryLabel;
     private UIE.Image intermissionIllustrationImage;
     private UIE.Label intermissionIllustrationPlaceholderLabel;
-    private UIE.VisualElement carryOverChipsContainer;
-    private UIE.VisualElement grantChipsContainer;
-    private UIE.Label grantEmptyLabel;
+    private UIE.Label intermissionCurrentFoodValueLabel;
+    private UIE.Label intermissionCurrentMoraleValueLabel;
+    private UIE.Label intermissionCurrentGoldValueLabel;
+    private UIE.Label intermissionRewardFoodValueLabel;
+    private UIE.Label intermissionRewardMoraleValueLabel;
+    private UIE.Label intermissionRewardGoldValueLabel;
     private UIE.Button intermissionContinueButton;
     private UIE.Label selectionPromptLabel;
     private UIE.Label selectionNoteLabel;
@@ -242,22 +244,24 @@ internal sealed class HexActTransitionModalDocumentController
         layoutAsset.CloneTree(modalMount);
 
         modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-root");
+        modalOverlay = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-overlay");
         intermissionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-shell");
         selectionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-shell");
 
-        intermissionMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-meta");
         intermissionTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-title");
         intermissionBodyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-body");
-        intermissionSummaryLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-summary-label");
         intermissionIllustrationImage = UIE.UQueryExtensions.Q<UIE.Image>(modalMount, "act-transition-intermission-illustration-image");
         intermissionIllustrationPlaceholderLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-illustration-placeholder");
         if (intermissionIllustrationImage != null)
         {
             intermissionIllustrationImage.scaleMode = ScaleMode.ScaleAndCrop;
         }
-        carryOverChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-carry-chips");
-        grantChipsContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-grant-chips");
-        grantEmptyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-grant-empty");
+        intermissionCurrentFoodValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-current-food-value");
+        intermissionCurrentMoraleValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-current-morale-value");
+        intermissionCurrentGoldValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-current-gold-value");
+        intermissionRewardFoodValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-reward-food-value");
+        intermissionRewardMoraleValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-reward-morale-value");
+        intermissionRewardGoldValueLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-intermission-reward-gold-value");
         intermissionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-intermission-button");
 
         selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-prompt");
@@ -353,12 +357,11 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void PopulateIntermission()
     {
-        if (intermissionMetaLabel == null)
+        if (intermissionTitleLabel == null)
         {
             return;
         }
 
-        intermissionMetaLabel.text = BuildTransitionMetaLabel(activeDisplayData);
         intermissionTitleLabel.text = string.IsNullOrWhiteSpace(activeDisplayData.Title)
             ? "Act Complete"
             : activeDisplayData.Title.Trim();
@@ -367,8 +370,7 @@ internal sealed class HexActTransitionModalDocumentController
             : NormalizeIntermissionBody(activeDisplayData.Body);
 
         ApplyIntermissionIllustration(activeDisplayData.IntermissionIllustration);
-        RebuildIntermissionCarryOverSummary(activeDisplayData.CurrentResources);
-        RebuildIntermissionGrantSummary(activeDisplayData);
+        RebuildIntermissionResourceSummary(activeDisplayData);
 
         string intermissionLabel = activeDisplayData.RequiresBoonSelection
             ? activeDisplayData.IntermissionContinueButtonLabel
@@ -414,6 +416,8 @@ internal sealed class HexActTransitionModalDocumentController
             selectionShell.style.display = showSelection ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
         }
 
+        UpdateOverlayForScreen(showSelection);
+
         LogDebug(
             $"ShowScreen mode={mode} intermissionVisible={intermissionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex} selectionVisible={selectionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex}.",
             true);
@@ -449,32 +453,15 @@ internal sealed class HexActTransitionModalDocumentController
         callback?.Invoke(chosenBoon);
     }
 
-    private void RebuildIntermissionCarryOverSummary(CaravanResourceSnapshot currentResources)
+    private void RebuildIntermissionResourceSummary(HexActTransitionDisplayData displayData)
     {
-        if (carryOverChipsContainer == null)
-        {
-            return;
-        }
+        SetLabelText(intermissionCurrentFoodValueLabel, displayData.CurrentResources.Food.ToString());
+        SetLabelText(intermissionCurrentMoraleValueLabel, displayData.CurrentResources.Morale.ToString());
+        SetLabelText(intermissionCurrentGoldValueLabel, displayData.CurrentResources.Gold.ToString());
 
-        carryOverChipsContainer.Clear();
-        carryOverChipsContainer.Add(CreateJournalChip("Food", currentResources.Food.ToString()));
-        carryOverChipsContainer.Add(CreateJournalChip("Morale", currentResources.Morale.ToString()));
-        carryOverChipsContainer.Add(CreateJournalChip("Gold", currentResources.Gold.ToString()));
-    }
-
-    private void RebuildIntermissionGrantSummary(HexActTransitionDisplayData displayData)
-    {
-        if (grantChipsContainer == null || grantEmptyLabel == null)
-        {
-            return;
-        }
-
-        grantChipsContainer.Clear();
-        int chipCount = 0;
-        chipCount += TryAddGrantChip(grantChipsContainer, "Food", displayData.BetweenActFood);
-        chipCount += TryAddGrantChip(grantChipsContainer, "Morale", displayData.BetweenActMorale);
-        chipCount += TryAddGrantChip(grantChipsContainer, "Gold", displayData.BetweenActGold);
-        grantEmptyLabel.style.display = chipCount == 0 ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+        SetLabelText(intermissionRewardFoodValueLabel, FormatSigned(displayData.BetweenActFood));
+        SetLabelText(intermissionRewardMoraleValueLabel, FormatSigned(displayData.BetweenActMorale));
+        SetLabelText(intermissionRewardGoldValueLabel, FormatSigned(displayData.BetweenActGold));
     }
 
     private void RebuildSelectionCarryOverSummary(CaravanResourceSnapshot currentResources)
@@ -761,7 +748,7 @@ internal sealed class HexActTransitionModalDocumentController
         intermissionIllustrationImage.image = null;
         intermissionIllustrationImage.style.display = UIE.DisplayStyle.None;
         intermissionIllustrationPlaceholderLabel.text = string.Empty;
-        intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.Flex;
+        intermissionIllustrationPlaceholderLabel.style.display = UIE.DisplayStyle.None;
     }
 
     private Texture2D ResolveRandomPlaceholderTexture()
@@ -777,38 +764,6 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         return placeholderArtLibrary.GetRandomTextureForCompletedAct(activeDisplayData.CompletedActNumber);
-    }
-
-    private UIE.VisualElement CreateJournalChip(string label, string value)
-    {
-        UIE.VisualElement chip = new();
-        chip.AddToClassList("act-transition-journal-chip");
-        AddResourceModifierClass(chip, label);
-
-        UIE.Label chipLabel = new($"{label} {value}");
-        chipLabel.AddToClassList("act-transition-journal-chip-label");
-        ApplyRimouskiFont(chipLabel);
-        chip.Add(chipLabel);
-        return chip;
-    }
-
-    private int TryAddGrantChip(UIE.VisualElement parent, string label, int value)
-    {
-        if (value == 0)
-        {
-            return 0;
-        }
-
-        UIE.VisualElement chip = new();
-        chip.AddToClassList("act-transition-journal-chip");
-        AddResourceModifierClass(chip, label);
-
-        UIE.Label chipLabel = new($"{FormatSigned(value)} {label}");
-        chipLabel.AddToClassList("act-transition-journal-chip-label");
-        ApplyRimouskiFont(chipLabel);
-        chip.Add(chipLabel);
-        parent.Add(chip);
-        return 1;
     }
 
     private UIE.VisualElement CreateResourceMiniModule(string label, string value, string toneClass)
@@ -892,32 +847,14 @@ internal sealed class HexActTransitionModalDocumentController
         label.style.display = hasText ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
     }
 
-    private static void AddResourceModifierClass(UIE.VisualElement element, string label)
+    private static void SetLabelText(UIE.Label label, string text)
     {
-        switch (label)
+        if (label == null)
         {
-            case "Food":
-                element.AddToClassList("act-transition-resource--food");
-                break;
-
-            case "Morale":
-                element.AddToClassList("act-transition-resource--morale");
-                break;
-
-            case "Gold":
-                element.AddToClassList("act-transition-resource--gold");
-                break;
-        }
-    }
-
-    private static string BuildTransitionMetaLabel(HexActTransitionDisplayData displayData)
-    {
-        if (displayData.CompletedActNumber > 0 && displayData.NextActNumber > 0)
-        {
-            return $"ROAD INTERMISSION · ACT {displayData.CompletedActNumber} TO ACT {displayData.NextActNumber}";
+            return;
         }
 
-        return "ROAD INTERMISSION";
+        label.text = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
     }
 
     private static string BuildSelectionHeaderTitle(int nextActNumber)
@@ -1037,7 +974,16 @@ internal sealed class HexActTransitionModalDocumentController
 
     private static string NormalizeIntermissionBody(string rawText)
     {
-        return NormalizeInlineText(rawText);
+        string normalized = NormalizeInlineText(rawText);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return string.Empty;
+        }
+
+        const int maxLength = 124;
+        return normalized.Length <= maxLength
+            ? normalized
+            : $"{normalized.Substring(0, maxLength).TrimEnd()}...";
     }
 
     private static string FormatSigned(int value)
@@ -1058,10 +1004,20 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void ApplyIntermissionTypographyTheme()
     {
-        ApplyRimouskiFont(intermissionMetaLabel);
         ApplyRimouskiFont(intermissionTitleLabel);
-        ApplyRimouskiFont(intermissionSummaryLabel);
         ApplyRimouskiFont(intermissionContinueButton);
+    }
+
+    private void UpdateOverlayForScreen(bool showSelection)
+    {
+        if (modalOverlay == null)
+        {
+            return;
+        }
+
+        modalOverlay.style.backgroundColor = showSelection
+            ? new UIE.StyleColor(new Color(10f / 255f, 12f / 255f, 16f / 255f, 0.72f))
+            : new UIE.StyleColor(new Color(8f / 255f, 10f / 255f, 16f / 255f, 0.58f));
     }
 
     private void ApplySelectionTypographyTheme()
