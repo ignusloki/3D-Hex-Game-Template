@@ -732,7 +732,7 @@ internal sealed class HexActTransitionModalDocumentController
         SetDetailLabel(detailKeywordLabel, BuildSelectionKeywordHeading(inspectBoon));
         SetDetailLabel(detailEffectLabel, BuildSelectionDescription(inspectBoon));
         RebuildSelectionGlossary(inspectBoon);
-        SetDetailLabel(detailFlavorLabel, NormalizeInlineText(inspectBoon.flavorText));
+        SetDetailLabel(detailFlavorLabel, NormalizeFlavorLine(inspectBoon.flavorText));
         SetDetailLabel(detailNoteLabel, BuildSelectionFamilyNote(inspectBoon));
     }
 
@@ -932,7 +932,8 @@ internal sealed class HexActTransitionModalDocumentController
         string contextNote = NormalizeInlineText(displayData.SelectionContextNote);
         if (!string.IsNullOrWhiteSpace(contextNote))
         {
-            if (contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (contextNote.IndexOf("determines the family for Act 3", StringComparison.OrdinalIgnoreCase) >= 0
+                || contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "This choice determines the family for Act 3.";
             }
@@ -970,12 +971,9 @@ internal sealed class HexActTransitionModalDocumentController
             return familyNote;
         }
 
-        if (contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return $"{familyNote} This choice determines the Act 3 family.";
-        }
-
-        if (contextNote.StartsWith("Locked family:", StringComparison.OrdinalIgnoreCase))
+        if (contextNote.IndexOf("determines the family for Act 3", StringComparison.OrdinalIgnoreCase) >= 0
+            || contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0
+            || contextNote.IndexOf("already locked for Act 3", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             return familyNote;
         }
@@ -995,6 +993,46 @@ internal sealed class HexActTransitionModalDocumentController
             .Replace("\n", " ")
             .Replace("  ", " ")
             .Trim();
+    }
+
+    private static string NormalizeFlavorLine(string rawText)
+    {
+        string normalized = NormalizeInlineText(rawText);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return string.Empty;
+        }
+
+        int sentenceBreakIndex = FindSentenceBreakIndex(normalized);
+        if (sentenceBreakIndex > 0)
+        {
+            string sentence = normalized.Substring(0, sentenceBreakIndex).Trim();
+            if (!string.IsNullOrWhiteSpace(sentence))
+            {
+                return sentence;
+            }
+        }
+
+        const int maxLength = 96;
+        return normalized.Length <= maxLength
+            ? normalized
+            : $"{normalized.Substring(0, maxLength).TrimEnd()}...";
+    }
+
+    private static int FindSentenceBreakIndex(string text)
+    {
+        for (int index = 0; index < text.Length; index++)
+        {
+            char current = text[index];
+            if (current != '.' && current != '!' && current != '?')
+            {
+                continue;
+            }
+
+            return index + 1;
+        }
+
+        return -1;
     }
 
     private static string NormalizeIntermissionBody(string rawText)

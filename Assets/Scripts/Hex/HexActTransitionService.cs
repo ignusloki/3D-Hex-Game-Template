@@ -495,13 +495,13 @@ public static class HexActTransitionService
     {
         if (completedAct <= 1)
         {
-            return "This choice locks the Act 3 family.";
+            return "This choice determines the family for Act 3.";
         }
 
         if (GetLockedBoonFamily() != HexNemesisArchetype.None)
         {
             string lockedFamilyLabel = FormatArchetype(GetLockedBoonFamily());
-            return $"Locked family: {lockedFamilyLabel}.";
+            return $"The {lockedFamilyLabel} family is already locked for Act 3.";
         }
 
         return string.Empty;

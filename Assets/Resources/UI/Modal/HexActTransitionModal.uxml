@@ -17,7 +17,7 @@
                 <ui:VisualElement name="act-transition-intermission-illustration-frame">
                     <ui:VisualElement name="act-transition-intermission-illustration-inset">
                         <ui:Image name="act-transition-intermission-illustration-image" />
-                        <ui:Label name="act-transition-intermission-illustration-placeholder" text="placeholder" />
+                        <ui:Label name="act-transition-intermission-illustration-placeholder" text="" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 
@@ -53,7 +53,7 @@
                             text="Choose one boon to carry into the next act." />
                         <ui:Label
                             name="act-transition-selection-note"
-                            text="This choice locks the Act 3 family." />
+                            text="This choice determines the family for Act 3." />
                     </ui:VisualElement>
 
                     <ui:VisualElement name="act-transition-selection-resource-panel">
