@@ -17,6 +17,8 @@ MonoBehaviour:
   description: Gain +5 Food, +3 Morale, and +3 Gold at the start of Act 3, but the Hunter starts 2 hexes closer to the caravan.
   flavorText: Beneath what seemed spent and ruined, provision still glows for the final crossing, though the Hunter closes the distance.
   icon: {fileID: 0}
+  portraitTexture: {fileID: 2800000, guid: 4d01b922ce0b741e7906b797a969efd8, type: 3}
+  familyIconTexture: {fileID: 2800000, guid: 2d3c77022ab334e1d92232c1794908e3, type: 3}
   archetypeFamily: 1
   category: 0
   isEnabled: 1

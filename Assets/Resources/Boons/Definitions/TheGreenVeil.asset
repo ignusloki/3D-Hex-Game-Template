@@ -17,6 +17,8 @@ MonoBehaviour:
   description: Grass grows more freely in Act 3, but the Hunter vanishes from sight while standing within it.
   flavorText: The last road is covered in mercy and concealment. What shelters the caravan also hides the pursuer.
   icon: {fileID: 0}
+  portraitTexture: {fileID: 2800000, guid: fa15d6bf3725844c2b1b09d8f8110803, type: 3}
+  familyIconTexture: {fileID: 2800000, guid: 2d3c77022ab334e1d92232c1794908e3, type: 3}
   archetypeFamily: 1
   category: 2
   isEnabled: 1

@@ -109,14 +109,9 @@
                 name="act-transition-selection-shell"
                 class="act-transition-page-shell act-transition-page-shell--wide">
                 <ui:VisualElement name="act-transition-selection-header">
-                    <ui:VisualElement name="act-transition-selection-copy">
-                        <ui:Label
-                            name="act-transition-selection-prompt"
-                            text="Choose one boon to carry into the next act." />
-                        <ui:Label
-                            name="act-transition-selection-note"
-                            text="This choice determines the family for Act 3." />
-                    </ui:VisualElement>
+                    <ui:Label
+                        name="act-transition-selection-prompt"
+                        text="Choose one boon to carry into the next act." />
 
                     <ui:VisualElement name="act-transition-selection-resource-panel">
                         <ui:Label name="act-transition-selection-resource-label" text="Carry-over" />
@@ -124,16 +119,20 @@
                     </ui:VisualElement>
                 </ui:VisualElement>
 
-                <ui:VisualElement name="act-transition-selection-card-row" />
+                <ui:VisualElement name="act-transition-selection-card-row">
+                    <ui:VisualElement name="act-transition-selection-card-group" />
+                </ui:VisualElement>
 
                 <ui:VisualElement name="act-transition-selection-detail-panel">
-                    <ui:Label name="act-transition-selection-detail-meta" text="Inspect" />
-                    <ui:Label name="act-transition-selection-detail-title" text="Select a boon to inspect it." />
-                    <ui:Label name="act-transition-selection-detail-keywords" text="Keywords appear here." />
-                    <ui:Label name="act-transition-selection-detail-effect" text="Select a boon to inspect it." />
-                    <ui:VisualElement name="act-transition-selection-detail-glossary" />
-                    <ui:Label name="act-transition-selection-detail-flavor" text="" />
-                    <ui:Label name="act-transition-selection-detail-note" text="" />
+                    <ui:Label name="act-transition-selection-detail-title" text="" />
+                    <ui:VisualElement name="act-transition-selection-detail-family-row">
+                        <ui:VisualElement name="act-transition-selection-detail-family-badge">
+                            <ui:Image name="act-transition-selection-detail-family-icon" />
+                        </ui:VisualElement>
+                        <ui:Label name="act-transition-selection-detail-family-label" text="" />
+                    </ui:VisualElement>
+                    <ui:Label name="act-transition-selection-detail-effect" text="" />
+                    <ui:ScrollView name="act-transition-selection-detail-glossary" />
                 </ui:VisualElement>
 
                 <ui:VisualElement class="act-transition-actions act-transition-actions--center">

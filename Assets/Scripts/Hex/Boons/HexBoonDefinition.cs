@@ -249,6 +249,8 @@ public sealed class HexBoonDefinition : ScriptableObject
     public bool isEnabled = true;
 
     [Header("Presentation")]
+    public Texture2D portraitTexture;
+    public Texture2D familyIconTexture;
     public string cardSummary = string.Empty;
     public HexBoonKeywordPresentationData[] keywords = System.Array.Empty<HexBoonKeywordPresentationData>();
 
@@ -301,6 +303,21 @@ public sealed class HexBoonDefinition : ScriptableObject
     public string GetResolvedDisplayName()
     {
         return string.IsNullOrWhiteSpace(displayName) ? "Boon" : displayName;
+    }
+
+    public Texture GetPortraitTexture()
+    {
+        if (portraitTexture != null)
+        {
+            return portraitTexture;
+        }
+
+        return icon != null ? icon.texture : null;
+    }
+
+    public Texture GetFamilyIconTexture()
+    {
+        return familyIconTexture;
     }
 
     public string GetCardSummary()

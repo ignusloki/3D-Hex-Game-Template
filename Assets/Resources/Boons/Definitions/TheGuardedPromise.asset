@@ -17,6 +17,8 @@ MonoBehaviour:
   description: The Hunter moves only one hex per activation, but it begins Act 3 on the goal itself.
   flavorText: The promise is not left unguarded. The threshold must be won, not merely reached.
   icon: {fileID: 0}
+  portraitTexture: {fileID: 2800000, guid: 52578c0305ca34ec2b46fce155f4ae56, type: 3}
+  familyIconTexture: {fileID: 2800000, guid: 2d3c77022ab334e1d92232c1794908e3, type: 3}
   archetypeFamily: 1
   category: 0
   isEnabled: 1

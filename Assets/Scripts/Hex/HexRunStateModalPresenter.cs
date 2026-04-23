@@ -158,17 +158,16 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.Label intermissionRewardGoldValueLabel;
     private UIE.Button intermissionContinueButton;
     private UIE.Label selectionPromptLabel;
-    private UIE.Label selectionNoteLabel;
     private UIE.Label selectionResourceLabel;
     private UIE.VisualElement selectionResourceStripContainer;
     private UIE.VisualElement selectionCardsRow;
-    private UIE.Label detailMetaLabel;
+    private UIE.VisualElement selectionCardsGroup;
     private UIE.Label detailTitleLabel;
-    private UIE.Label detailKeywordLabel;
+    private UIE.VisualElement detailFamilyRow;
+    private UIE.Image detailFamilyIconImage;
+    private UIE.Label detailFamilyLabel;
     private UIE.Label detailEffectLabel;
-    private UIE.VisualElement detailGlossaryContainer;
-    private UIE.Label detailFlavorLabel;
-    private UIE.Label detailNoteLabel;
+    private UIE.ScrollView detailGlossaryScrollView;
     private UIE.Button selectionContinueButton;
     private HexHudDocumentController hudDocumentController;
     private Action<HexBoonDefinition> continueRequested;
@@ -184,11 +183,7 @@ internal sealed class HexActTransitionModalDocumentController
     private sealed class TransitionBoonCardView
     {
         public UIE.VisualElement Root;
-        public UIE.Label TitleLabel;
         public UIE.Image ArtImage;
-        public UIE.Label ArtPlaceholderLabel;
-        public UIE.Label SummaryLabel;
-        public UIE.Label FamilyLabel;
         public HexBoonDefinition Boon;
         public bool IsHovered;
         public bool IsFocused;
@@ -265,17 +260,16 @@ internal sealed class HexActTransitionModalDocumentController
         intermissionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-intermission-button");
 
         selectionPromptLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-prompt");
-        selectionNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-note");
         selectionResourceLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-resource-label");
         selectionResourceStripContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-resource-strip");
         selectionCardsRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-card-row");
-        detailMetaLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-meta");
+        selectionCardsGroup = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-card-group");
         detailTitleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-title");
-        detailKeywordLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-keywords");
+        detailFamilyRow = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-detail-family-row");
+        detailFamilyIconImage = UIE.UQueryExtensions.Q<UIE.Image>(modalMount, "act-transition-selection-detail-family-icon");
+        detailFamilyLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-family-label");
         detailEffectLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-effect");
-        detailGlossaryContainer = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-detail-glossary");
-        detailFlavorLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-flavor");
-        detailNoteLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "act-transition-selection-detail-note");
+        detailGlossaryScrollView = UIE.UQueryExtensions.Q<UIE.ScrollView>(modalMount, "act-transition-selection-detail-glossary");
         selectionContinueButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "act-transition-selection-button");
         ApplyIntermissionTypographyTheme();
         ApplySelectionTypographyTheme();
@@ -299,7 +293,7 @@ internal sealed class HexActTransitionModalDocumentController
         gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Modal, false);
         gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
         LogDebug(
-            $"Initialized shared-root transition modal. modalRootFound={modalRoot != null} intermissionFound={intermissionShell != null} selectionFound={selectionShell != null} cardsRowFound={selectionCardsRow != null}.");
+            $"Initialized shared-root transition modal. modalRootFound={modalRoot != null} intermissionFound={intermissionShell != null} selectionFound={selectionShell != null} cardsRowFound={selectionCardsRow != null} cardsGroupFound={selectionCardsGroup != null}.");
         isInitialized = true;
     }
 
@@ -346,9 +340,9 @@ internal sealed class HexActTransitionModalDocumentController
         screenMode = TransitionScreenMode.None;
         cardViews.Clear();
 
-        if (selectionCardsRow != null)
+        if (selectionCardsGroup != null)
         {
-            selectionCardsRow.Clear();
+            selectionCardsGroup.Clear();
         }
 
         SetModalVisibility(false);
@@ -389,15 +383,9 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         selectionPromptLabel.text = BuildSelectionHeaderTitle(activeDisplayData.NextActNumber);
-        if (selectionNoteLabel != null)
-        {
-            string supportLine = BuildSelectionSupportLine(activeDisplayData);
-            selectionNoteLabel.text = supportLine;
-            selectionNoteLabel.style.display = string.IsNullOrWhiteSpace(supportLine) ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
-        }
-
         RebuildSelectionCarryOverSummary(activeDisplayData.CurrentResources);
         RebuildSelectionCards();
+        EnsureDefaultSelectedBoon();
         RefreshSelectionActionState();
         RefreshDetailPanel();
     }
@@ -472,20 +460,21 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         selectionResourceStripContainer.Clear();
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Food", currentResources.Food.ToString(), "act-transition-resource-mini--food"));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Morale", currentResources.Morale.ToString(), "act-transition-resource-mini--morale"));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Gold", currentResources.Gold.ToString(), "act-transition-resource-mini--gold"));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Food", currentResources.Food.ToString()));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Morale", currentResources.Morale.ToString()));
+        selectionResourceStripContainer.Add(CreateResourceMiniModule("Gold", currentResources.Gold.ToString()));
     }
 
     private void RebuildSelectionCards()
     {
         cardViews.Clear();
-        if (selectionCardsRow == null)
+        UIE.VisualElement cardsContainer = selectionCardsGroup ?? selectionCardsRow;
+        if (cardsContainer == null)
         {
             return;
         }
 
-        selectionCardsRow.Clear();
+        cardsContainer.Clear();
         for (int index = 0; index < boonOptions.Length; index++)
         {
             HexBoonDefinition boon = boonOptions[index];
@@ -497,10 +486,40 @@ internal sealed class HexActTransitionModalDocumentController
             boon.Validate();
             TransitionBoonCardView cardView = CreateCardView(boon);
             cardViews.Add(cardView);
-            selectionCardsRow.Add(cardView.Root);
+            cardsContainer.Add(cardView.Root);
         }
 
         RefreshCardVisuals();
+    }
+
+    private void EnsureDefaultSelectedBoon()
+    {
+        if (selectedBoon != null)
+        {
+            for (int index = 0; index < boonOptions.Length; index++)
+            {
+                HexBoonDefinition option = boonOptions[index];
+                if (option != null
+                    && string.Equals(option.id, selectedBoon.id, StringComparison.OrdinalIgnoreCase)
+                    && option.isEnabled)
+                {
+                    return;
+                }
+            }
+        }
+
+        selectedBoon = null;
+        for (int index = 0; index < boonOptions.Length; index++)
+        {
+            HexBoonDefinition option = boonOptions[index];
+            if (option == null || !option.isEnabled)
+            {
+                continue;
+            }
+
+            selectedBoon = option;
+            return;
+        }
     }
 
     private TransitionBoonCardView CreateCardView(HexBoonDefinition boon)
@@ -511,11 +530,6 @@ internal sealed class HexActTransitionModalDocumentController
         root.tabIndex = 0;
         root.pickingMode = UIE.PickingMode.Position;
 
-        UIE.Label titleLabel = new();
-        titleLabel.AddToClassList("act-transition-card-title");
-        titleLabel.text = boon.GetResolvedDisplayName();
-        ApplyRimouskiFont(titleLabel);
-
         UIE.VisualElement artFrame = new();
         artFrame.AddToClassList("act-transition-card-art-frame");
 
@@ -524,41 +538,22 @@ internal sealed class HexActTransitionModalDocumentController
 
         UIE.Image artImage = new();
         artImage.AddToClassList("act-transition-card-art-image");
-        artImage.scaleMode = ScaleMode.ScaleAndCrop;
-
-        UIE.Label artPlaceholderLabel = new(string.Empty);
-        artPlaceholderLabel.AddToClassList("act-transition-card-art-placeholder");
+        artImage.scaleMode = ScaleMode.ScaleToFit;
 
         artInset.Add(artImage);
-        artInset.Add(artPlaceholderLabel);
         artFrame.Add(artInset);
-
-        UIE.Label summaryLabel = new();
-        summaryLabel.AddToClassList("act-transition-card-summary");
-        summaryLabel.text = boon.GetCardSummary();
-
-        UIE.Label familyLabel = new();
-        familyLabel.AddToClassList("act-transition-card-family");
-        familyLabel.text = $"{FormatArchetype(boon.archetypeFamily)} Family";
-        ApplyRimouskiFont(familyLabel);
-
-        root.Add(titleLabel);
         root.Add(artFrame);
-        root.Add(summaryLabel);
-        root.Add(familyLabel);
 
-        Texture cardTexture = boon.icon != null ? boon.icon.texture : ResolveRandomPlaceholderTexture();
+        Texture cardTexture = boon.GetPortraitTexture();
         if (cardTexture != null)
         {
             artImage.image = cardTexture;
             artImage.style.display = UIE.DisplayStyle.Flex;
-            artPlaceholderLabel.style.display = UIE.DisplayStyle.None;
         }
         else
         {
             artImage.image = null;
             artImage.style.display = UIE.DisplayStyle.None;
-            artPlaceholderLabel.style.display = UIE.DisplayStyle.Flex;
         }
 
         root.RegisterCallback<UIE.ClickEvent>(_ => HandleCardClicked(boon));
@@ -582,11 +577,7 @@ internal sealed class HexActTransitionModalDocumentController
         return new TransitionBoonCardView
         {
             Root = root,
-            TitleLabel = titleLabel,
             ArtImage = artImage,
-            ArtPlaceholderLabel = artPlaceholderLabel,
-            SummaryLabel = summaryLabel,
-            FamilyLabel = familyLabel,
             Boon = boon
         };
     }
@@ -695,7 +686,7 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void RefreshDetailPanel()
     {
-        if (detailMetaLabel == null)
+        if (detailTitleLabel == null)
         {
             return;
         }
@@ -703,30 +694,18 @@ internal sealed class HexActTransitionModalDocumentController
         HexBoonDefinition inspectBoon = hoveredBoon ?? focusedBoon ?? selectedBoon;
         if (inspectBoon == null)
         {
-            detailMetaLabel.text = "Inspect";
-            detailTitleLabel.text = "Select a boon to inspect it.";
-            SetDetailLabel(detailKeywordLabel, string.Empty);
+            SetLabelText(detailTitleLabel, string.Empty);
+            SetFamilyRow(null);
             SetDetailLabel(detailEffectLabel, string.Empty);
             RebuildSelectionGlossary(null);
-            SetDetailLabel(detailFlavorLabel, string.Empty);
-            SetDetailLabel(detailNoteLabel, string.Empty);
             return;
         }
 
         inspectBoon.Validate();
-        detailMetaLabel.text = BuildSelectionDetailMeta(inspectBoon);
-        detailTitleLabel.text = inspectBoon.GetResolvedDisplayName();
-        SetDetailLabel(detailKeywordLabel, BuildSelectionKeywordHeading(inspectBoon));
+        SetLabelText(detailTitleLabel, inspectBoon.GetResolvedDisplayName());
+        SetFamilyRow(inspectBoon);
         SetDetailLabel(detailEffectLabel, BuildSelectionDescription(inspectBoon));
         RebuildSelectionGlossary(inspectBoon);
-        SetDetailLabel(detailFlavorLabel, NormalizeFlavorLine(inspectBoon.flavorText));
-        SetDetailLabel(detailNoteLabel, BuildSelectionFamilyNote(inspectBoon));
-    }
-
-    private string BuildSelectionDetailMeta(HexBoonDefinition boon)
-    {
-        bool isSelected = selectedBoon != null && string.Equals(selectedBoon.id, boon.id, StringComparison.OrdinalIgnoreCase);
-        return isSelected ? "Selected boon" : "Inspect";
     }
 
     private void ApplyIntermissionIllustration(Sprite illustration)
@@ -766,18 +745,37 @@ internal sealed class HexActTransitionModalDocumentController
         return placeholderArtLibrary.GetRandomTextureForCompletedAct(activeDisplayData.CompletedActNumber);
     }
 
-    private UIE.VisualElement CreateResourceMiniModule(string label, string value, string toneClass)
+    private void SetFamilyRow(HexBoonDefinition boon)
+    {
+        if (detailFamilyRow == null || detailFamilyIconImage == null || detailFamilyLabel == null)
+        {
+            return;
+        }
+
+        if (boon == null)
+        {
+            detailFamilyRow.style.display = UIE.DisplayStyle.None;
+            detailFamilyIconImage.image = null;
+            detailFamilyLabel.text = string.Empty;
+            return;
+        }
+
+        detailFamilyLabel.text = $"Family: {FormatArchetype(boon.archetypeFamily)}";
+        Texture familyIconTexture = boon.GetFamilyIconTexture();
+        detailFamilyIconImage.image = familyIconTexture;
+        detailFamilyIconImage.style.display = familyIconTexture != null ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
+        detailFamilyRow.style.display = UIE.DisplayStyle.Flex;
+    }
+
+    private UIE.VisualElement CreateResourceMiniModule(string label, string value)
     {
         UIE.VisualElement module = new();
         module.AddToClassList("act-transition-resource-mini");
-        module.AddToClassList(toneClass);
 
         UIE.Label labelElement = new(label);
         labelElement.AddToClassList("act-transition-resource-mini-label");
         UIE.Label valueElement = new(value);
         valueElement.AddToClassList("act-transition-resource-mini-value");
-        ApplyRimouskiFont(labelElement);
-        ApplyRimouskiFont(valueElement);
 
         module.Add(labelElement);
         module.Add(valueElement);
@@ -786,15 +784,15 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void RebuildSelectionGlossary(HexBoonDefinition boon)
     {
-        if (detailGlossaryContainer == null)
+        if (detailGlossaryScrollView == null)
         {
             return;
         }
 
-        detailGlossaryContainer.Clear();
+        detailGlossaryScrollView.contentContainer.Clear();
         if (boon?.keywords == null || boon.keywords.Length == 0)
         {
-            detailGlossaryContainer.style.display = UIE.DisplayStyle.None;
+            detailGlossaryScrollView.style.display = UIE.DisplayStyle.None;
             return;
         }
 
@@ -808,11 +806,11 @@ internal sealed class HexActTransitionModalDocumentController
             }
 
             UIE.VisualElement row = CreateSelectionGlossaryRow(keyword);
-            detailGlossaryContainer.Add(row);
+            detailGlossaryScrollView.contentContainer.Add(row);
             rowCount++;
         }
 
-        detailGlossaryContainer.style.display = rowCount == 0 ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
+        detailGlossaryScrollView.style.display = rowCount == 0 ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
     }
 
     private UIE.VisualElement CreateSelectionGlossaryRow(HexBoonKeywordPresentationData keyword)
@@ -822,11 +820,10 @@ internal sealed class HexActTransitionModalDocumentController
 
         UIE.Label termLabel = new(keyword.label.Trim());
         termLabel.AddToClassList("act-transition-glossary-term");
-        ApplyRimouskiFont(termLabel);
 
         UIE.Label descriptionLabel = new(
             string.IsNullOrWhiteSpace(keyword.explanation)
-                ? "No explanation listed."
+                ? string.Empty
                 : NormalizeInlineText(keyword.explanation));
         descriptionLabel.AddToClassList("act-transition-glossary-text");
 
@@ -864,58 +861,44 @@ internal sealed class HexActTransitionModalDocumentController
             : "Choose one boon for the next act";
     }
 
-    private static string BuildSelectionSupportLine(HexActTransitionDisplayData displayData)
-    {
-        string contextNote = NormalizeInlineText(displayData.SelectionContextNote);
-        if (!string.IsNullOrWhiteSpace(contextNote))
-        {
-            if (contextNote.IndexOf("determines the family for Act 3", StringComparison.OrdinalIgnoreCase) >= 0
-                || contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return "This choice determines the family for Act 3.";
-            }
-
-            return contextNote;
-        }
-
-        string prompt = NormalizeInlineText(displayData.SelectionPrompt);
-        if (prompt.IndexOf("locked family", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return "Choose from the locked family for the final stretch ahead.";
-        }
-
-        return string.Empty;
-    }
-
-    private static string BuildSelectionKeywordHeading(HexBoonDefinition boon)
-    {
-        string keywordLine = boon?.GetKeywordLine() ?? string.Empty;
-        return string.IsNullOrWhiteSpace(keywordLine) ? string.Empty : $"Keywords: {keywordLine}";
-    }
-
     private static string BuildSelectionDescription(HexBoonDefinition boon)
     {
         string normalized = NormalizeInlineText(boon?.description);
-        return string.IsNullOrWhiteSpace(normalized) ? "No gameplay bonus described." : normalized;
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return string.Empty;
+        }
+
+        int sentenceBreakIndex = FindSentenceBreakIndex(normalized);
+        if (sentenceBreakIndex > 0)
+        {
+            string sentence = normalized.Substring(0, sentenceBreakIndex).Trim();
+            if (!string.IsNullOrWhiteSpace(sentence))
+            {
+                return sentence;
+            }
+        }
+
+        const int maxLength = 128;
+        return normalized.Length <= maxLength
+            ? normalized
+            : $"{normalized.Substring(0, maxLength).TrimEnd()}...";
     }
 
-    private string BuildSelectionFamilyNote(HexBoonDefinition boon)
+    private static string BuildSelectionCardSummary(HexBoonDefinition boon)
     {
-        string familyNote = $"Family: {FormatArchetype(boon.archetypeFamily)}.";
-        string contextNote = NormalizeInlineText(activeDisplayData.SelectionContextNote);
-        if (string.IsNullOrWhiteSpace(contextNote))
+        if (boon == null)
         {
-            return familyNote;
+            return string.Empty;
         }
 
-        if (contextNote.IndexOf("determines the family for Act 3", StringComparison.OrdinalIgnoreCase) >= 0
-            || contextNote.IndexOf("locks the Act 3 family", StringComparison.OrdinalIgnoreCase) >= 0
-            || contextNote.IndexOf("already locked for Act 3", StringComparison.OrdinalIgnoreCase) >= 0)
+        if (!string.IsNullOrWhiteSpace(boon.cardSummary))
         {
-            return familyNote;
+            return boon.cardSummary.Trim();
         }
 
-        return $"{familyNote} {contextNote}";
+        string keywordLine = boon.GetKeywordLine();
+        return string.IsNullOrWhiteSpace(keywordLine) ? string.Empty : keywordLine;
     }
 
     private static string NormalizeInlineText(string rawText)
@@ -1023,8 +1006,6 @@ internal sealed class HexActTransitionModalDocumentController
     private void ApplySelectionTypographyTheme()
     {
         ApplyRimouskiFont(selectionPromptLabel);
-        ApplyRimouskiFont(selectionResourceLabel);
-        ApplyRimouskiFont(detailMetaLabel);
         ApplyRimouskiFont(detailTitleLabel);
         ApplyRimouskiFont(selectionContinueButton);
     }
