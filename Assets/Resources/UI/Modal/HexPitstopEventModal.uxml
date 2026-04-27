@@ -1,6 +1,7 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="pitstop-modal-root">
         <ui:VisualElement name="pitstop-modal-overlay">
+            <ui:VisualElement name="pitstop-modal-scrim" />
             <ui:VisualElement name="pitstop-modal-shell">
                 <ui:VisualElement name="pitstop-modal-header">
                     <ui:VisualElement name="pitstop-modal-topline">

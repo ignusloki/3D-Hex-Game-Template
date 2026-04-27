@@ -318,15 +318,23 @@ internal sealed class HexPitstopEventModalDocumentController
 {
     private const string LayoutResourcePath = "UI/Modal/HexPitstopEventModal";
     private const string StyleSheetResourcePath = "UI/Modal/HexPitstopEventModalStyles";
+    private const string SimpleModalFadeProfileResourcePath = "UI/Transitions/SimpleModalFade";
     private const string ModalMountName = "pitstop-modal-mount";
+    private const string ScrimTransitionTargetKey = "scrim";
+    private const string ShellTransitionTargetKey = "shell";
 
     private readonly MonoBehaviour owner;
+    private readonly List<Button> optionButtons = new();
     private VisualTreeAsset layoutAsset;
     private StyleSheet styleSheet;
+    private HexUiTransitionProfile simpleModalFadeProfile;
+    private HexUiTransitionProfile activeModalFadeProfile;
     private HexGameplayUiRootController gameplayUiRootController;
     private VisualElement modalLayer;
     private VisualElement modalMount;
     private VisualElement modalRoot;
+    private VisualElement overlayElement;
+    private VisualElement scrimElement;
     private VisualElement shellElement;
     private Label metaLabel;
     private Label titleLabel;
@@ -342,8 +350,10 @@ internal sealed class HexPitstopEventModalDocumentController
     private Action<int> optionSelected;
     private Action continueSelected;
     private HexHudDocumentController hudDocumentController;
+    private HexUiTransitionPlayer modalTransitionPlayer;
     private bool isInitialized;
     private bool isOpen;
+    private bool areTransitionControlsLocked;
 
     public HexPitstopEventModalDocumentController(MonoBehaviour owner)
     {
@@ -361,6 +371,7 @@ internal sealed class HexPitstopEventModalDocumentController
 
         layoutAsset ??= Resources.Load<VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<StyleSheet>(StyleSheetResourcePath);
+        simpleModalFadeProfile ??= Resources.Load<HexUiTransitionProfile>(SimpleModalFadeProfileResourcePath);
         if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexPitstopEventModalDocumentController could not load the UI Toolkit modal assets from Resources.", owner);
@@ -395,6 +406,8 @@ internal sealed class HexPitstopEventModalDocumentController
         layoutAsset.CloneTree(modalMount);
 
         modalRoot = modalMount.Q<VisualElement>("pitstop-modal-root");
+        overlayElement = modalMount.Q<VisualElement>("pitstop-modal-overlay");
+        scrimElement = modalMount.Q<VisualElement>("pitstop-modal-scrim");
         shellElement = modalMount.Q<VisualElement>("pitstop-modal-shell");
         metaLabel = modalMount.Q<Label>("pitstop-modal-meta");
         titleLabel = modalMount.Q<Label>("pitstop-modal-title");
@@ -421,6 +434,7 @@ internal sealed class HexPitstopEventModalDocumentController
         if (modalRoot != null)
         {
             modalRoot.style.display = DisplayStyle.None;
+            modalTransitionPlayer = new HexUiTransitionPlayer(modalRoot);
         }
 
         LogDebug(
@@ -447,6 +461,7 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
+        bool shouldPlayReveal = !isOpen;
         optionSelected = onOptionSelected;
         continueSelected = null;
         LogDebug($"ShowChoice internal. options={options?.Count ?? 0} callbackAssigned={optionSelected != null}.");
@@ -458,6 +473,7 @@ internal sealed class HexPitstopEventModalDocumentController
         resolutionSection.style.display = DisplayStyle.None;
         SetResultMode(false);
         SetModalVisibility(true);
+        ShowModalContent(shouldPlayReveal);
     }
 
     public void ShowResolution(
@@ -477,6 +493,7 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
+        bool shouldPlayReveal = !isOpen;
         optionSelected = null;
         continueSelected = onContinueSelected;
         LogDebug($"ShowResolution internal. continueAssigned={continueSelected != null}.");
@@ -489,11 +506,13 @@ internal sealed class HexPitstopEventModalDocumentController
         resolutionSection.style.display = DisplayStyle.Flex;
         SetResultMode(true);
         SetModalVisibility(true);
+        ShowModalContent(shouldPlayReveal);
     }
 
     public void Hide()
     {
         LogDebug("Hide internal.");
+        StopModalReveal();
         optionSelected = null;
         continueSelected = null;
         PopulateOptions(Array.Empty<HexPitstopOptionViewData>());
@@ -523,6 +542,7 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
+        optionButtons.Clear();
         optionsList.Clear();
         if (options == null)
         {
@@ -548,6 +568,7 @@ internal sealed class HexPitstopEventModalDocumentController
             optionButton.SetEnabled(option.IsEnabled);
             optionButton.focusable = option.IsEnabled;
             optionButton.tabIndex = option.IsEnabled ? 0 : -1;
+            optionButton.userData = option.IsEnabled;
             optionButton.clicked += () => HandleOptionClicked(optionIndex);
 
             Label optionLabel = new(option.Label);
@@ -576,7 +597,10 @@ internal sealed class HexPitstopEventModalDocumentController
             }
 
             optionsList.Add(optionButton);
+            optionButtons.Add(optionButton);
         }
+
+        RefreshModalControlsState();
     }
 
     private static void PopulateChipContainer(VisualElement container, IReadOnlyList<HexPitstopEffectChipData> chips)
@@ -712,6 +736,11 @@ internal sealed class HexPitstopEventModalDocumentController
 
     private void HandleOptionClicked(int optionIndex)
     {
+        if (areTransitionControlsLocked)
+        {
+            return;
+        }
+
         LogDebug($"HandleOptionClicked index={optionIndex} callbackAssigned={optionSelected != null}.");
         Action<int> callback = optionSelected;
         callback?.Invoke(optionIndex);
@@ -719,10 +748,189 @@ internal sealed class HexPitstopEventModalDocumentController
 
     private void HandleContinueClicked()
     {
+        if (areTransitionControlsLocked)
+        {
+            return;
+        }
+
         LogDebug($"HandleContinueClicked callbackAssigned={continueSelected != null}.");
         Action callback = continueSelected;
         Hide();
         callback?.Invoke();
+    }
+
+    private void ShowModalContent(bool playReveal)
+    {
+        if (playReveal)
+        {
+            PlayModalReveal();
+            return;
+        }
+
+        StopModalReveal();
+        CompleteModalReveal();
+    }
+
+    private void PlayModalReveal()
+    {
+        StopModalReveal();
+        if (modalTransitionPlayer == null || shellElement == null)
+        {
+            SetElementOpacity(scrimElement ?? overlayElement, 1f);
+            SetElementOpacity(shellElement, 1f);
+            SetTransitionInteractionLock(false);
+            return;
+        }
+
+        activeModalFadeProfile = CreateSimpleModalFadeRuntimeProfile();
+        HexUiTransitionTargetSet targets = new HexUiTransitionTargetSet()
+            .Register(ScrimTransitionTargetKey, scrimElement ?? overlayElement)
+            .Register(ShellTransitionTargetKey, shellElement);
+
+        bool started = modalTransitionPlayer.Play(
+            activeModalFadeProfile,
+            targets,
+            CompleteModalReveal,
+            SetTransitionInteractionLock,
+            message => LogDebug(message, true));
+        if (!started)
+        {
+            CompleteModalReveal();
+        }
+    }
+
+    private void StopModalReveal()
+    {
+        modalTransitionPlayer?.Cancel(applyEndState: false);
+        SetTransitionInteractionLock(false);
+        ReleaseModalFadeProfile();
+    }
+
+    private void CompleteModalReveal()
+    {
+        SetElementOpacity(scrimElement ?? overlayElement, 1f);
+        SetElementOpacity(shellElement, 1f);
+        SetTransitionInteractionLock(false);
+        ReleaseModalFadeProfile();
+    }
+
+    private HexUiTransitionProfile CreateSimpleModalFadeRuntimeProfile()
+    {
+        HexUiTransitionProfile source = simpleModalFadeProfile;
+        HexUiTransitionProfile runtimeProfile = ScriptableObject.CreateInstance<HexUiTransitionProfile>();
+        runtimeProfile.hideFlags = HideFlags.DontSave;
+        runtimeProfile.profileId = source != null ? source.profileId : "simple-modal-fade";
+        runtimeProfile.easing = source != null ? source.easing : HexUiTransitionEasing.EaseOut;
+        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
+        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
+        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
+
+        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
+            ? source.FadeTracks
+            : CreateDefaultSimpleModalFadeTracks();
+        for (int index = 0; index < tracks.Count; index++)
+        {
+            HexUiTransitionFadeTrack track = tracks[index];
+            if (track == null || !track.HasTargetKey)
+            {
+                continue;
+            }
+
+            runtimeProfile.fadeTracks.Add(CopyFadeTrack(track));
+        }
+
+        return runtimeProfile;
+    }
+
+    private static IReadOnlyList<HexUiTransitionFadeTrack> CreateDefaultSimpleModalFadeTracks()
+    {
+        return new[]
+        {
+            new HexUiTransitionFadeTrack
+            {
+                targetKey = ScrimTransitionTargetKey,
+                startTime = 0f,
+                duration = 0.12f,
+                startOpacity = 0f,
+                endOpacity = 1f,
+                isRequired = true
+            },
+            new HexUiTransitionFadeTrack
+            {
+                targetKey = ShellTransitionTargetKey,
+                startTime = 0.04f,
+                duration = 0.16f,
+                startOpacity = 0f,
+                endOpacity = 1f,
+                isRequired = true
+            }
+        };
+    }
+
+    private static HexUiTransitionFadeTrack CopyFadeTrack(HexUiTransitionFadeTrack source)
+    {
+        return new HexUiTransitionFadeTrack
+        {
+            targetKey = source.targetKey,
+            startTime = source.startTime,
+            duration = source.duration,
+            startOpacity = source.startOpacity,
+            endOpacity = source.endOpacity,
+            isRequired = source.isRequired
+        };
+    }
+
+    private void SetTransitionInteractionLock(bool locked)
+    {
+        areTransitionControlsLocked = locked;
+        RefreshModalControlsState();
+    }
+
+    private void RefreshModalControlsState()
+    {
+        bool isInteractionEnabled = !areTransitionControlsLocked;
+        for (int index = 0; index < optionButtons.Count; index++)
+        {
+            Button optionButton = optionButtons[index];
+            if (optionButton == null)
+            {
+                continue;
+            }
+
+            bool isOptionEnabled = optionButton.userData is bool enabled && enabled;
+            SetButtonInteractionEnabled(optionButton, isInteractionEnabled && isOptionEnabled);
+        }
+
+        SetButtonInteractionEnabled(continueButton, isInteractionEnabled);
+    }
+
+    private static void SetButtonInteractionEnabled(Button button, bool enabled)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        button.SetEnabled(enabled);
+        button.pickingMode = enabled ? PickingMode.Position : PickingMode.Ignore;
+        button.focusable = enabled;
+    }
+
+    private static void SetElementOpacity(VisualElement element, float opacity)
+    {
+        if (element != null)
+        {
+            element.style.opacity = Mathf.Clamp01(opacity);
+        }
+    }
+
+    private void ReleaseModalFadeProfile()
+    {
+        if (activeModalFadeProfile != null)
+        {
+            UnityEngine.Object.Destroy(activeModalFadeProfile);
+            activeModalFadeProfile = null;
+        }
     }
 
     private void LogDebug(string message, bool verbose = false)
