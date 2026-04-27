@@ -1,8 +1,19 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 public sealed class HexGameOverTransitionSettings : MonoBehaviour
 {
+    public const string BlackoutTargetKey = "blackout";
+    public const string BackgroundTargetKey = "background";
+    public const string ScrimTargetKey = "scrim";
+    public const string TitleTargetKey = "title";
+    public const string SeparatorTargetKey = "separator";
+    public const string PanelTargetKey = "panel";
+    public const string DescriptionTargetKey = "description";
+    public const string RetryButtonTargetKey = "retry-button";
+    public const string ReturnToTitleButtonTargetKey = "return-to-title-button";
+
     [Header("Blackout")]
     [Min(0f)] public float blackoutFadeStart = 0f;
     [Min(0f)] public float blackoutFadeDuration = 1f;
@@ -40,17 +51,106 @@ public sealed class HexGameOverTransitionSettings : MonoBehaviour
     [Header("Easing")]
     public bool useEaseOut = true;
 
-    public float ResolveCompleteTime()
+    public HexUiTransitionProfile CreateRuntimeProfile()
     {
-        float completeTime = blackoutFadeStart + blackoutFadeDuration;
-        completeTime = Mathf.Max(completeTime, backgroundFadeStart + backgroundFadeDuration);
-        completeTime = Mathf.Max(completeTime, scrimFadeStart + scrimFadeDuration);
-        completeTime = Mathf.Max(completeTime, titleFadeStart + titleFadeDuration);
-        completeTime = Mathf.Max(completeTime, separatorFadeStart + separatorFadeDuration);
-        completeTime = Mathf.Max(completeTime, panelFadeStart + panelFadeDuration);
-        completeTime = Mathf.Max(completeTime, descriptionFadeStart + descriptionFadeDuration);
-        completeTime = Mathf.Max(completeTime, retryButtonFadeStart + retryButtonFadeDuration);
-        completeTime = Mathf.Max(completeTime, returnToTitleButtonFadeStart + returnToTitleButtonFadeDuration);
-        return completeTime;
+        return CreateRuntimeProfile(
+            blackoutFadeStart,
+            blackoutFadeDuration,
+            backgroundFadeStart,
+            backgroundFadeDuration,
+            scrimFadeStart,
+            scrimFadeDuration,
+            titleFadeStart,
+            titleFadeDuration,
+            separatorFadeStart,
+            separatorFadeDuration,
+            panelFadeStart,
+            panelFadeDuration,
+            descriptionFadeStart,
+            descriptionFadeDuration,
+            retryButtonFadeStart,
+            retryButtonFadeDuration,
+            returnToTitleButtonFadeStart,
+            returnToTitleButtonFadeDuration,
+            useEaseOut);
+    }
+
+    public static HexUiTransitionProfile CreateDefaultRuntimeProfile()
+    {
+        return CreateRuntimeProfile(
+            blackoutStart: 0f,
+            blackoutDuration: 1f,
+            backgroundStart: 1f,
+            backgroundDuration: 0.55f,
+            scrimStart: 1f,
+            scrimDuration: 0.55f,
+            titleStart: 1.35f,
+            titleDuration: 0.40f,
+            separatorStart: 1.45f,
+            separatorDuration: 0.35f,
+            panelStart: 1.60f,
+            panelDuration: 0.45f,
+            descriptionStart: 1.78f,
+            descriptionDuration: 0.30f,
+            retryStart: 1.92f,
+            retryDuration: 0.28f,
+            returnStart: 2.02f,
+            returnDuration: 0.28f,
+            useEaseOut: true);
+    }
+
+    private static HexUiTransitionProfile CreateRuntimeProfile(
+        float blackoutStart,
+        float blackoutDuration,
+        float backgroundStart,
+        float backgroundDuration,
+        float scrimStart,
+        float scrimDuration,
+        float titleStart,
+        float titleDuration,
+        float separatorStart,
+        float separatorDuration,
+        float panelStart,
+        float panelDuration,
+        float descriptionStart,
+        float descriptionDuration,
+        float retryStart,
+        float retryDuration,
+        float returnStart,
+        float returnDuration,
+        bool useEaseOut)
+    {
+        HexUiTransitionProfile profile = ScriptableObject.CreateInstance<HexUiTransitionProfile>();
+        profile.hideFlags = HideFlags.DontSave;
+        profile.profileId = "game-over-blackout-then-reveal";
+        profile.easing = useEaseOut ? HexUiTransitionEasing.EaseOut : HexUiTransitionEasing.Linear;
+        profile.overrideInteractionUnlockTime = false;
+        profile.interactionUnlockTime = 0f;
+        profile.fadeTracks = new List<HexUiTransitionFadeTrack>
+        {
+            CreateTrack(BlackoutTargetKey, blackoutStart, blackoutDuration),
+            CreateTrack(BackgroundTargetKey, backgroundStart, backgroundDuration),
+            CreateTrack(ScrimTargetKey, scrimStart, scrimDuration),
+            CreateTrack(TitleTargetKey, titleStart, titleDuration),
+            CreateTrack(SeparatorTargetKey, separatorStart, separatorDuration),
+            CreateTrack(PanelTargetKey, panelStart, panelDuration),
+            CreateTrack(DescriptionTargetKey, descriptionStart, descriptionDuration),
+            CreateTrack(RetryButtonTargetKey, retryStart, retryDuration),
+            CreateTrack(ReturnToTitleButtonTargetKey, returnStart, returnDuration)
+        };
+        return profile;
+    }
+
+    private static HexUiTransitionFadeTrack CreateTrack(string targetKey, float start, float duration)
+    {
+        return new HexUiTransitionFadeTrack
+        {
+            targetKey = targetKey,
+            startTime = Mathf.Max(0f, start),
+            duration = Mathf.Max(0f, duration),
+            startOpacity = 0f,
+            endOpacity = 1f,
+            isRequired = true
+        };
     }
 }

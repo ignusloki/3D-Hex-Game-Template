@@ -228,65 +228,19 @@ Use for:
 - main menu to Act 1
 - return to main menu
 
-## Migration Plan
+## Completed Migration Work
 
 ### Slice 1: Extract Shared Transition Player
 
-Create the generic transition runtime without changing any visible behavior.
-
-Work:
-
-- add `HexUiTransitionPlayer`
-- add `HexUiTransitionProfile`
-- add fade track data structures
-- support opacity-only tracks first
-- support ease-out and linear easing
-- support completion callback
-- support cancellation
-- support interaction lock callback
-
-Acceptance:
-
-- no existing screen behavior changes
-- build passes
+Complete. The shared transition infrastructure now exists and is available for flow migration.
 
 ### Slice 2: Migrate Game Over To Shared Player
 
-Replace the custom Game Over scheduler with the shared player.
+Complete. Game Over now uses the shared transition player while preserving the existing editor-facing timing settings, visual sequence, retry behavior, and interaction lockout.
 
-Work:
+## Remaining Migration Plan
 
-- convert current Game Over timings into a `BlackoutThenReveal` profile
-- map Game Over UXML elements into a target set
-- keep current visual result
-- keep current button lockout behavior
-- keep existing retry callback
-
-Acceptance:
-
-- Game Over still fades to black first
-- background and UI reveal in the same order
-- buttons remain disabled until fully visible
-- no duplicate trigger behavior
-
-### Slice 3: Build Victory Screen On The Same Profile
-
-Before polishing Victory visually, route it through the same transition system.
-
-Work:
-
-- replace or extend the simple-action Victory path
-- create Victory-specific UXML/USS if needed
-- reuse `BlackoutThenReveal` or a Victory variant profile
-- keep Retry behavior unchanged
-
-Acceptance:
-
-- Victory does not use a copied Game Over scheduler
-- Victory can be tuned from a profile
-- Victory blocks gameplay input immediately
-
-### Slice 4: Migrate Act Transition Screens
+### Slice 3: Migrate Act Transition Screens
 
 Use the transition player for the act intermission and boon selection screens.
 
@@ -303,7 +257,7 @@ Acceptance:
 - Boon Selection appears through shared animation
 - switching from intermission to boon selection remains a two-screen flow
 
-### Slice 5: Migrate Pitstop Modal
+### Slice 4: Migrate Pitstop Modal
 
 Add a lightweight modal fade, not a cinematic blackout.
 
@@ -319,7 +273,7 @@ Acceptance:
 - pitstop modal feels polished but fast
 - existing choice/result callbacks remain unchanged
 
-### Slice 6: Add Global Transition Layer
+### Slice 5: Add Global Transition Layer
 
 Prepare for menu and screen-level transitions.
 
@@ -335,7 +289,7 @@ Acceptance:
 - global transition can fade to black, execute a callback, then fade out
 - does not depend on a specific modal
 
-### Slice 7: Apply To Main Menu Flows
+### Slice 6: Apply To Main Menu Flows
 
 Use the global layer for future menu flow.
 
@@ -349,6 +303,23 @@ Acceptance:
 
 - menu/game transitions use the same runtime system
 - no separate custom menu animation scheduler is introduced
+
+### Slice 7: Build Victory Screen On The Same Profile
+
+Victory is intentionally late in the migration because its full gameplay path takes longer to test than Game Over, act transitions, and pitstops.
+
+Work:
+
+- replace or extend the simple-action Victory path
+- create Victory-specific UXML/USS if needed
+- reuse `BlackoutThenReveal` or a Victory variant profile
+- keep Retry behavior unchanged
+
+Acceptance:
+
+- Victory does not use a copied Game Over scheduler
+- Victory can be tuned from a profile
+- Victory blocks gameplay input immediately
 
 ### Slice 8: Cleanup
 
