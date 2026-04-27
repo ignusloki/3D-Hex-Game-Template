@@ -242,54 +242,25 @@ Complete. Game Over now uses the shared transition player while preserving the e
 
 Complete. Act Complete and Boon Selection now use the shared transition player with a `ChapterPageReveal` profile and transition-time button lockout.
 
-## Remaining Migration Plan
-
 ### Slice 4: Migrate Pitstop Modal
 
-Add a lightweight modal fade, not a cinematic blackout.
-
-Work:
-
-- use `SimpleModalFade`
-- animate overlay/shell opacity
-- keep choice and result logic unchanged
-- ensure options cannot be clicked until the modal is ready
-
-Acceptance:
-
-- pitstop modal feels polished but fast
-- existing choice/result callbacks remain unchanged
+Complete. Pitstop choice opening now uses `SimpleModalFade` with transition-time option lockout. The choice-to-result swap intentionally does not animate.
 
 ### Slice 5: Add Global Transition Layer
 
-Prepare for menu and screen-level transitions.
-
-Work:
-
-- add `global-transition-layer` to shared UI root
-- create a reusable full-screen blackout element
-- add `GlobalFadeToBlack` profile
-- expose callbacks for "run action while black"
-
-Acceptance:
-
-- global transition can fade to black, execute a callback, then fade out
-- does not depend on a specific modal
+Complete. The shared UI root now has a `GlobalTransition` layer, a runtime full-screen blackout element, a `GlobalFadeToBlack` profile, and `HexGlobalUiTransitionController` callback APIs for running flow changes while the screen is black.
 
 ### Slice 6: Apply To Main Menu Flows
 
-Use the global layer for future menu flow.
+Infrastructure complete for the current project state. There is no main menu presenter or menu game state yet, so this slice cannot be wired to a real menu flow without inventing a fake one. `HexMainMenuTransitionService` now exposes named entry points for:
 
-Work:
+- startup to main menu
+- main menu to Act 1
+- return to main menu
 
-- starting game to main menu: fade in menu after initial black
-- main menu to Act 1: fade to black, initialize gameplay, fade into gameplay
-- return to main menu: fade to black, hide/reset gameplay, show menu, fade in
+When the real menu screen exists, those methods should be wired to the menu presenter and game-flow controller callbacks.
 
-Acceptance:
-
-- menu/game transitions use the same runtime system
-- no separate custom menu animation scheduler is introduced
+## Remaining Migration Plan
 
 ### Slice 7: Build Victory Screen On The Same Profile
 
