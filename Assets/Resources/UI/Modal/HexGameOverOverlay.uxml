@@ -1,5 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="GameOverOverlay">
+        <ui:VisualElement name="GameOverBlackout" />
         <ui:VisualElement name="GameOverBackground" />
         <ui:VisualElement name="GameOverScrim" />
         <ui:VisualElement name="GameOverContent">

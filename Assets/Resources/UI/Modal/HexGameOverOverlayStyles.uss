@@ -9,6 +9,16 @@
     align-items: center;
 }
 
+#GameOverBlackout {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background-color: rgba(0, 0, 0, 1);
+    opacity: 0;
+}
+
 #GameOverBackground {
     position: absolute;
     left: 0;

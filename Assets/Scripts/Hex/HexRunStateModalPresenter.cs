@@ -1130,6 +1130,24 @@ internal sealed class HexGameOverOverlayDocumentController
     private const string StyleSheetResourcePath = "UI/Modal/HexGameOverOverlayStyles";
     private const string RimouskiFontEditorAssetPath = "Assets/Art/Fonts/rimouski sb.otf";
     private const string BackgroundEditorAssetPath = "Assets/Art/Image/Placeholder/parallax-forest.png";
+    private const float BlackoutFadeStart = 0f;
+    private const float BlackoutFadeDuration = 1f;
+    private const float BackgroundFadeStart = 1f;
+    private const float BackgroundFadeDuration = 0.55f;
+    private const float ScrimFadeStart = 1f;
+    private const float ScrimFadeDuration = 0.55f;
+    private const float TitleFadeStart = 1.35f;
+    private const float TitleFadeDuration = 0.40f;
+    private const float SeparatorFadeStart = 1.45f;
+    private const float SeparatorFadeDuration = 0.35f;
+    private const float PanelFadeStart = 1.60f;
+    private const float PanelFadeDuration = 0.45f;
+    private const float DescriptionFadeStart = 1.78f;
+    private const float DescriptionFadeDuration = 0.30f;
+    private const float RetryFadeStart = 1.92f;
+    private const float RetryFadeDuration = 0.28f;
+    private const float ReturnFadeStart = 2.02f;
+    private const float ReturnFadeDuration = 0.28f;
 
     private readonly MonoBehaviour owner;
 
@@ -1140,14 +1158,23 @@ internal sealed class HexGameOverOverlayDocumentController
     private HexGameplayUiRootController gameplayUiRootController;
     private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
+    private UIE.VisualElement blackoutElement;
     private UIE.VisualElement backgroundElement;
+    private UIE.VisualElement scrimElement;
+    private UIE.VisualElement separatorElement;
+    private UIE.VisualElement panelElement;
     private UIE.Label titleLabel;
+    private UIE.Label descriptionLabel;
     private UIE.Button retryButton;
     private UIE.Button returnToTitleButton;
+    private UIE.IVisualElementScheduledItem transitionSchedule;
+    private HexGameOverTransitionSettings transitionSettings;
     private HexHudDocumentController hudDocumentController;
     private Action retryRequested;
+    private float transitionStartTime;
     private bool isInitialized;
     private bool isOpen;
+    private bool isTransitionPlaying;
 
     public HexGameOverOverlayDocumentController(MonoBehaviour owner)
     {
@@ -1167,6 +1194,7 @@ internal sealed class HexGameOverOverlayDocumentController
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
         rimouskiFont ??= LoadRimouskiFont();
         backgroundTexture ??= LoadGameOverBackgroundTexture();
+        transitionSettings = ResolveTransitionSettings();
         if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexGameOverOverlayDocumentController could not load Game Over UI Toolkit assets.", owner);
@@ -1199,8 +1227,13 @@ internal sealed class HexGameOverOverlayDocumentController
         layoutAsset.CloneTree(modalMount);
 
         modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverOverlay");
+        blackoutElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverBlackout");
         backgroundElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverBackground");
+        scrimElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverScrim");
+        separatorElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverSeparator");
+        panelElement = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "GameOverPanel");
         titleLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "GameOverTitle");
+        descriptionLabel = UIE.UQueryExtensions.Q<UIE.Label>(modalMount, "GameOverDescription");
         retryButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "RetryButton");
         returnToTitleButton = UIE.UQueryExtensions.Q<UIE.Button>(modalMount, "ReturnToTitleButton");
 
@@ -1240,7 +1273,14 @@ internal sealed class HexGameOverOverlayDocumentController
             return;
         }
 
+        if (isOpen)
+        {
+            LogDebug("Show ignored because the Game Over overlay is already open.");
+            return;
+        }
+
         retryRequested = onRetryRequested;
+        transitionSettings = ResolveTransitionSettings();
         if (titleLabel != null)
         {
             titleLabel.text = "Game Over";
@@ -1256,12 +1296,15 @@ internal sealed class HexGameOverOverlayDocumentController
             returnToTitleButton.text = "Return to Title";
         }
 
+        PrepareTransitionInitialState();
         SetOverlayVisibility(true);
+        StartTransition();
         LogDebug($"Show Game Over overlay. retryAssigned={retryRequested != null}.");
     }
 
     public void Hide()
     {
+        StopTransition();
         retryRequested = null;
         SetOverlayVisibility(false);
         LogDebug("Hide Game Over overlay.");
@@ -1269,10 +1312,173 @@ internal sealed class HexGameOverOverlayDocumentController
 
     private void HandleRetryClicked()
     {
+        if (isTransitionPlaying)
+        {
+            return;
+        }
+
         LogDebug($"HandleRetryClicked callbackAssigned={retryRequested != null}.");
         Action callback = retryRequested;
         Hide();
         callback?.Invoke();
+    }
+
+    private void PrepareTransitionInitialState()
+    {
+        StopTransition();
+        SetButtonInteractionEnabled(false);
+        SetElementOpacity(blackoutElement, 0f);
+        SetElementOpacity(backgroundElement, 0f);
+        SetElementOpacity(scrimElement, 0f);
+        SetElementOpacity(titleLabel, 0f);
+        SetElementOpacity(separatorElement, 0f);
+        SetElementOpacity(panelElement, 0f);
+        SetElementOpacity(descriptionLabel, 0f);
+        SetElementOpacity(retryButton, 0f);
+        SetElementOpacity(returnToTitleButton, 0f);
+    }
+
+    private void StartTransition()
+    {
+        if (modalRoot == null)
+        {
+            CompleteTransition();
+            return;
+        }
+
+        isTransitionPlaying = true;
+        transitionStartTime = Time.unscaledTime;
+        transitionSchedule = modalRoot.schedule.Execute(UpdateTransition).Every(16);
+        UpdateTransition();
+    }
+
+    private void StopTransition()
+    {
+        transitionSchedule?.Pause();
+        transitionSchedule = null;
+        isTransitionPlaying = false;
+    }
+
+    private void UpdateTransition()
+    {
+        float elapsed = Time.unscaledTime - transitionStartTime;
+        HexGameOverTransitionSettings settings = transitionSettings;
+        bool useEaseOut = settings == null || settings.useEaseOut;
+        SetElementOpacity(blackoutElement, ResolveFadeOpacity(elapsed, settings, BlackoutFadeStart, s => s.blackoutFadeStart, BlackoutFadeDuration, s => s.blackoutFadeDuration, useEaseOut));
+        SetElementOpacity(backgroundElement, ResolveFadeOpacity(elapsed, settings, BackgroundFadeStart, s => s.backgroundFadeStart, BackgroundFadeDuration, s => s.backgroundFadeDuration, useEaseOut));
+        SetElementOpacity(scrimElement, ResolveFadeOpacity(elapsed, settings, ScrimFadeStart, s => s.scrimFadeStart, ScrimFadeDuration, s => s.scrimFadeDuration, useEaseOut));
+        SetElementOpacity(titleLabel, ResolveFadeOpacity(elapsed, settings, TitleFadeStart, s => s.titleFadeStart, TitleFadeDuration, s => s.titleFadeDuration, useEaseOut));
+        SetElementOpacity(separatorElement, ResolveFadeOpacity(elapsed, settings, SeparatorFadeStart, s => s.separatorFadeStart, SeparatorFadeDuration, s => s.separatorFadeDuration, useEaseOut));
+        SetElementOpacity(panelElement, ResolveFadeOpacity(elapsed, settings, PanelFadeStart, s => s.panelFadeStart, PanelFadeDuration, s => s.panelFadeDuration, useEaseOut));
+        SetElementOpacity(descriptionLabel, ResolveFadeOpacity(elapsed, settings, DescriptionFadeStart, s => s.descriptionFadeStart, DescriptionFadeDuration, s => s.descriptionFadeDuration, useEaseOut));
+        SetElementOpacity(retryButton, ResolveFadeOpacity(elapsed, settings, RetryFadeStart, s => s.retryButtonFadeStart, RetryFadeDuration, s => s.retryButtonFadeDuration, useEaseOut));
+        SetElementOpacity(returnToTitleButton, ResolveFadeOpacity(elapsed, settings, ReturnFadeStart, s => s.returnToTitleButtonFadeStart, ReturnFadeDuration, s => s.returnToTitleButtonFadeDuration, useEaseOut));
+
+        if (elapsed >= ResolveCompleteTime(settings))
+        {
+            CompleteTransition();
+        }
+    }
+
+    private void CompleteTransition()
+    {
+        transitionSchedule?.Pause();
+        transitionSchedule = null;
+        isTransitionPlaying = false;
+        SetElementOpacity(blackoutElement, 1f);
+        SetElementOpacity(backgroundElement, 1f);
+        SetElementOpacity(scrimElement, 1f);
+        SetElementOpacity(titleLabel, 1f);
+        SetElementOpacity(separatorElement, 1f);
+        SetElementOpacity(panelElement, 1f);
+        SetElementOpacity(descriptionLabel, 1f);
+        SetElementOpacity(retryButton, 1f);
+        SetElementOpacity(returnToTitleButton, 1f);
+        SetButtonInteractionEnabled(true);
+    }
+
+    private static float ResolveFadeOpacity(
+        float elapsed,
+        HexGameOverTransitionSettings settings,
+        float fallbackStart,
+        Func<HexGameOverTransitionSettings, float> startSelector,
+        float fallbackDuration,
+        Func<HexGameOverTransitionSettings, float> durationSelector,
+        bool useEaseOut)
+    {
+        return EvaluateFade(
+            elapsed,
+            ResolveStart(settings, fallbackStart, startSelector),
+            ResolveDuration(settings, fallbackDuration, durationSelector),
+            useEaseOut);
+    }
+
+    private static float EvaluateFade(float elapsed, float start, float duration, bool useEaseOut)
+    {
+        if (elapsed <= start)
+        {
+            return 0f;
+        }
+
+        if (duration <= 0f)
+        {
+            return 1f;
+        }
+
+        float progress = Mathf.Clamp01((elapsed - start) / duration);
+        return useEaseOut
+            ? 1f - ((1f - progress) * (1f - progress))
+            : progress;
+    }
+
+    private static float ResolveStart(HexGameOverTransitionSettings settings, float fallback, Func<HexGameOverTransitionSettings, float> selector)
+    {
+        return Mathf.Max(0f, settings == null ? fallback : selector(settings));
+    }
+
+    private static float ResolveDuration(HexGameOverTransitionSettings settings, float fallback, Func<HexGameOverTransitionSettings, float> selector)
+    {
+        return Mathf.Max(0f, settings == null ? fallback : selector(settings));
+    }
+
+    private static float ResolveCompleteTime(HexGameOverTransitionSettings settings)
+    {
+        if (settings != null)
+        {
+            return settings.ResolveCompleteTime();
+        }
+
+        float completeTime = BlackoutFadeStart + BlackoutFadeDuration;
+        completeTime = Mathf.Max(completeTime, BackgroundFadeStart + BackgroundFadeDuration);
+        completeTime = Mathf.Max(completeTime, ScrimFadeStart + ScrimFadeDuration);
+        completeTime = Mathf.Max(completeTime, TitleFadeStart + TitleFadeDuration);
+        completeTime = Mathf.Max(completeTime, SeparatorFadeStart + SeparatorFadeDuration);
+        completeTime = Mathf.Max(completeTime, PanelFadeStart + PanelFadeDuration);
+        completeTime = Mathf.Max(completeTime, DescriptionFadeStart + DescriptionFadeDuration);
+        completeTime = Mathf.Max(completeTime, RetryFadeStart + RetryFadeDuration);
+        completeTime = Mathf.Max(completeTime, ReturnFadeStart + ReturnFadeDuration);
+        return completeTime;
+    }
+
+    private static void SetElementOpacity(UIE.VisualElement element, float opacity)
+    {
+        if (element != null)
+        {
+            element.style.opacity = Mathf.Clamp01(opacity);
+        }
+    }
+
+    private void SetButtonInteractionEnabled(bool enabled)
+    {
+        if (retryButton != null)
+        {
+            retryButton.pickingMode = enabled ? UIE.PickingMode.Position : UIE.PickingMode.Ignore;
+        }
+
+        if (returnToTitleButton != null)
+        {
+            returnToTitleButton.pickingMode = enabled ? UIE.PickingMode.Position : UIE.PickingMode.Ignore;
+        }
     }
 
     private void SetOverlayVisibility(bool visible)
@@ -1326,6 +1532,11 @@ internal sealed class HexGameOverOverlayDocumentController
 #else
         return null;
 #endif
+    }
+
+    private static HexGameOverTransitionSettings ResolveTransitionSettings()
+    {
+        return UnityEngine.Object.FindAnyObjectByType<HexGameOverTransitionSettings>();
     }
 
     private void LogDebug(string message, bool verbose = false)

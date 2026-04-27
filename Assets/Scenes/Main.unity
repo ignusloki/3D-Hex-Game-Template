@@ -156,6 +156,7 @@ Transform:
   - {fileID: 1900944117}
   - {fileID: 2114172011}
   - {fileID: 2114172001}
+  - {fileID: 2114172021}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &408798155
@@ -1420,6 +1421,69 @@ MonoBehaviour:
   previewAtmosphereInEditor: 1
   editorPreviewAct: 3
   atmosphereConfig: {fileID: 11400000, guid: a8a8e32cde7b849a5b87ca4a812b7b98, type: 2}
+--- !u!1 &2114172020
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2114172021}
+  - component: {fileID: 2114172022}
+  m_Layer: 0
+  m_Name: Game Over Transition Settings
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2114172021
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2114172020}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2114172022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2114172020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b92a8a7f6cf847a398de60c2e148567e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexGameOverTransitionSettings
+  blackoutFadeStart: 0
+  blackoutFadeDuration: 2
+  backgroundFadeStart: 2
+  backgroundFadeDuration: 2
+  scrimFadeStart: 2
+  scrimFadeDuration: 2
+  titleFadeStart: 2.3
+  titleFadeDuration: 0.6
+  separatorFadeStart: 2.9
+  separatorFadeDuration: 0.6
+  panelFadeStart: 3.5
+  panelFadeDuration: 0.6
+  descriptionFadeStart: 4.1
+  descriptionFadeDuration: 0.6
+  retryButtonFadeStart: 4.7
+  retryButtonFadeDuration: 0.28
+  returnToTitleButtonFadeStart: 4.7
+  returnToTitleButtonFadeDuration: 0.28
+  useEaseOut: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
