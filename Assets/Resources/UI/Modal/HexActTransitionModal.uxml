@@ -1,6 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="act-transition-modal-root">
         <ui:VisualElement name="act-transition-modal-overlay" class="act-transition-overlay">
+            <ui:VisualElement name="act-transition-modal-scrim" />
             <ui:VisualElement
                 name="act-transition-intermission-shell"
                 class="act-transition-page-shell act-transition-page-shell--narrow">

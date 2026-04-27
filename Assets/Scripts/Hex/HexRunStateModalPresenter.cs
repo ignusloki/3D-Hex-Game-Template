@@ -124,7 +124,10 @@ internal sealed class HexActTransitionModalDocumentController
     private const string StyleSheetResourcePath = "UI/Modal/HexActTransitionModalStyles";
     private const string ModalMountName = "act-transition-modal-mount";
     private const string PlaceholderArtLibraryResourcePath = "Acts/ActTransitionPlaceholderArtLibrary";
+    private const string ChapterPageRevealProfileResourcePath = "UI/Transitions/ActTransitionChapterPageReveal";
     private const string RimouskiFontEditorAssetPath = "Assets/Art/Fonts/rimouski sb.otf";
+    private const string ScrimTransitionTargetKey = "scrim";
+    private const string PageTransitionTargetKey = "page";
 
     private enum TransitionScreenMode
     {
@@ -139,11 +142,14 @@ internal sealed class HexActTransitionModalDocumentController
     private UIE.VisualTreeAsset layoutAsset;
     private UIE.StyleSheet styleSheet;
     private HexActTransitionPlaceholderArtLibrary placeholderArtLibrary;
+    private HexUiTransitionProfile chapterPageRevealProfile;
+    private HexUiTransitionProfile activeRevealProfile;
     private Font rimouskiFont;
     private HexGameplayUiRootController gameplayUiRootController;
     private UIE.VisualElement modalMount;
     private UIE.VisualElement modalRoot;
     private UIE.VisualElement modalOverlay;
+    private UIE.VisualElement modalScrim;
     private UIE.VisualElement intermissionShell;
     private UIE.VisualElement selectionShell;
     private UIE.Label intermissionTitleLabel;
@@ -176,9 +182,11 @@ internal sealed class HexActTransitionModalDocumentController
     private HexBoonDefinition selectedBoon;
     private HexBoonDefinition hoveredBoon;
     private HexBoonDefinition focusedBoon;
+    private HexUiTransitionPlayer revealTransitionPlayer;
     private TransitionScreenMode screenMode;
     private bool isInitialized;
     private bool isOpen;
+    private bool areTransitionControlsLocked;
 
     private sealed class TransitionBoonCardView
     {
@@ -206,6 +214,7 @@ internal sealed class HexActTransitionModalDocumentController
         layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
         placeholderArtLibrary ??= Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
+        chapterPageRevealProfile ??= Resources.Load<HexUiTransitionProfile>(ChapterPageRevealProfileResourcePath);
         rimouskiFont ??= LoadRimouskiFont();
         if (layoutAsset == null || styleSheet == null)
         {
@@ -240,6 +249,7 @@ internal sealed class HexActTransitionModalDocumentController
 
         modalRoot = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-root");
         modalOverlay = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-overlay");
+        modalScrim = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-modal-scrim");
         intermissionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-intermission-shell");
         selectionShell = UIE.UQueryExtensions.Q<UIE.VisualElement>(modalMount, "act-transition-selection-shell");
 
@@ -287,6 +297,7 @@ internal sealed class HexActTransitionModalDocumentController
         if (modalRoot != null)
         {
             modalRoot.style.display = UIE.DisplayStyle.None;
+            revealTransitionPlayer = new HexUiTransitionPlayer(modalRoot);
         }
 
         hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
@@ -322,15 +333,16 @@ internal sealed class HexActTransitionModalDocumentController
 
         if (openSelectionImmediately && activeDisplayData.RequiresBoonSelection)
         {
-            ShowScreen(TransitionScreenMode.Selection);
+            ShowScreen(TransitionScreenMode.Selection, includeScrimFade: true);
             return;
         }
 
-        ShowScreen(TransitionScreenMode.Intermission);
+        ShowScreen(TransitionScreenMode.Intermission, includeScrimFade: true);
     }
 
     public void Hide()
     {
+        StopRevealTransition();
         continueRequested = null;
         activeDisplayData = default;
         boonOptions = Array.Empty<HexBoonDefinition>();
@@ -385,15 +397,15 @@ internal sealed class HexActTransitionModalDocumentController
         selectionPromptLabel.text = BuildSelectionHeaderTitle(activeDisplayData.NextActNumber);
         RebuildSelectionCarryOverSummary(activeDisplayData.CurrentResources);
         RebuildSelectionCards();
-        EnsureDefaultSelectedBoon();
         RefreshSelectionActionState();
         RefreshDetailPanel();
     }
 
-    private void ShowScreen(TransitionScreenMode mode)
+    private void ShowScreen(TransitionScreenMode mode, bool includeScrimFade)
     {
         screenMode = mode;
         bool showSelection = mode == TransitionScreenMode.Selection && activeDisplayData.RequiresBoonSelection;
+        UIE.VisualElement activeShell = showSelection ? selectionShell : intermissionShell;
         if (intermissionShell != null)
         {
             intermissionShell.style.display = mode == TransitionScreenMode.Intermission ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
@@ -405,6 +417,7 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         UpdateOverlayForScreen(showSelection);
+        PlayRevealTransition(activeShell, includeScrimFade);
 
         LogDebug(
             $"ShowScreen mode={mode} intermissionVisible={intermissionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex} selectionVisible={selectionShell?.resolvedStyle.display == UIE.DisplayStyle.Flex}.",
@@ -413,11 +426,16 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void HandleIntermissionContinueClicked()
     {
+        if (areTransitionControlsLocked)
+        {
+            return;
+        }
+
         LogDebug(
             $"HandleIntermissionContinueClicked requiresSelection={activeDisplayData.RequiresBoonSelection} boonCount={boonOptions.Length} modeBefore={screenMode}.");
         if (activeDisplayData.RequiresBoonSelection)
         {
-            ShowScreen(TransitionScreenMode.Selection);
+            ShowScreen(TransitionScreenMode.Selection, includeScrimFade: false);
             return;
         }
 
@@ -428,6 +446,11 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void HandleSelectionContinueClicked()
     {
+        if (areTransitionControlsLocked)
+        {
+            return;
+        }
+
         if (selectedBoon == null)
         {
             LogDebug("HandleSelectionContinueClicked ignored because no boon is selected.", true);
@@ -490,36 +513,6 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         RefreshCardVisuals();
-    }
-
-    private void EnsureDefaultSelectedBoon()
-    {
-        if (selectedBoon != null)
-        {
-            for (int index = 0; index < boonOptions.Length; index++)
-            {
-                HexBoonDefinition option = boonOptions[index];
-                if (option != null
-                    && string.Equals(option.id, selectedBoon.id, StringComparison.OrdinalIgnoreCase)
-                    && option.isEnabled)
-                {
-                    return;
-                }
-            }
-        }
-
-        selectedBoon = null;
-        for (int index = 0; index < boonOptions.Length; index++)
-        {
-            HexBoonDefinition option = boonOptions[index];
-            if (option == null || !option.isEnabled)
-            {
-                continue;
-            }
-
-            selectedBoon = option;
-            return;
-        }
     }
 
     private TransitionBoonCardView CreateCardView(HexBoonDefinition boon)
@@ -660,7 +653,10 @@ internal sealed class HexActTransitionModalDocumentController
         selectionContinueButton.text = string.IsNullOrWhiteSpace(activeDisplayData.ContinueButtonLabel)
             ? "Continue"
             : activeDisplayData.ContinueButtonLabel.Trim();
-        selectionContinueButton.SetEnabled(selectedBoon != null);
+        bool isEnabled = selectedBoon != null && !areTransitionControlsLocked;
+        selectionContinueButton.SetEnabled(isEnabled);
+        selectionContinueButton.pickingMode = isEnabled ? UIE.PickingMode.Position : UIE.PickingMode.Ignore;
+        selectionContinueButton.focusable = isEnabled;
     }
 
     private void RefreshCardVisuals()
@@ -998,7 +994,8 @@ internal sealed class HexActTransitionModalDocumentController
             return;
         }
 
-        modalOverlay.style.backgroundColor = showSelection
+        UIE.VisualElement scrim = modalScrim ?? modalOverlay;
+        scrim.style.backgroundColor = showSelection
             ? new UIE.StyleColor(new Color(10f / 255f, 12f / 255f, 16f / 255f, 0.72f))
             : new UIE.StyleColor(new Color(8f / 255f, 10f / 255f, 16f / 255f, 0.58f));
     }
@@ -1044,6 +1041,158 @@ internal sealed class HexActTransitionModalDocumentController
 
         isOpen = visible;
         LogDebug($"SetModalVisibility visible={visible} isOpen={isOpen}.");
+    }
+
+    private void PlayRevealTransition(UIE.VisualElement activeShell, bool includeScrimFade)
+    {
+        StopRevealTransition();
+        if (revealTransitionPlayer == null || activeShell == null)
+        {
+            SetElementOpacity(modalScrim, 1f);
+            SetElementOpacity(activeShell, 1f);
+            SetTransitionInteractionLock(false);
+            return;
+        }
+
+        activeRevealProfile = CreateRevealRuntimeProfile(includeScrimFade);
+        HexUiTransitionTargetSet targets = new HexUiTransitionTargetSet()
+            .Register(ScrimTransitionTargetKey, modalScrim)
+            .Register(PageTransitionTargetKey, activeShell);
+
+        bool started = revealTransitionPlayer.Play(
+            activeRevealProfile,
+            targets,
+            () => CompleteRevealTransition(activeShell),
+            SetTransitionInteractionLock,
+            message => LogDebug(message, true));
+        if (!started)
+        {
+            CompleteRevealTransition(activeShell);
+        }
+    }
+
+    private void StopRevealTransition()
+    {
+        revealTransitionPlayer?.Cancel(applyEndState: false);
+        SetTransitionInteractionLock(false);
+        ReleaseRevealProfile();
+    }
+
+    private void CompleteRevealTransition(UIE.VisualElement activeShell)
+    {
+        SetElementOpacity(modalScrim, 1f);
+        SetElementOpacity(activeShell, 1f);
+        SetTransitionInteractionLock(false);
+        ReleaseRevealProfile();
+    }
+
+    private HexUiTransitionProfile CreateRevealRuntimeProfile(bool includeScrimFade)
+    {
+        HexUiTransitionProfile source = chapterPageRevealProfile;
+        HexUiTransitionProfile runtimeProfile = UnityEngine.ScriptableObject.CreateInstance<HexUiTransitionProfile>();
+        runtimeProfile.hideFlags = HideFlags.DontSave;
+        runtimeProfile.profileId = source != null
+            ? source.profileId
+            : "act-transition-chapter-page-reveal";
+        runtimeProfile.easing = source != null ? source.easing : HexUiTransitionEasing.EaseOut;
+        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
+        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
+        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
+
+        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
+            ? source.FadeTracks
+            : CreateDefaultRevealTracks();
+        for (int index = 0; index < tracks.Count; index++)
+        {
+            HexUiTransitionFadeTrack track = tracks[index];
+            if (track == null || !track.HasTargetKey)
+            {
+                continue;
+            }
+
+            if (!includeScrimFade && string.Equals(track.targetKey, ScrimTransitionTargetKey, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            runtimeProfile.fadeTracks.Add(CopyFadeTrack(track));
+        }
+
+        return runtimeProfile;
+    }
+
+    private static IReadOnlyList<HexUiTransitionFadeTrack> CreateDefaultRevealTracks()
+    {
+        return new[]
+        {
+            new HexUiTransitionFadeTrack
+            {
+                targetKey = ScrimTransitionTargetKey,
+                startTime = 0f,
+                duration = 0.18f,
+                startOpacity = 0f,
+                endOpacity = 1f,
+                isRequired = true
+            },
+            new HexUiTransitionFadeTrack
+            {
+                targetKey = PageTransitionTargetKey,
+                startTime = 0.08f,
+                duration = 0.24f,
+                startOpacity = 0f,
+                endOpacity = 1f,
+                isRequired = true
+            }
+        };
+    }
+
+    private static HexUiTransitionFadeTrack CopyFadeTrack(HexUiTransitionFadeTrack source)
+    {
+        return new HexUiTransitionFadeTrack
+        {
+            targetKey = source.targetKey,
+            startTime = source.startTime,
+            duration = source.duration,
+            startOpacity = source.startOpacity,
+            endOpacity = source.endOpacity,
+            isRequired = source.isRequired
+        };
+    }
+
+    private void SetTransitionInteractionLock(bool locked)
+    {
+        areTransitionControlsLocked = locked;
+        SetButtonInteractionEnabled(intermissionContinueButton, !locked);
+        RefreshSelectionActionState();
+    }
+
+    private static void SetButtonInteractionEnabled(UIE.Button button, bool enabled)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        button.SetEnabled(enabled);
+        button.pickingMode = enabled ? UIE.PickingMode.Position : UIE.PickingMode.Ignore;
+        button.focusable = enabled;
+    }
+
+    private static void SetElementOpacity(UIE.VisualElement element, float opacity)
+    {
+        if (element != null)
+        {
+            element.style.opacity = Mathf.Clamp01(opacity);
+        }
+    }
+
+    private void ReleaseRevealProfile()
+    {
+        if (activeRevealProfile != null)
+        {
+            UnityEngine.Object.Destroy(activeRevealProfile);
+            activeRevealProfile = null;
+        }
     }
 
     private void LogDebug(string message, bool verbose = false)

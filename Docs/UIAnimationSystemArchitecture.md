@@ -238,24 +238,11 @@ Complete. The shared transition infrastructure now exists and is available for f
 
 Complete. Game Over now uses the shared transition player while preserving the existing editor-facing timing settings, visual sequence, retry behavior, and interaction lockout.
 
-## Remaining Migration Plan
-
 ### Slice 3: Migrate Act Transition Screens
 
-Use the transition player for the act intermission and boon selection screens.
+Complete. Act Complete and Boon Selection now use the shared transition player with a `ChapterPageReveal` profile and transition-time button lockout.
 
-Work:
-
-- add target sets for the Act Complete page and Boon Selection page
-- use `ChapterPageReveal`
-- lock buttons until reveal completes
-- avoid resizing or layout changes during animation
-
-Acceptance:
-
-- Act Complete appears through shared animation
-- Boon Selection appears through shared animation
-- switching from intermission to boon selection remains a two-screen flow
+## Remaining Migration Plan
 
 ### Slice 4: Migrate Pitstop Modal
 
