@@ -816,30 +816,11 @@ internal sealed class HexPitstopEventModalDocumentController
 
     private HexUiTransitionProfile CreateSimpleModalFadeRuntimeProfile()
     {
-        HexUiTransitionProfile source = simpleModalFadeProfile;
-        HexUiTransitionProfile runtimeProfile = ScriptableObject.CreateInstance<HexUiTransitionProfile>();
-        runtimeProfile.hideFlags = HideFlags.DontSave;
-        runtimeProfile.profileId = source != null ? source.profileId : "simple-modal-fade";
-        runtimeProfile.easing = source != null ? source.easing : HexUiTransitionEasing.EaseOut;
-        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
-        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
-        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
-
-        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
-            ? source.FadeTracks
-            : CreateDefaultSimpleModalFadeTracks();
-        for (int index = 0; index < tracks.Count; index++)
-        {
-            HexUiTransitionFadeTrack track = tracks[index];
-            if (track == null || !track.HasTargetKey)
-            {
-                continue;
-            }
-
-            runtimeProfile.fadeTracks.Add(CopyFadeTrack(track));
-        }
-
-        return runtimeProfile;
+        return HexUiTransitionProfile.CreateRuntimeProfile(
+            simpleModalFadeProfile,
+            "simple-modal-fade",
+            HexUiTransitionEasing.EaseOut,
+            CreateDefaultSimpleModalFadeTracks());
     }
 
     private static IReadOnlyList<HexUiTransitionFadeTrack> CreateDefaultSimpleModalFadeTracks()
@@ -864,19 +845,6 @@ internal sealed class HexPitstopEventModalDocumentController
                 endOpacity = 1f,
                 isRequired = true
             }
-        };
-    }
-
-    private static HexUiTransitionFadeTrack CopyFadeTrack(HexUiTransitionFadeTrack source)
-    {
-        return new HexUiTransitionFadeTrack
-        {
-            targetKey = source.targetKey,
-            startTime = source.startTime,
-            duration = source.duration,
-            startOpacity = source.startOpacity,
-            endOpacity = source.endOpacity,
-            isRequired = source.isRequired
         };
     }
 

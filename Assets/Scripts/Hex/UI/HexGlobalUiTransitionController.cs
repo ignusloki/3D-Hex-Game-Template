@@ -245,30 +245,12 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
 
     private HexUiTransitionProfile CreateRuntimeProfile(bool reverse)
     {
-        HexUiTransitionProfile source = globalFadeToBlackProfile;
-        HexUiTransitionProfile runtimeProfile = ScriptableObject.CreateInstance<HexUiTransitionProfile>();
-        runtimeProfile.hideFlags = HideFlags.DontSave;
-        runtimeProfile.profileId = source != null ? source.profileId : "global-fade-to-black";
-        runtimeProfile.easing = source != null ? source.easing : HexUiTransitionEasing.EaseOut;
-        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
-        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
-        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
-
-        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
-            ? source.FadeTracks
-            : CreateDefaultFadeToBlackTracks();
-        for (int index = 0; index < tracks.Count; index++)
-        {
-            HexUiTransitionFadeTrack track = tracks[index];
-            if (track == null || !track.HasTargetKey)
-            {
-                continue;
-            }
-
-            runtimeProfile.fadeTracks.Add(CopyFadeTrack(track, reverse));
-        }
-
-        return runtimeProfile;
+        return HexUiTransitionProfile.CreateRuntimeProfile(
+            globalFadeToBlackProfile,
+            "global-fade-to-black",
+            HexUiTransitionEasing.EaseOut,
+            CreateDefaultFadeToBlackTracks(),
+            reverseTracks: reverse);
     }
 
     private static IReadOnlyList<HexUiTransitionFadeTrack> CreateDefaultFadeToBlackTracks()
@@ -284,19 +266,6 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
                 endOpacity = 1f,
                 isRequired = true
             }
-        };
-    }
-
-    private static HexUiTransitionFadeTrack CopyFadeTrack(HexUiTransitionFadeTrack source, bool reverse)
-    {
-        return new HexUiTransitionFadeTrack
-        {
-            targetKey = source.targetKey,
-            startTime = source.startTime,
-            duration = source.duration,
-            startOpacity = reverse ? source.endOpacity : source.startOpacity,
-            endOpacity = reverse ? source.startOpacity : source.endOpacity,
-            isRequired = source.isRequired
         };
     }
 

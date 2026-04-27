@@ -108,6 +108,64 @@ public sealed class HexUiTransitionProfile : ScriptableObject
             : ResolveCompleteTime();
     }
 
+    public static HexUiTransitionProfile CreateRuntimeProfile(
+        HexUiTransitionProfile source,
+        string fallbackProfileId,
+        HexUiTransitionEasing fallbackEasing,
+        IReadOnlyList<HexUiTransitionFadeTrack> fallbackTracks,
+        Func<HexUiTransitionFadeTrack, bool> includeTrack = null,
+        bool reverseTracks = false)
+    {
+        HexUiTransitionProfile runtimeProfile = CreateInstance<HexUiTransitionProfile>();
+        runtimeProfile.hideFlags = HideFlags.DontSave;
+        runtimeProfile.profileId = ResolveRuntimeProfileId(source, fallbackProfileId);
+        runtimeProfile.easing = source != null ? source.easing : fallbackEasing;
+        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
+        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
+        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
+
+        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
+            ? source.FadeTracks
+            : fallbackTracks ?? Array.Empty<HexUiTransitionFadeTrack>();
+        for (int index = 0; index < tracks.Count; index++)
+        {
+            HexUiTransitionFadeTrack track = tracks[index];
+            if (track == null || !track.HasTargetKey || (includeTrack != null && !includeTrack(track)))
+            {
+                continue;
+            }
+
+            runtimeProfile.fadeTracks.Add(CopyTrack(track, reverseTracks));
+        }
+
+        return runtimeProfile;
+    }
+
+    private static string ResolveRuntimeProfileId(HexUiTransitionProfile source, string fallbackProfileId)
+    {
+        if (source != null && !string.IsNullOrWhiteSpace(source.profileId))
+        {
+            return source.profileId.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(fallbackProfileId)
+            ? "ui-transition"
+            : fallbackProfileId.Trim();
+    }
+
+    private static HexUiTransitionFadeTrack CopyTrack(HexUiTransitionFadeTrack source, bool reverse)
+    {
+        return new HexUiTransitionFadeTrack
+        {
+            targetKey = string.IsNullOrWhiteSpace(source.targetKey) ? string.Empty : source.targetKey.Trim(),
+            startTime = Mathf.Max(0f, source.startTime),
+            duration = Mathf.Max(0f, source.duration),
+            startOpacity = reverse ? Mathf.Clamp01(source.endOpacity) : Mathf.Clamp01(source.startOpacity),
+            endOpacity = reverse ? Mathf.Clamp01(source.startOpacity) : Mathf.Clamp01(source.endOpacity),
+            isRequired = source.isRequired
+        };
+    }
+
     private void OnValidate()
     {
         profileId = string.IsNullOrWhiteSpace(profileId) ? name : profileId.Trim();

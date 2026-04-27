@@ -15,12 +15,17 @@ The current UI foundation is correct:
 - Feature presenters bind their UXML into the shared root.
 - Modal presenters own their content and callbacks.
 
-The current animation gap:
+The remaining animation gap:
 
-- Game Over owns a custom transition loop.
-- Victory still uses the generic instant simple-action modal.
-- Pitstop and act transition modals mostly appear immediately.
-- Future main menu transitions do not have a shared runtime path yet.
+- Victory still uses the generic instant simple-action modal and is deferred to a separate Victory branch.
+- A real main menu presenter and menu game state do not exist yet, so menu transitions are currently infrastructure-only.
+
+Completed migration state:
+
+- Game Over uses `HexUiTransitionPlayer` and retains its editor-facing timing component as a configuration adapter.
+- Act Complete and Boon Selection use the shared `ChapterPageReveal` path.
+- Pitstop modal opening uses the shared `SimpleModalFade` path.
+- The shared UI root has a global transition layer for future menu and scene-like flow transitions.
 
 ## Goal
 
@@ -264,16 +269,16 @@ When the real menu screen exists, those methods should be wired to the menu pres
 
 ### Slice 7: Build Victory Screen On The Same Profile
 
-Victory is intentionally late in the migration because its full gameplay path takes longer to test than Game Over, act transitions, and pitstops.
+Skipped in this branch. Victory will be handled in a separate branch and should not be changed as part of this cleanup pass.
 
-Work:
+Future work:
 
 - replace or extend the simple-action Victory path
 - create Victory-specific UXML/USS if needed
 - reuse `BlackoutThenReveal` or a Victory variant profile
 - keep Retry behavior unchanged
 
-Acceptance:
+Future acceptance:
 
 - Victory does not use a copied Game Over scheduler
 - Victory can be tuned from a profile
@@ -281,19 +286,13 @@ Acceptance:
 
 ### Slice 8: Cleanup
 
-Remove duplicated transition code and deprecated settings.
+Complete. Runtime profile cloning, track filtering, and reverse-track generation now live in `HexUiTransitionProfile.CreateRuntimeProfile(...)`, so migrated flows no longer duplicate that construction logic.
 
-Work:
+Notes:
 
-- remove Game Over-specific scheduler helpers
-- remove one-off transition settings that are replaced by profiles
-- keep only screen-specific target mapping
-- update docs with final implementation notes
-
-Acceptance:
-
-- one transition runner owns UI fade scheduling
-- presenters only bind data, open/close screens, and register callbacks
+- Victory code was intentionally left untouched.
+- `HexGameOverTransitionSettings` is retained because it exposes the user-requested Game Over timing controls in the scene inspector; it no longer owns a custom scheduler.
+- Each migrated presenter still owns only its screen-specific target mapping, content binding, and callbacks.
 
 ## Flow Mapping
 
@@ -413,10 +412,4 @@ Sequence:
 
 ## Recommended Next Step
 
-Before polishing Victory, implement Slice 1 and Slice 2:
-
-1. Build the shared transition player.
-2. Migrate Game Over to it with no visual changes.
-3. Then build Victory on top of the shared system.
-
-This gives a tested reference path before applying the system to more flows.
+Open a dedicated Victory branch and build the Victory screen on top of the existing shared transition system. Use Game Over as the reference for target mapping and lifecycle, but keep Victory-specific UXML/USS and presentation code isolated from the completed migration cleanup.

@@ -1088,37 +1088,12 @@ internal sealed class HexActTransitionModalDocumentController
 
     private HexUiTransitionProfile CreateRevealRuntimeProfile(bool includeScrimFade)
     {
-        HexUiTransitionProfile source = chapterPageRevealProfile;
-        HexUiTransitionProfile runtimeProfile = UnityEngine.ScriptableObject.CreateInstance<HexUiTransitionProfile>();
-        runtimeProfile.hideFlags = HideFlags.DontSave;
-        runtimeProfile.profileId = source != null
-            ? source.profileId
-            : "act-transition-chapter-page-reveal";
-        runtimeProfile.easing = source != null ? source.easing : HexUiTransitionEasing.EaseOut;
-        runtimeProfile.overrideInteractionUnlockTime = source != null && source.overrideInteractionUnlockTime;
-        runtimeProfile.interactionUnlockTime = source != null ? source.interactionUnlockTime : 0f;
-        runtimeProfile.fadeTracks = new List<HexUiTransitionFadeTrack>();
-
-        IReadOnlyList<HexUiTransitionFadeTrack> tracks = source != null
-            ? source.FadeTracks
-            : CreateDefaultRevealTracks();
-        for (int index = 0; index < tracks.Count; index++)
-        {
-            HexUiTransitionFadeTrack track = tracks[index];
-            if (track == null || !track.HasTargetKey)
-            {
-                continue;
-            }
-
-            if (!includeScrimFade && string.Equals(track.targetKey, ScrimTransitionTargetKey, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            runtimeProfile.fadeTracks.Add(CopyFadeTrack(track));
-        }
-
-        return runtimeProfile;
+        return HexUiTransitionProfile.CreateRuntimeProfile(
+            chapterPageRevealProfile,
+            "act-transition-chapter-page-reveal",
+            HexUiTransitionEasing.EaseOut,
+            CreateDefaultRevealTracks(),
+            track => includeScrimFade || !string.Equals(track.targetKey, ScrimTransitionTargetKey, StringComparison.Ordinal));
     }
 
     private static IReadOnlyList<HexUiTransitionFadeTrack> CreateDefaultRevealTracks()
@@ -1143,19 +1118,6 @@ internal sealed class HexActTransitionModalDocumentController
                 endOpacity = 1f,
                 isRequired = true
             }
-        };
-    }
-
-    private static HexUiTransitionFadeTrack CopyFadeTrack(HexUiTransitionFadeTrack source)
-    {
-        return new HexUiTransitionFadeTrack
-        {
-            targetKey = source.targetKey,
-            startTime = source.startTime,
-            duration = source.duration,
-            startOpacity = source.startOpacity,
-            endOpacity = source.endOpacity,
-            isRequired = source.isRequired
         };
     }
 
