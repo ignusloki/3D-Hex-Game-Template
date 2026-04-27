@@ -1,0 +1,169 @@
+#GameOverOverlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+#GameOverBackground {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background-image: url("../../../Art/Image/Placeholder/parallax-forest.png");
+    -unity-background-scale-mode: scale-and-crop;
+    opacity: 1;
+}
+
+#GameOverScrim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background-color: rgba(8, 8, 10, 0.42);
+}
+
+#GameOverContent {
+    position: absolute;
+    width: 1200px;
+    height: 340px;
+    left: 50%;
+    bottom: 72px;
+    translate: -50% 0;
+    flex-direction: column;
+    align-items: center;
+}
+
+#GameOverTitle {
+    width: 1200px;
+    height: 82px;
+    margin-bottom: 5px;
+    color: rgba(241, 230, 216, 1);
+    font-size: 74px;
+    line-height: 82px;
+    -unity-font-style: normal;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+#GameOverSeparator {
+    width: 520px;
+    height: 18px;
+    margin-bottom: 14px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+#GameOverPanel {
+    width: 1080px;
+    height: 190px;
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(18, 12, 14, 0.74);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgba(173, 54, 40, 0.72);
+    border-right-color: rgba(173, 54, 40, 0.72);
+    border-top-color: rgba(173, 54, 40, 0.72);
+    border-bottom-color: rgba(173, 54, 40, 0.72);
+}
+
+#GameOverDescription {
+    width: 960px;
+    height: 34px;
+    margin-bottom: 26px;
+    color: rgba(228, 220, 214, 0.72);
+    font-size: 18px;
+    line-height: 34px;
+    -unity-font-style: normal;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+#GameOverButtonRow {
+    width: 760px;
+    height: 72px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    column-gap: 0;
+}
+
+#RetryButton,
+#ReturnToTitleButton {
+    width: 340px;
+    height: 72px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    font-size: 22px;
+    line-height: 24px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+#RetryButton {
+    margin-right: 32px;
+    color: rgba(245, 234, 221, 1);
+    background-color: rgba(90, 31, 27, 1);
+    border-left-color: rgba(197, 72, 53, 1);
+    border-right-color: rgba(197, 72, 53, 1);
+    border-top-color: rgba(197, 72, 53, 1);
+    border-bottom-color: rgba(197, 72, 53, 1);
+}
+
+#RetryButton:hover {
+    background-color: rgba(107, 39, 33, 1);
+    border-left-color: rgba(217, 90, 68, 1);
+    border-right-color: rgba(217, 90, 68, 1);
+    border-top-color: rgba(217, 90, 68, 1);
+    border-bottom-color: rgba(217, 90, 68, 1);
+}
+
+#RetryButton:active {
+    background-color: rgba(74, 24, 21, 1);
+}
+
+#ReturnToTitleButton {
+    margin-left: 32px;
+    color: rgba(231, 226, 220, 1);
+    background-color: rgba(20, 24, 30, 0.78);
+    border-left-color: rgba(78, 88, 100, 0.72);
+    border-right-color: rgba(78, 88, 100, 0.72);
+    border-top-color: rgba(78, 88, 100, 0.72);
+    border-bottom-color: rgba(78, 88, 100, 0.72);
+}
+
+#ReturnToTitleButton:hover {
+    background-color: rgba(28, 33, 40, 0.88);
+    border-left-color: rgba(102, 112, 124, 0.84);
+    border-right-color: rgba(102, 112, 124, 0.84);
+    border-top-color: rgba(102, 112, 124, 0.84);
+    border-bottom-color: rgba(102, 112, 124, 0.84);
+}
+
+#ReturnToTitleButton:active {
+    background-color: rgba(16, 20, 26, 0.92);
+}

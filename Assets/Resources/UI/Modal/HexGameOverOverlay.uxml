@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="GameOverOverlay">
+        <ui:VisualElement name="GameOverBackground" />
+        <ui:VisualElement name="GameOverScrim" />
+        <ui:VisualElement name="GameOverContent">
+            <ui:Label name="GameOverTitle" text="Game Over" />
+            <ui:VisualElement name="GameOverSeparator">
+                <ui:VisualElement name="GameOverSeparatorLeftLine" class="game-over-separator-line" />
+                <ui:VisualElement name="GameOverSeparatorRightLine" class="game-over-separator-line" />
+            </ui:VisualElement>
+            <ui:VisualElement name="GameOverPanel">
+                <ui:Label
+                    name="GameOverDescription"
+                    text="The caravan could not withstand the pressure of the journey." />
+                <ui:VisualElement name="GameOverButtonRow">
+                    <ui:Button name="RetryButton" text="Retry" />
+                    <ui:Button name="ReturnToTitleButton" text="Return to Title" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
