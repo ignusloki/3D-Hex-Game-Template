@@ -319,6 +319,8 @@
 .act-transition-card {
     width: 176px;
     height: 352px;
+    margin-left: 60px;
+    margin-right: 60px;
     align-items: center;
     justify-content: center;
     background-color: rgba(0, 0, 0, 0);
