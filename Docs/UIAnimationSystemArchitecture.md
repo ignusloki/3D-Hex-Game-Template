@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The game now uses one shared UI Toolkit root for gameplay UI, but transition animations are still owned by individual flows. The Game Over screen has its own fade scheduler, timing settings, interaction lockout, and element opacity sequence. That solved the immediate screen, but copying the same logic into Victory, main menu, act transitions, and pitstops would create duplicated behavior and inconsistent timing.
+The game uses one shared UI Toolkit root for gameplay UI, and the migrated transition flows now share one fade scheduler through `HexUiTransitionPlayer`. This document records the migration architecture, completed work, and remaining boundaries so future UI flows do not reintroduce duplicated transition logic.
 
-This document defines a small shared UI animation system for screen and modal transitions.
+The system is intentionally small: feature presenters still decide what content to show, while shared transition utilities decide how prepared UI Toolkit elements fade in or out.
 
 ## Current State
 
@@ -26,6 +26,13 @@ Completed migration state:
 - Act Complete and Boon Selection use the shared `ChapterPageReveal` path.
 - Pitstop modal opening uses the shared `SimpleModalFade` path.
 - The shared UI root has a global transition layer for future menu and scene-like flow transitions.
+
+Implementation snapshot:
+
+- Shared runtime: `HexUiTransitionPlayer`, `HexUiTransitionProfile`, and `HexUiTransitionTargetSet`.
+- Shared profile helpers: `HexUiTransitionProfile.CreateRuntimeProfile(...)` handles runtime profile cloning, track filtering, and reverse fades.
+- Global layer: `HexGameplayUiLayerId.GlobalTransition`, `HexGlobalUiTransitionController`, and `GlobalFadeToBlack`.
+- Menu hooks: `HexMainMenuTransitionService` exposes named transition entry points, but real menu wiring is deferred until a main menu exists.
 
 ## Goal
 
