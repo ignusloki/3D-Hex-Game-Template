@@ -17,14 +17,15 @@ The current UI foundation is correct:
 
 The remaining animation gap:
 
-- Victory still uses the generic instant simple-action modal and is deferred to a separate Victory branch.
 - A real main menu presenter and menu game state do not exist yet, so menu transitions are currently infrastructure-only.
 
 Completed migration state:
 
 - Game Over uses `HexUiTransitionPlayer` and retains its editor-facing timing component as a configuration adapter.
 - Act Complete and Boon Selection use the shared `ChapterPageReveal` path.
+- Act-to-act scene reloads are masked behind the shared `GlobalFadeToBlack` layer after boon selection.
 - Pitstop modal opening uses the shared `SimpleModalFade` path.
+- Victory uses a dedicated UI Toolkit overlay, opens with the shared `SimpleModalFade` path, and masks Continue/restart behind `GlobalFadeToBlack`.
 - The shared UI root has a global transition layer for future menu and scene-like flow transitions.
 
 Implementation snapshot:
@@ -272,24 +273,22 @@ Infrastructure complete for the current project state. There is no main menu pre
 
 When the real menu screen exists, those methods should be wired to the menu presenter and game-flow controller callbacks.
 
-## Remaining Migration Plan
-
 ### Slice 7: Build Victory Screen On The Same Profile
 
-Skipped in this branch. Victory will be handled in a separate branch and should not be changed as part of this cleanup pass.
+Complete. Victory now uses a dedicated UI Toolkit overlay with Victory-specific UXML/USS, the `S_2.png` hero image loaded from `Resources`, and the same shared transition infrastructure used by the rest of the migrated flow.
 
-Future work:
+Implementation notes:
 
-- replace or extend the simple-action Victory path
-- create Victory-specific UXML/USS if needed
-- reuse `BlackoutThenReveal` or a Victory variant profile
-- keep Retry behavior unchanged
+- Victory opens with the shared `SimpleModalFade` profile, matching the pitstop modal transition style requested for this screen.
+- Victory hides HUD/context layers and blocks gameplay input while visible.
+- The Continue button triggers `GlobalFadeToBlack` before scene reload so new map generation is hidden.
+- The old generic simple-action Victory path is no longer used for Victory presentation.
 
-Future acceptance:
+Acceptance:
 
-- Victory does not use a copied Game Over scheduler
-- Victory can be tuned from a profile
-- Victory blocks gameplay input immediately
+- Victory does not use a copied Game Over scheduler.
+- Victory uses the shared transition player/global transition system.
+- Victory blocks gameplay input immediately while active.
 
 ### Slice 8: Cleanup
 
@@ -297,7 +296,7 @@ Complete. Runtime profile cloning, track filtering, and reverse-track generation
 
 Notes:
 
-- Victory code was intentionally left untouched.
+- Victory now has its own dedicated overlay/controller path while still using shared transition utilities.
 - `HexGameOverTransitionSettings` is retained because it exposes the user-requested Game Over timing controls in the scene inspector; it no longer owns a custom scheduler.
 - Each migrated presenter still owns only its screen-specific target mapping, content binding, and callbacks.
 
@@ -357,12 +356,14 @@ Sequence:
 
 Use:
 
-- `BlackoutThenReveal`
+- `SimpleModalFade` for opening the Victory page
+- `GlobalFadeToBlack` for Continue/restart masking
 
 Notes:
 
-- should share Game Over transition mechanics
-- can have a different background, color palette, and text content
+- uses dedicated Victory UXML/USS and the `S_2.png` hero image
+- hides HUD/context layers and blocks gameplay interaction while active
+- uses the same global blackout layer as Game Over retry and act-to-act scene reloads
 
 ### Game Over Screen
 
@@ -419,4 +420,4 @@ Sequence:
 
 ## Recommended Next Step
 
-Open a dedicated Victory branch and build the Victory screen on top of the existing shared transition system. Use Game Over as the reference for target mapping and lifecycle, but keep Victory-specific UXML/USS and presentation code isolated from the completed migration cleanup.
+The animation-system migration slices are complete for the flows that currently exist. The only deferred slice-level work is real main menu wiring, because the game does not yet have a main menu presenter or menu game state. When that exists, wire `HexMainMenuTransitionService` into startup, start-game, and return-to-menu callbacks instead of adding a separate transition implementation.
