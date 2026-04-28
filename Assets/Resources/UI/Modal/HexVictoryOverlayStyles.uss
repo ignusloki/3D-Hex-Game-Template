@@ -42,31 +42,12 @@
     align-items: center;
 }
 
-#VictoryEyebrow {
-    color: rgb(122, 106, 73);
-    font-size: 16px;
-    line-height: 20px;
-    letter-spacing: 1.5px;
-    -unity-text-align: middle-center;
-    margin-bottom: 14px;
-}
-
 #VictoryTitle {
     color: rgb(46, 38, 28);
     font-size: 64px;
     line-height: 68px;
     -unity-text-align: middle-center;
-    margin-bottom: 14px;
-}
-
-#VictorySubtitle {
-    max-width: 760px;
-    color: rgb(75, 67, 56);
-    font-size: 24px;
-    line-height: 30px;
-    -unity-text-align: middle-center;
-    white-space: normal;
-    margin-bottom: 28px;
+    margin-bottom: 18px;
 }
 
 #VictoryHeroFrame {
@@ -94,17 +75,6 @@
     height: 260px;
 }
 
-#VictoryNarrative {
-    width: 820px;
-    height: 120px;
-    padding-top: 22px;
-    border-top-width: 1px;
-    border-top-color: rgb(204, 188, 151);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
 #VictoryNarrativeText {
     max-width: 760px;
     color: rgb(75, 67, 56);
@@ -112,12 +82,14 @@
     line-height: 32px;
     -unity-text-align: middle-center;
     white-space: normal;
+    margin-bottom: auto;
 }
 
 #VictoryContinueButton {
     width: 280px;
     height: 64px;
-    margin-top: 32px;
+    margin-top: 0;
+    margin-bottom: 20px;
     background-color: rgb(93, 123, 67);
     color: rgb(246, 241, 231);
     font-size: 30px;

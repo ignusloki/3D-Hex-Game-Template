@@ -2,19 +2,15 @@
     <ui:VisualElement name="VictoryOverlay">
         <ui:VisualElement name="VictoryScrim" />
         <ui:VisualElement name="VictoryPage">
-            <ui:Label name="VictoryEyebrow" text="THE JOURNEY'S END" />
             <ui:Label name="VictoryTitle" text="Victory" />
-            <ui:Label name="VictorySubtitle" text="The caravan reached the horizon." />
 
             <ui:VisualElement name="VictoryHeroFrame">
                 <ui:Image name="VictoryHeroImage" />
             </ui:VisualElement>
 
-            <ui:VisualElement name="VictoryNarrative">
-                <ui:Label
-                    name="VictoryNarrativeText"
-                    text="The caravan has reached the promised land. At last, they are free from tyranny and safe from all perils." />
-            </ui:VisualElement>
+            <ui:Label
+                name="VictoryNarrativeText"
+                text="The caravan has reached the promised land. At last, they are free from tyranny and safe from all perils." />
 
             <ui:Button name="VictoryContinueButton" text="Continue" />
         </ui:VisualElement>
