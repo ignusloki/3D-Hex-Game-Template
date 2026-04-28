@@ -1171,10 +1171,15 @@ internal sealed class HexActTransitionModalDocumentController
 
 public sealed class HexRunEndModalPresenter : MonoBehaviour
 {
+    [Header("Victory")]
+    [SerializeField] private Texture2D victoryHeroImage;
+
     private HexSimpleActionModalDocumentController documentController;
     private HexVictoryOverlayDocumentController victoryDocumentController;
     private HexGameOverOverlayDocumentController gameOverDocumentController;
     private HexGameplayUiRootController gameplayUiRootController;
+
+    internal Texture2D VictoryHeroImage => victoryHeroImage;
 
     public bool IsOpen =>
         (documentController != null && documentController.IsOpen)
@@ -1249,7 +1254,6 @@ internal sealed class HexVictoryOverlayDocumentController
     private const string SimpleModalFadeProfileResourcePath = "UI/Transitions/SimpleModalFade";
     private const string ModalMountName = "victory-overlay-mount";
     private const string RimouskiFontEditorAssetPath = "Assets/Art/Fonts/rimouski sb.otf";
-    private const string VictoryHeroEditorAssetPath = "Assets/Art/Image/Placeholder/S_2.png";
     private const string ScrimTransitionTargetKey = "scrim";
     private const string ShellTransitionTargetKey = "shell";
 
@@ -1271,10 +1275,12 @@ internal sealed class HexVictoryOverlayDocumentController
     private UIE.Image heroImage;
     private HexUiTransitionPlayer transitionPlayer;
     private HexHudDocumentController hudDocumentController;
+    private HexGlobalUiTransitionController globalTransitionController;
     private Action continueRequested;
     private bool isInitialized;
     private bool isOpen;
     private bool areTransitionControlsLocked;
+    private bool isContinueTransitioning;
 
     public HexVictoryOverlayDocumentController(MonoBehaviour owner)
     {
@@ -1294,7 +1300,7 @@ internal sealed class HexVictoryOverlayDocumentController
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
         simpleModalFadeProfile ??= Resources.Load<HexUiTransitionProfile>(SimpleModalFadeProfileResourcePath);
         rimouskiFont ??= LoadRimouskiFont();
-        heroTexture ??= LoadVictoryHeroTexture();
+        heroTexture ??= ResolveVictoryHeroTexture();
         if (layoutAsset == null || styleSheet == null)
         {
             Debug.LogError("HexVictoryOverlayDocumentController could not load Victory UI Toolkit assets.", owner);
@@ -1349,6 +1355,8 @@ internal sealed class HexVictoryOverlayDocumentController
         }
 
         hudDocumentController ??= owner.GetComponent<HexHudDocumentController>() ?? UnityEngine.Object.FindAnyObjectByType<HexHudDocumentController>();
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(owner);
+        globalTransitionController?.EnsureInitialized();
         gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Modal, false);
         gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
         isInitialized = true;
@@ -1373,6 +1381,7 @@ internal sealed class HexVictoryOverlayDocumentController
     public void Hide()
     {
         StopOpenTransition();
+        isContinueTransitioning = false;
         continueRequested = null;
         SetOverlayVisibility(false);
         LogDebug("Hide Victory overlay.");
@@ -1392,13 +1401,33 @@ internal sealed class HexVictoryOverlayDocumentController
 
     private void HandleContinueClicked()
     {
-        if (areTransitionControlsLocked)
+        if (areTransitionControlsLocked || isContinueTransitioning)
         {
             return;
         }
 
         LogDebug($"HandleContinueClicked callbackAssigned={continueRequested != null}.");
         Action callback = continueRequested;
+        continueRequested = null;
+        isContinueTransitioning = true;
+        SetTransitionInteractionLock(true);
+
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(owner);
+        globalTransitionController?.EnsureInitialized();
+        bool started = globalTransitionController != null
+            && globalTransitionController.PlayFadeToBlack(
+                () => InvokeContinueCallback(callback),
+                null,
+                fadeBackOut: false);
+        if (!started)
+        {
+            LogDebug("Global fade-to-black was unavailable. Continuing immediately.");
+            InvokeContinueCallback(callback);
+        }
+    }
+
+    private void InvokeContinueCallback(Action callback)
+    {
         Hide();
         callback?.Invoke();
     }
@@ -1561,13 +1590,14 @@ internal sealed class HexVictoryOverlayDocumentController
 #endif
     }
 
-    private static Texture2D LoadVictoryHeroTexture()
+    private Texture2D ResolveVictoryHeroTexture()
     {
-#if UNITY_EDITOR
-        return UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(VictoryHeroEditorAssetPath);
-#else
+        if (owner is HexRunEndModalPresenter runEndPresenter)
+        {
+            return runEndPresenter.VictoryHeroImage;
+        }
+
         return null;
-#endif
     }
 
     private void LogDebug(string message, bool verbose = false)
