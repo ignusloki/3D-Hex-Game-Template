@@ -35,6 +35,7 @@ public class PlayerController : MonoBehaviour
     private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
     private HexGlobalUiTransitionController globalTransitionController;
+    private HexMainMenuPresenter mainMenuPresenter;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -45,6 +46,7 @@ public class PlayerController : MonoBehaviour
     private IReadOnlyList<HexTileData> previewPath;
     private bool caravanSelectionActive;
     private bool isReady;
+    private bool isGameplaySessionActive;
     private bool isRunOver;
     private bool resourcesInitialized;
     private string pendingPitstopBoonHint;
@@ -76,6 +78,8 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Start()
     {
         EnsureRuntimeReferences();
+        bool startGameplayDirectly = HexMainMenuPresenter.ConsumeGameplayOnNextSceneLoadRequest()
+            || HexActTransitionService.HasActiveRunSession();
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -122,6 +126,16 @@ public class PlayerController : MonoBehaviour
         isReady = true;
         RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
+
+        if (!startGameplayDirectly && mainMenuPresenter != null)
+        {
+            mainMenuPresenter.ShowBootMenu(StartGameplayFromMainMenu);
+        }
+        else
+        {
+            StartGameplayFromMainMenu();
+            RevealGameplayAfterSceneLoad();
+        }
     }
 
     private void Update()
@@ -129,6 +143,8 @@ public class PlayerController : MonoBehaviour
         EnsureRuntimeReferences();
 
         if (!isReady
+            || !isGameplaySessionActive
+            || (mainMenuPresenter != null && mainMenuPresenter.IsOpen)
             || isRunOver
             || (runEndModalPresenter != null && runEndModalPresenter.IsOpen)
             || (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
@@ -614,7 +630,7 @@ public class PlayerController : MonoBehaviour
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runEndModalPresenter?.ShowVictory(RetryCurrentScene);
+        runEndModalPresenter?.ShowVictory(ReturnToMainMenuAfterFade);
     }
 
     private bool TryBeginActTransition()
@@ -649,7 +665,7 @@ public class PlayerController : MonoBehaviour
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile, defeatReason);
-        runEndModalPresenter?.ShowDefeat(RetryCurrentScene);
+        runEndModalPresenter?.ShowDefeat(RetryCurrentScene, ReturnToMainMenuWithFade);
     }
 
     private void RefreshTileDetails(HexagonTile tile)
@@ -814,6 +830,62 @@ public class PlayerController : MonoBehaviour
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>() ?? gameObject.AddComponent<HexMainMenuPresenter>();
+    }
+
+    private void StartGameplayFromMainMenu()
+    {
+        isGameplaySessionActive = true;
+        hudDocumentController?.SetGameplayModalState(false);
+        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Hud, true);
+        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Context, true);
+        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Hud, false);
+        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Context, false);
+        RefreshTileDetails(currentTile);
+        hudPresenter.ShowCaravanIdle(currentTile);
+    }
+
+    private void RevealGameplayAfterSceneLoad()
+    {
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        globalTransitionController?.EnsureInitialized();
+        if (globalTransitionController == null || !globalTransitionController.PlayFadeFromBlack())
+        {
+            globalTransitionController?.HideBlackoutImmediate();
+        }
+    }
+
+    private void ReturnToMainMenuWithFade()
+    {
+        bool sceneLoadRequested = false;
+        void LoadMenuSceneOnce()
+        {
+            if (sceneLoadRequested)
+            {
+                return;
+            }
+
+            sceneLoadRequested = true;
+            ReturnToMainMenuAfterFade();
+        }
+
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        globalTransitionController?.EnsureInitialized();
+        bool started = globalTransitionController != null
+            && globalTransitionController.PlayFadeToBlack(
+                LoadMenuSceneOnce,
+                null,
+                fadeBackOut: false);
+        if (!started)
+        {
+            LoadMenuSceneOnce();
+        }
+    }
+
+    private void ReturnToMainMenuAfterFade()
+    {
+        HexActTransitionService.ResetRunSession();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -970,6 +1042,7 @@ public class PlayerController : MonoBehaviour
     private void RetryCurrentScene()
     {
         HexActTransitionService.ResetRunSession();
+        HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -994,6 +1067,7 @@ public class PlayerController : MonoBehaviour
             }
 
             sceneLoadRequested = true;
+            HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
 

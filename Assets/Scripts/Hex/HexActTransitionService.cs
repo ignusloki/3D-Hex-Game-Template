@@ -163,6 +163,11 @@ public static class HexActTransitionService
         currentSession = null;
     }
 
+    public static bool HasActiveRunSession()
+    {
+        return currentSession != null;
+    }
+
     public static void DebugConfigureRunSession(
         int currentActNumber,
         CaravanResourceSnapshot currentResources,

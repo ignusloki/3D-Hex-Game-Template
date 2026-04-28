@@ -1,0 +1,15 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements">
+        <ui:VisualElement name="MainMenuRoot">
+            <ui:VisualElement name="MainMenuBackground" />
+            <ui:VisualElement name="MainMenuScrim" />
+        <ui:VisualElement name="MainMenuVignette" />
+        <ui:VisualElement name="MainMenuPanel">
+            <ui:Image name="MainMenuLogo" />
+            <ui:Label name="MainMenuSubtitle" text="A caravan survival journey" />
+            <ui:VisualElement name="MainMenuButtonColumn">
+                <ui:Button name="NewGameButton" text="New Game" />
+                <ui:Button name="QuitButton" text="Quit" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

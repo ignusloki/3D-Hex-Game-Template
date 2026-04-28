@@ -1,0 +1,138 @@
+#MainMenuRoot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1920px;
+    height: 1080px;
+    justify-content: center;
+    align-items: center;
+}
+
+#MainMenuBackground {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+#MainMenuScrim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(10, 12, 18, 0.46);
+}
+
+#MainMenuVignette {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+#MainMenuPanel {
+    width: 760px;
+    height: 560px;
+    background-color: rgb(240, 232, 216);
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-top-color: rgb(198, 177, 138);
+    border-right-color: rgb(198, 177, 138);
+    border-bottom-color: rgb(198, 177, 138);
+    border-left-color: rgb(198, 177, 138);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    padding-top: 34px;
+    padding-right: 44px;
+    padding-bottom: 34px;
+    padding-left: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+#MainMenuLogo {
+    width: 560px;
+    height: 180px;
+    -unity-background-scale-mode: scale-to-fit;
+    margin-top: 6px;
+    margin-bottom: 18px;
+}
+
+#MainMenuSubtitle {
+    width: 520px;
+    max-width: 520px;
+    margin-bottom: 38px;
+    color: rgb(92, 83, 71);
+    font-size: 22px;
+    -unity-font-style: normal;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+#MainMenuButtonColumn {
+    width: 420px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+#NewGameButton,
+#QuitButton {
+    width: 420px;
+    height: 76px;
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    font-size: 34px;
+    -unity-text-align: middle-center;
+}
+
+#NewGameButton {
+    margin-bottom: 22px;
+    background-color: rgb(100, 136, 73);
+    border-top-color: rgb(77, 106, 55);
+    border-right-color: rgb(77, 106, 55);
+    border-bottom-color: rgb(77, 106, 55);
+    border-left-color: rgb(77, 106, 55);
+    color: rgb(246, 241, 231);
+}
+
+#NewGameButton:hover {
+    background-color: rgb(115, 153, 86);
+}
+
+#NewGameButton:active {
+    background-color: rgb(88, 119, 63);
+}
+
+#QuitButton {
+    background-color: rgb(239, 231, 216);
+    border-top-color: rgb(198, 177, 138);
+    border-right-color: rgb(198, 177, 138);
+    border-bottom-color: rgb(198, 177, 138);
+    border-left-color: rgb(198, 177, 138);
+    color: rgb(47, 42, 36);
+}
+
+#QuitButton:hover {
+    background-color: rgb(231, 221, 204);
+}
+
+#QuitButton:active {
+    background-color: rgb(221, 211, 193);
+}

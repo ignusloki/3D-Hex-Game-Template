@@ -1181,22 +1181,22 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         || (victoryDocumentController != null && victoryDocumentController.IsOpen)
         || (gameOverDocumentController != null && gameOverDocumentController.IsOpen);
 
-    public void ShowVictory(Action onRetryRequested)
+    public void ShowVictory(Action onContinueRequested)
     {
         LogDebug("ShowVictory requested.");
         documentController?.Hide();
         gameOverDocumentController?.Hide();
         EnsureVictoryView();
-        victoryDocumentController?.Show(onRetryRequested);
+        victoryDocumentController?.Show(onContinueRequested);
     }
 
-    public void ShowDefeat(Action onRetryRequested)
+    public void ShowDefeat(Action onRetryRequested, Action onReturnToTitleRequested = null)
     {
         LogDebug("ShowDefeat requested.");
         documentController?.Hide();
         victoryDocumentController?.Hide();
         EnsureGameOverView();
-        gameOverDocumentController?.Show(onRetryRequested);
+        gameOverDocumentController?.Show(onRetryRequested, onReturnToTitleRequested);
     }
 
     public void Hide()
@@ -1634,6 +1634,7 @@ internal sealed class HexGameOverOverlayDocumentController
     private HexGameOverTransitionSettings transitionSettings;
     private HexHudDocumentController hudDocumentController;
     private Action retryRequested;
+    private Action returnToTitleRequested;
     private bool isInitialized;
     private bool isOpen;
     private bool areTransitionControlsLocked;
@@ -1715,6 +1716,11 @@ internal sealed class HexGameOverOverlayDocumentController
             retryButton.clicked += HandleRetryClicked;
         }
 
+        if (returnToTitleButton != null)
+        {
+            returnToTitleButton.clicked += HandleReturnToTitleClicked;
+        }
+
         if (modalRoot != null)
         {
             modalRoot.pickingMode = UIE.PickingMode.Position;
@@ -1729,7 +1735,7 @@ internal sealed class HexGameOverOverlayDocumentController
             $"Initialized Game Over overlay. rootFound={modalRoot != null} backgroundFound={backgroundElement != null} retryFound={retryButton != null} returnFound={returnToTitleButton != null} backgroundTextureFound={backgroundTexture != null}.");
     }
 
-    public void Show(Action onRetryRequested)
+    public void Show(Action onRetryRequested, Action onReturnToTitleRequested)
     {
         EnsureInitialized();
         if (!isInitialized || modalRoot == null)
@@ -1744,6 +1750,7 @@ internal sealed class HexGameOverOverlayDocumentController
         }
 
         retryRequested = onRetryRequested;
+        returnToTitleRequested = onReturnToTitleRequested;
         transitionSettings = ResolveTransitionSettings();
         if (titleLabel != null)
         {
@@ -1770,6 +1777,7 @@ internal sealed class HexGameOverOverlayDocumentController
     {
         StopTransition();
         retryRequested = null;
+        returnToTitleRequested = null;
         SetOverlayVisibility(false);
         LogDebug("Hide Game Over overlay.");
     }
@@ -1785,6 +1793,24 @@ internal sealed class HexGameOverOverlayDocumentController
         Action callback = retryRequested;
         Hide();
         callback?.Invoke();
+    }
+
+    private void HandleReturnToTitleClicked()
+    {
+        if (areTransitionControlsLocked)
+        {
+            return;
+        }
+
+        LogDebug($"HandleReturnToTitleClicked callbackAssigned={returnToTitleRequested != null}.");
+        Action callback = returnToTitleRequested;
+        if (callback == null)
+        {
+            return;
+        }
+
+        SetTransitionInteractionLock(true);
+        callback.Invoke();
     }
 
     private void PrepareTransitionInitialState()

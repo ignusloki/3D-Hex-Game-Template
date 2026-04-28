@@ -27,6 +27,11 @@
     align-items: center;
 }
 
+.gameplay-ui-layer--menu {
+    justify-content: center;
+    align-items: center;
+}
+
 .gameplay-ui-layer--global-transition {
     justify-content: center;
     align-items: center;

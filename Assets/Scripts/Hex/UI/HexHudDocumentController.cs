@@ -437,6 +437,7 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
     public VisualElement RootElement => rootElement;
     public VisualElement HudLayer => GetLayer(HexGameplayUiLayerId.Hud);
     public VisualElement ContextLayer => GetLayer(HexGameplayUiLayerId.Context);
+    public VisualElement MenuLayer => GetLayer(HexGameplayUiLayerId.Menu);
     public VisualElement ModalLayer => GetLayer(HexGameplayUiLayerId.Modal);
     public VisualElement GlobalTransitionLayer => GetLayer(HexGameplayUiLayerId.GlobalTransition);
     public VisualElement DebugLayer => GetLayer(HexGameplayUiLayerId.Debug);
@@ -525,12 +526,14 @@ public sealed class HexGameplayUiRootController : MonoBehaviour
         layers.Clear();
         RegisterLayer(HexGameplayUiLayerId.Hud, rootElement.Q<VisualElement>("gameplay-ui-hud-layer"));
         RegisterLayer(HexGameplayUiLayerId.Context, rootElement.Q<VisualElement>("gameplay-ui-context-layer"));
+        RegisterLayer(HexGameplayUiLayerId.Menu, rootElement.Q<VisualElement>("gameplay-ui-menu-layer"));
         RegisterLayer(HexGameplayUiLayerId.Modal, rootElement.Q<VisualElement>("gameplay-ui-modal-layer"));
         RegisterLayer(HexGameplayUiLayerId.GlobalTransition, rootElement.Q<VisualElement>("gameplay-ui-global-transition-layer"));
         RegisterLayer(HexGameplayUiLayerId.Debug, rootElement.Q<VisualElement>("gameplay-ui-debug-layer"));
 
         SetLayerInteractive(HexGameplayUiLayerId.Hud, false);
         SetLayerInteractive(HexGameplayUiLayerId.Context, false);
+        SetLayerInteractive(HexGameplayUiLayerId.Menu, false);
         SetLayerInteractive(HexGameplayUiLayerId.Modal, false);
         SetLayerInteractive(HexGameplayUiLayerId.GlobalTransition, false);
         SetLayerInteractive(HexGameplayUiLayerId.Debug, false);
@@ -666,6 +669,7 @@ public enum HexGameplayUiLayerId
 {
     Hud,
     Context,
+    Menu,
     Modal,
     GlobalTransition,
     Debug

@@ -3,11 +3,27 @@ using UnityEngine;
 
 public sealed class HexMainMenuTransitionService : MonoBehaviour
 {
+    private const string StartupFadeFromBlackProfileResourcePath = "UI/Transitions/MainMenuStartupFadeFromBlack";
+
     [SerializeField] private HexGlobalUiTransitionController globalTransitionController;
+    [SerializeField] private HexUiTransitionProfile startupFadeFromBlackProfile;
 
     public bool PlayStartupToMainMenu(Action showMainMenu, Action onCompleted = null)
     {
-        return PlayMenuFlowTransition("startup-to-main-menu", showMainMenu, onCompleted);
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        if (globalTransitionController == null)
+        {
+            Debug.LogWarning("[MainMenuTransition] Could not play startup reveal because no global transition controller is available.", this);
+            showMainMenu?.Invoke();
+            onCompleted?.Invoke();
+            return false;
+        }
+
+        startupFadeFromBlackProfile ??= Resources.Load<HexUiTransitionProfile>(StartupFadeFromBlackProfileResourcePath);
+        globalTransitionController.EnsureInitialized();
+        globalTransitionController.ShowBlackoutImmediate();
+        showMainMenu?.Invoke();
+        return globalTransitionController.PlayFadeFromBlack(onCompleted, startupFadeFromBlackProfile);
     }
 
     public bool PlayMainMenuToActOne(Action startActOne, Action onCompleted = null)

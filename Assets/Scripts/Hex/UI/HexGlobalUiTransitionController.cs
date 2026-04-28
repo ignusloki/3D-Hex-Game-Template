@@ -116,7 +116,41 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
         isInitialized = true;
     }
 
-    public bool PlayFadeToBlack(Action whileBlack = null, Action onCompleted = null, bool fadeBackOut = true)
+    public void ShowBlackoutImmediate()
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            return;
+        }
+
+        transitionPlayer?.Cancel(applyEndState: false);
+        scheduledFadeOut?.Pause();
+        scheduledFadeOut = null;
+        ReleaseRuntimeProfile();
+        isTransitioning = false;
+        SetGlobalTransitionLayerActive(true);
+        SetElementOpacity(blackoutElement, 1f);
+    }
+
+    public void HideBlackoutImmediate()
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            return;
+        }
+
+        transitionPlayer?.Cancel(applyEndState: false);
+        scheduledFadeOut?.Pause();
+        scheduledFadeOut = null;
+        ReleaseRuntimeProfile();
+        isTransitioning = false;
+        SetElementOpacity(blackoutElement, 0f);
+        SetGlobalTransitionLayerActive(false);
+    }
+
+    public bool PlayFadeToBlack(Action whileBlack = null, Action onCompleted = null, bool fadeBackOut = true, HexUiTransitionProfile profileOverride = null)
     {
         EnsureInitialized();
         if (!isInitialized)
@@ -137,7 +171,7 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
         SetElementOpacity(blackoutElement, 0f);
 
         return PlayRuntimeProfile(
-            CreateRuntimeProfile(reverse: false),
+            CreateRuntimeProfile(reverse: false, profileOverride),
             () =>
             {
                 ReleaseRuntimeProfile();
@@ -155,7 +189,7 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
             });
     }
 
-    public bool PlayFadeFromBlack(Action onCompleted = null)
+    public bool PlayFadeFromBlack(Action onCompleted = null, HexUiTransitionProfile profileOverride = null)
     {
         EnsureInitialized();
         if (!isInitialized)
@@ -175,7 +209,7 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
         SetElementOpacity(blackoutElement, 1f);
 
         return PlayRuntimeProfile(
-            CreateRuntimeProfile(reverse: true),
+            CreateRuntimeProfile(reverse: true, profileOverride),
             () =>
             {
                 ReleaseRuntimeProfile();
@@ -243,10 +277,10 @@ public sealed class HexGlobalUiTransitionController : MonoBehaviour
         }).StartingIn(0);
     }
 
-    private HexUiTransitionProfile CreateRuntimeProfile(bool reverse)
+    private HexUiTransitionProfile CreateRuntimeProfile(bool reverse, HexUiTransitionProfile profileOverride = null)
     {
         return HexUiTransitionProfile.CreateRuntimeProfile(
-            globalFadeToBlackProfile,
+            profileOverride != null ? profileOverride : globalFadeToBlackProfile,
             "global-fade-to-black",
             HexUiTransitionEasing.EaseOut,
             CreateDefaultFadeToBlackTracks(),

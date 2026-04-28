@@ -2,6 +2,7 @@
     <ui:VisualElement name="gameplay-ui-root">
         <ui:VisualElement name="gameplay-ui-hud-layer" class="gameplay-ui-layer" />
         <ui:VisualElement name="gameplay-ui-context-layer" class="gameplay-ui-layer" />
+        <ui:VisualElement name="gameplay-ui-menu-layer" class="gameplay-ui-layer gameplay-ui-layer--menu" />
         <ui:VisualElement name="gameplay-ui-modal-layer" class="gameplay-ui-layer gameplay-ui-layer--modal" />
         <ui:VisualElement name="gameplay-ui-global-transition-layer" class="gameplay-ui-layer gameplay-ui-layer--global-transition" />
         <ui:VisualElement name="gameplay-ui-debug-layer" class="gameplay-ui-layer" />
