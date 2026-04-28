@@ -1010,14 +1010,12 @@ MonoBehaviour:
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
-  selectedBoonsSummary: 'Act: 2
-
-    Locked Family: Hunter
+  selectedBoonsSummary: 'Act: 1
 
     Boons:
 
-    - Pillar
-    of Fire [Hunter]'
+    - None'
+  debugAct2ToAct3Family: 1
 --- !u!1 &1822504960
 GameObject:
   m_ObjectHideFlags: 0
