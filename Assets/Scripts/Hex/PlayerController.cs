@@ -630,107 +630,6 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
-    [ContextMenu("Debug/Open Act 2 -> Act 3 Boon Screen")]
-    public void DebugOpenAct2ToAct3BoonPreview()
-    {
-        DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype.Hunter);
-    }
-
-    [ContextMenu("Debug/Open Victory Modal")]
-    public void DebugOpenVictoryModal()
-    {
-        EnsureRuntimeReferences();
-
-        if (!Application.isPlaying)
-        {
-            Debug.LogWarning("[RunEndPreview] Enter Play Mode before opening the victory modal preview.", this);
-            return;
-        }
-
-        hudPresenter?.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runEndModalPresenter?.ShowVictory(RetryCurrentScene);
-    }
-
-    [ContextMenu("Debug/Open Defeat Modal")]
-    public void DebugOpenDefeatModal()
-    {
-        EnsureRuntimeReferences();
-
-        if (!Application.isPlaying)
-        {
-            Debug.LogWarning("[RunEndPreview] Enter Play Mode before opening the defeat modal preview.", this);
-            return;
-        }
-
-        string previewReason = "Debug defeat preview";
-        hudPresenter?.ShowDefeat(currentTile, previewReason);
-        runEndModalPresenter?.ShowDefeat(RetryCurrentScene);
-    }
-
-    [ContextMenu("Debug/Open Mock Quest Modal")]
-    public void DebugOpenMockQuestModal()
-    {
-        EnsureRuntimeReferences();
-
-        if (!Application.isPlaying)
-        {
-            Debug.LogWarning("[QuestModalPreview] Enter Play Mode before opening the mock quest modal preview.", this);
-            return;
-        }
-
-        HexMockQuestMarkerModalPresenter previewPresenter =
-            GetComponent<HexMockQuestMarkerModalPresenter>() ?? gameObject.AddComponent<HexMockQuestMarkerModalPresenter>();
-        previewPresenter.Show(
-            "Quest Marker",
-            "This is a mock quest marker placeholder.\n\nLocation: Debug preview",
-            null);
-    }
-
-    public void DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype lockedFamily)
-    {
-        EnsureRuntimeReferences();
-
-        if (!Application.isPlaying)
-        {
-            Debug.LogWarning("[ActTransitionPreview] Enter Play Mode before opening the Act 2 -> Act 3 boon preview.", this);
-            return;
-        }
-
-        if (actTransitionModalPresenter == null)
-        {
-            Debug.LogWarning("[ActTransitionPreview] Missing HexActTransitionModalPresenter. Unable to open the boon preview.", this);
-            return;
-        }
-
-        HexNemesisArchetype resolvedFamily = lockedFamily == HexNemesisArchetype.None
-            ? HexNemesisArchetype.Hunter
-            : lockedFamily;
-        CaravanResourceSnapshot previewResources = ResolveDebugPreviewResources();
-
-        HexActTransitionService.DebugConfigureRunSession(2, previewResources, resolvedFamily);
-        HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(previewResources);
-        hudDocumentController?.RefreshRunContext();
-
-        PrepareForActTransitionModalState();
-        hudPresenter.ShowHint($"Debug preview: Act 2 complete. Inspecting {resolvedFamily} family boon options.");
-
-        if (displayData.RequiresBoonSelection)
-        {
-            actTransitionModalPresenter.ShowTransitionSelection(displayData, ContinueToNextAct);
-        }
-        else
-        {
-            actTransitionModalPresenter.ShowTransition(displayData, ContinueToNextAct);
-            Debug.LogWarning(
-                $"[ActTransitionPreview] No boon options were available for the {resolvedFamily} family. Showing the intermission screen instead.",
-                this);
-        }
-
-        Debug.Log(
-            $"[ActTransitionPreview] Opened Act 2 -> Act 3 preview. family={resolvedFamily} options={displayData.BoonOptions.Length} food={previewResources.Food} morale={previewResources.Morale} gold={previewResources.Gold}.",
-            this);
-    }
-
     private void EndRunAsDefeat(string defeatReason)
     {
         if (isRunOver)
@@ -795,23 +694,6 @@ public class PlayerController : MonoBehaviour
         pitstopEventController?.HideActiveModal();
         mockQuestMarkerController?.HideActiveModal();
         RefreshTileDetails(currentTile);
-    }
-
-    private CaravanResourceSnapshot ResolveDebugPreviewResources()
-    {
-        if (resourcesInitialized)
-        {
-            return caravanResources.ToSnapshot();
-        }
-
-        CaravanResourceSnapshot configuredStartingResources = caravanMetricsController != null
-            ? caravanMetricsController.GetConfiguredSnapshot()
-            : new CaravanResourceSnapshot(startingFood, startingMorale, startingGold);
-        CaravanResourceSnapshot previewResources = HexActTransitionService.GetStartingResources(configuredStartingResources);
-        caravanResources.Initialize(previewResources.Food, previewResources.Morale, previewResources.Gold);
-        resourcesInitialized = true;
-        UpdateResourcesText();
-        return caravanResources.ToSnapshot();
     }
 
     private void InitializeFogOfWar()

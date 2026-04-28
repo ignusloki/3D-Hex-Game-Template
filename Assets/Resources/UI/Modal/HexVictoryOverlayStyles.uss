@@ -1,0 +1,145 @@
+#VictoryOverlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+#VictoryScrim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 12, 18, 0.58);
+}
+
+#VictoryPage {
+    width: 1000px;
+    height: 820px;
+    padding-top: 34px;
+    padding-right: 44px;
+    padding-bottom: 34px;
+    padding-left: 44px;
+    background-color: rgb(233, 224, 204);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(194, 174, 132);
+    border-right-color: rgb(194, 174, 132);
+    border-top-color: rgb(194, 174, 132);
+    border-bottom-color: rgb(194, 174, 132);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    flex-direction: column;
+    align-items: center;
+}
+
+#VictoryEyebrow {
+    color: rgb(122, 106, 73);
+    font-size: 16px;
+    line-height: 20px;
+    letter-spacing: 1.5px;
+    -unity-text-align: middle-center;
+    margin-bottom: 14px;
+}
+
+#VictoryTitle {
+    color: rgb(46, 38, 28);
+    font-size: 64px;
+    line-height: 68px;
+    -unity-text-align: middle-center;
+    margin-bottom: 14px;
+}
+
+#VictorySubtitle {
+    max-width: 760px;
+    color: rgb(75, 67, 56);
+    font-size: 24px;
+    line-height: 30px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    margin-bottom: 28px;
+}
+
+#VictoryHeroFrame {
+    width: 820px;
+    height: 260px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(199, 180, 140);
+    border-right-color: rgb(199, 180, 140);
+    border-top-color: rgb(199, 180, 140);
+    border-bottom-color: rgb(199, 180, 140);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 30px;
+    background-color: rgb(210, 199, 176);
+}
+
+#VictoryHeroImage {
+    width: 820px;
+    height: 260px;
+}
+
+#VictoryNarrative {
+    width: 820px;
+    height: 120px;
+    padding-top: 22px;
+    border-top-width: 1px;
+    border-top-color: rgb(204, 188, 151);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#VictoryNarrativeText {
+    max-width: 760px;
+    color: rgb(75, 67, 56);
+    font-size: 22px;
+    line-height: 32px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+#VictoryContinueButton {
+    width: 280px;
+    height: 64px;
+    margin-top: 32px;
+    background-color: rgb(93, 123, 67);
+    color: rgb(246, 241, 231);
+    font-size: 30px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(69, 97, 47);
+    border-right-color: rgb(69, 97, 47);
+    border-top-color: rgb(69, 97, 47);
+    border-bottom-color: rgb(69, 97, 47);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    -unity-text-align: middle-center;
+}
+
+#VictoryContinueButton:hover {
+    background-color: rgb(106, 138, 76);
+}
+
+#VictoryContinueButton:active {
+    background-color: rgb(78, 105, 56);
+}

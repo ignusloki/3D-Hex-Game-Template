@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public sealed class CaravanMetricsController : MonoBehaviour
 {
@@ -11,6 +12,8 @@ public sealed class CaravanMetricsController : MonoBehaviour
     [Min(0.05f)] [SerializeField] private float applyDelaySeconds = 0.3f;
     [Header("Runtime Selection")]
     [TextArea(3, 8)] [SerializeField] private string selectedBoonsSummary = "Boons: None";
+    [Header("Debug Preview")]
+    [SerializeField] private HexNemesisArchetype debugAct2ToAct3Family = HexNemesisArchetype.Hunter;
 
     private bool hasPresentedValues;
     private bool hasPendingInspectorApply;
@@ -19,6 +22,13 @@ public sealed class CaravanMetricsController : MonoBehaviour
     private int lastPresentedGold;
     private float lastInspectorEditTime;
     private string lastPresentedSelectedBoonsSummary = string.Empty;
+    private HexHudDocumentController hudDocumentController;
+    private HexHudPresenter hudPresenter;
+    private HexRunEndModalPresenter runEndModalPresenter;
+    private HexActTransitionModalPresenter actTransitionModalPresenter;
+    private HexMockQuestMarkerController mockQuestMarkerController;
+    private PitstopEventController pitstopEventController;
+    private CaravanResourceSnapshot debugActTransitionResources;
 
     public CaravanResourceSnapshot GetConfiguredSnapshot()
     {
@@ -105,6 +115,165 @@ public sealed class CaravanMetricsController : MonoBehaviour
     private void ResolvePlayerController()
     {
         playerController ??= GetComponentInParent<PlayerController>();
+    }
+
+    [ContextMenu("Debug/Open Act 2 -> Act 3 Boon Screen")]
+    public void DebugOpenAct2ToAct3BoonPreview()
+    {
+        DebugOpenAct2ToAct3BoonPreview(debugAct2ToAct3Family);
+    }
+
+    [ContextMenu("Debug/Open Victory Modal")]
+    public void DebugOpenVictoryModal()
+    {
+        if (!EnsurePlayMode("[RunEndPreview]", "opening the victory modal preview"))
+        {
+            return;
+        }
+
+        ResolveDebugReferences();
+        CaravanResourceSnapshot previewResources = ResolveDebugPreviewResources();
+        hudPresenter?.ShowVictory(null, previewResources);
+        runEndModalPresenter?.ShowVictory(RetryCurrentScene);
+    }
+
+    [ContextMenu("Debug/Open Defeat Modal")]
+    public void DebugOpenDefeatModal()
+    {
+        if (!EnsurePlayMode("[RunEndPreview]", "opening the defeat modal preview"))
+        {
+            return;
+        }
+
+        ResolveDebugReferences();
+        string previewReason = "Debug defeat preview";
+        hudPresenter?.ShowDefeat(null, previewReason);
+        runEndModalPresenter?.ShowDefeat(RetryCurrentScene);
+    }
+
+    [ContextMenu("Debug/Open Mock Quest Modal")]
+    public void DebugOpenMockQuestModal()
+    {
+        if (!EnsurePlayMode("[QuestModalPreview]", "opening the mock quest modal preview"))
+        {
+            return;
+        }
+
+        ResolveDebugReferences();
+        HexMockQuestMarkerModalPresenter previewPresenter =
+            GetComponent<HexMockQuestMarkerModalPresenter>() ?? gameObject.AddComponent<HexMockQuestMarkerModalPresenter>();
+        previewPresenter.Show(
+            "Quest Marker",
+            "This is a mock quest marker placeholder.\n\nLocation: Debug preview",
+            null);
+    }
+
+    public void DebugOpenAct2ToAct3BoonPreview(HexNemesisArchetype lockedFamily)
+    {
+        if (!EnsurePlayMode("[ActTransitionPreview]", "opening the Act 2 -> Act 3 boon preview"))
+        {
+            return;
+        }
+
+        ResolveDebugReferences();
+        if (actTransitionModalPresenter == null)
+        {
+            Debug.LogWarning("[ActTransitionPreview] Missing HexActTransitionModalPresenter. Unable to open the boon preview.", this);
+            return;
+        }
+
+        HexNemesisArchetype resolvedFamily = lockedFamily == HexNemesisArchetype.None
+            ? HexNemesisArchetype.Hunter
+            : lockedFamily;
+        CaravanResourceSnapshot previewResources = ResolveDebugPreviewResources();
+        debugActTransitionResources = previewResources;
+
+        HexActTransitionService.DebugConfigureRunSession(2, previewResources, resolvedFamily);
+        HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(previewResources);
+        hudDocumentController?.RefreshRunContext();
+        PrepareDebugModalState();
+        hudPresenter?.ShowHint($"Debug preview: Act 2 complete. Inspecting {resolvedFamily} family boon options.");
+
+        if (displayData.RequiresBoonSelection)
+        {
+            actTransitionModalPresenter.ShowTransitionSelection(displayData, ContinueDebugActTransition);
+        }
+        else
+        {
+            actTransitionModalPresenter.ShowTransition(displayData, ContinueDebugActTransition);
+            Debug.LogWarning(
+                $"[ActTransitionPreview] No boon options were available for the {resolvedFamily} family. Showing the intermission screen instead.",
+                this);
+        }
+
+        Debug.Log(
+            $"[ActTransitionPreview] Opened Act 2 -> Act 3 preview. family={resolvedFamily} options={displayData.BoonOptions.Length} food={previewResources.Food} morale={previewResources.Morale} gold={previewResources.Gold}.",
+            this);
+    }
+
+    private void ResolveDebugReferences()
+    {
+        ResolvePlayerController();
+        GameObject playerObject = playerController != null ? playerController.gameObject : null;
+        hudDocumentController ??= playerObject != null
+            ? playerObject.GetComponent<HexHudDocumentController>()
+            : FindAnyObjectByType<HexHudDocumentController>();
+        hudDocumentController?.EnsureInitialized();
+        hudPresenter ??= hudDocumentController != null ? new HexHudPresenter(hudDocumentController) : null;
+        runEndModalPresenter ??= playerObject != null
+            ? playerObject.GetComponent<HexRunEndModalPresenter>() ?? playerObject.AddComponent<HexRunEndModalPresenter>()
+            : FindAnyObjectByType<HexRunEndModalPresenter>();
+        actTransitionModalPresenter ??= playerObject != null
+            ? playerObject.GetComponent<HexActTransitionModalPresenter>() ?? playerObject.AddComponent<HexActTransitionModalPresenter>()
+            : FindAnyObjectByType<HexActTransitionModalPresenter>();
+        mockQuestMarkerController ??= playerObject != null
+            ? playerObject.GetComponent<HexMockQuestMarkerController>()
+            : FindAnyObjectByType<HexMockQuestMarkerController>();
+        pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
+    }
+
+    private CaravanResourceSnapshot ResolveDebugPreviewResources()
+    {
+        if (playerController != null && playerController.HasInitializedCaravanResources)
+        {
+            return playerController.GetCurrentResources();
+        }
+
+        return HexActTransitionService.GetStartingResources(GetConfiguredSnapshot());
+    }
+
+    private void PrepareDebugModalState()
+    {
+        pitstopEventController?.HideActiveModal();
+        mockQuestMarkerController?.HideActiveModal();
+        runEndModalPresenter?.Hide();
+    }
+
+    private static void RetryCurrentScene()
+    {
+        HexActTransitionService.ResetRunSession();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    private static bool EnsurePlayMode(string scope, string action)
+    {
+        if (Application.isPlaying)
+        {
+            return true;
+        }
+
+        Debug.LogWarning($"{scope} Enter Play Mode before {action}.");
+        return false;
+    }
+
+    private void ContinueDebugActTransition(HexBoonDefinition selectedBoon)
+    {
+        if (!HexActTransitionService.TryAdvanceToNextAct(debugActTransitionResources, selectedBoon))
+        {
+            return;
+        }
+
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     private bool SnapshotsMatch(CaravanResourceSnapshot snapshot)
