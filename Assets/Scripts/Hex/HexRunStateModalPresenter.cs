@@ -1171,15 +1171,10 @@ internal sealed class HexActTransitionModalDocumentController
 
 public sealed class HexRunEndModalPresenter : MonoBehaviour
 {
-    [Header("Victory")]
-    [SerializeField] private Texture2D victoryHeroImage;
-
     private HexSimpleActionModalDocumentController documentController;
     private HexVictoryOverlayDocumentController victoryDocumentController;
     private HexGameOverOverlayDocumentController gameOverDocumentController;
     private HexGameplayUiRootController gameplayUiRootController;
-
-    internal Texture2D VictoryHeroImage => victoryHeroImage;
 
     public bool IsOpen =>
         (documentController != null && documentController.IsOpen)
@@ -1252,6 +1247,7 @@ internal sealed class HexVictoryOverlayDocumentController
     private const string LayoutResourcePath = "UI/Modal/HexVictoryOverlay";
     private const string StyleSheetResourcePath = "UI/Modal/HexVictoryOverlayStyles";
     private const string SimpleModalFadeProfileResourcePath = "UI/Transitions/SimpleModalFade";
+    private const string VictoryHeroResourcePath = "UI/Victory/S_2";
     private const string ModalMountName = "victory-overlay-mount";
     private const string RimouskiFontEditorAssetPath = "Assets/Art/Fonts/rimouski sb.otf";
     private const string ScrimTransitionTargetKey = "scrim";
@@ -1590,14 +1586,9 @@ internal sealed class HexVictoryOverlayDocumentController
 #endif
     }
 
-    private Texture2D ResolveVictoryHeroTexture()
+    private static Texture2D ResolveVictoryHeroTexture()
     {
-        if (owner is HexRunEndModalPresenter runEndPresenter)
-        {
-            return runEndPresenter.VictoryHeroImage;
-        }
-
-        return null;
+        return Resources.Load<Texture2D>(VictoryHeroResourcePath);
     }
 
     private void LogDebug(string message, bool verbose = false)
