@@ -28,6 +28,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
     private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
     private PitstopEventController pitstopEventController;
+    private HexGlobalUiTransitionController globalTransitionController;
     private CaravanResourceSnapshot debugActTransitionResources;
 
     public CaravanResourceSnapshot GetConfiguredSnapshot()
@@ -230,6 +231,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
             ? playerObject.GetComponent<HexMockQuestMarkerController>()
             : FindAnyObjectByType<HexMockQuestMarkerController>();
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
     }
 
     private CaravanResourceSnapshot ResolveDebugPreviewResources()
@@ -273,7 +275,34 @@ public sealed class CaravanMetricsController : MonoBehaviour
             return;
         }
 
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        LoadCurrentSceneBehindFade();
+    }
+
+    private void LoadCurrentSceneBehindFade()
+    {
+        bool sceneLoadRequested = false;
+        void LoadCurrentSceneOnce()
+        {
+            if (sceneLoadRequested)
+            {
+                return;
+            }
+
+            sceneLoadRequested = true;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        globalTransitionController?.EnsureInitialized();
+        bool started = globalTransitionController != null
+            && globalTransitionController.PlayFadeToBlack(
+                LoadCurrentSceneOnce,
+                null,
+                fadeBackOut: false);
+        if (!started)
+        {
+            LoadCurrentSceneOnce();
+        }
     }
 
     private bool SnapshotsMatch(CaravanResourceSnapshot snapshot)

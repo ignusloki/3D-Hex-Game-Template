@@ -34,6 +34,7 @@ public class PlayerController : MonoBehaviour
     private HexRunEndModalPresenter runEndModalPresenter;
     private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
+    private HexGlobalUiTransitionController globalTransitionController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -812,6 +813,7 @@ public class PlayerController : MonoBehaviour
         runEndModalPresenter ??= GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -978,7 +980,34 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        LoadCurrentSceneBehindFade();
+    }
+
+    private void LoadCurrentSceneBehindFade()
+    {
+        bool sceneLoadRequested = false;
+        void LoadCurrentSceneOnce()
+        {
+            if (sceneLoadRequested)
+            {
+                return;
+            }
+
+            sceneLoadRequested = true;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
+        globalTransitionController?.EnsureInitialized();
+        bool started = globalTransitionController != null
+            && globalTransitionController.PlayFadeToBlack(
+                LoadCurrentSceneOnce,
+                null,
+                fadeBackOut: false);
+        if (!started)
+        {
+            LoadCurrentSceneOnce();
+        }
     }
 }
 
