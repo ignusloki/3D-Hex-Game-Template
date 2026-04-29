@@ -806,6 +806,13 @@ MonoBehaviour:
   goalScale: 0.3
   caravanColor: {r: 0.95, g: 0.76, b: 0.29, a: 1}
   goalColor: {r: 0.25, g: 0.87, b: 0.44, a: 1}
+  selectedHexColor: {r: 0, g: 0, b: 0, a: 1}
+  selectedHexMarkerRadius: 0.58
+  selectedHexMarkerScale: 1.08
+  selectedHexMarkerYOffset: 0.05
+  currentTileSelectionPrefab: {fileID: 3115533833674441363, guid: 42281cdb064854efba587ea53822be96, type: 3}
+  currentTileSelectionScale: 1
+  currentTileSelectionYOffset: 0.12
   outOfRangeSelectionColor: {r: 0.42, g: 0.65, b: 0.95, a: 1}
 --- !u!114 &1822504939
 MonoBehaviour:
