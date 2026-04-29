@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
@@ -77,9 +76,34 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator Start()
     {
-        EnsureRuntimeReferences();
-        bool startGameplayDirectly = HexMainMenuPresenter.ConsumeGameplayOnNextSceneLoadRequest()
+        if (HexGameBootstrap.HasActiveBootController)
+        {
+            yield break;
+        }
+
+        yield return PrepareGameplaySessionForBoot();
+        bool startGameplayDirectly = HexGameBootstrap.ConsumeGameplayOnNextSceneLoadRequest()
             || HexActTransitionService.HasActiveRunSession();
+
+        if (!startGameplayDirectly && mainMenuPresenter != null)
+        {
+            mainMenuPresenter.ShowBootMenu(ActivateGameplaySession);
+        }
+        else
+        {
+            ActivateGameplaySession();
+            RevealGameplayAfterSceneLoad();
+        }
+    }
+
+    public IEnumerator PrepareGameplaySessionForBoot()
+    {
+        if (isReady)
+        {
+            yield break;
+        }
+
+        EnsureRuntimeReferences();
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -126,16 +150,6 @@ public class PlayerController : MonoBehaviour
         isReady = true;
         RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
-
-        if (!startGameplayDirectly && mainMenuPresenter != null)
-        {
-            mainMenuPresenter.ShowBootMenu(StartGameplayFromMainMenu);
-        }
-        else
-        {
-            StartGameplayFromMainMenu();
-            RevealGameplayAfterSceneLoad();
-        }
     }
 
     private void Update()
@@ -830,10 +844,12 @@ public class PlayerController : MonoBehaviour
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>() ?? gameObject.AddComponent<HexMainMenuPresenter>();
+        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
+            ?? FindAnyObjectByType<HexMainMenuPresenter>()
+            ?? gameObject.AddComponent<HexMainMenuPresenter>();
     }
 
-    private void StartGameplayFromMainMenu()
+    public void ActivateGameplaySession()
     {
         isGameplaySessionActive = true;
         hudDocumentController?.SetGameplayModalState(false);
@@ -857,35 +873,12 @@ public class PlayerController : MonoBehaviour
 
     private void ReturnToMainMenuWithFade()
     {
-        bool sceneLoadRequested = false;
-        void LoadMenuSceneOnce()
-        {
-            if (sceneLoadRequested)
-            {
-                return;
-            }
-
-            sceneLoadRequested = true;
-            ReturnToMainMenuAfterFade();
-        }
-
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        bool started = globalTransitionController != null
-            && globalTransitionController.PlayFadeToBlack(
-                LoadMenuSceneOnce,
-                null,
-                fadeBackOut: false);
-        if (!started)
-        {
-            LoadMenuSceneOnce();
-        }
+        HexGameBootstrap.ReloadActiveSceneToMainMenu(this, resetRunSession: true);
     }
 
     private void ReturnToMainMenuAfterFade()
     {
-        HexActTransitionService.ResetRunSession();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        HexGameBootstrap.LoadActiveSceneToMainMenu(resetRunSession: true);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -1041,9 +1034,7 @@ public class PlayerController : MonoBehaviour
 
     private void RetryCurrentScene()
     {
-        HexActTransitionService.ResetRunSession();
-        HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: true);
     }
 
     private void ContinueToNextAct(HexBoonDefinition selectedBoon)
@@ -1058,30 +1049,7 @@ public class PlayerController : MonoBehaviour
 
     private void LoadCurrentSceneBehindFade()
     {
-        bool sceneLoadRequested = false;
-        void LoadCurrentSceneOnce()
-        {
-            if (sceneLoadRequested)
-            {
-                return;
-            }
-
-            sceneLoadRequested = true;
-            HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        }
-
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        bool started = globalTransitionController != null
-            && globalTransitionController.PlayFadeToBlack(
-                LoadCurrentSceneOnce,
-                null,
-                fadeBackOut: false);
-        if (!started)
-        {
-            LoadCurrentSceneOnce();
-        }
+        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: false);
     }
 }
 

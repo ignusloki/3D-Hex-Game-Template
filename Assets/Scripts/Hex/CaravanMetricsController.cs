@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public sealed class CaravanMetricsController : MonoBehaviour
 {
@@ -253,8 +252,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
 
     private static void RetryCurrentScene()
     {
-        HexActTransitionService.ResetRunSession();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        HexGameBootstrap.ReloadActiveSceneToGameplay(null, resetRunSession: true);
     }
 
     private static bool EnsurePlayMode(string scope, string action)
@@ -280,29 +278,7 @@ public sealed class CaravanMetricsController : MonoBehaviour
 
     private void LoadCurrentSceneBehindFade()
     {
-        bool sceneLoadRequested = false;
-        void LoadCurrentSceneOnce()
-        {
-            if (sceneLoadRequested)
-            {
-                return;
-            }
-
-            sceneLoadRequested = true;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        }
-
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        bool started = globalTransitionController != null
-            && globalTransitionController.PlayFadeToBlack(
-                LoadCurrentSceneOnce,
-                null,
-                fadeBackOut: false);
-        if (!started)
-        {
-            LoadCurrentSceneOnce();
-        }
+        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: false);
     }
 
     private bool SnapshotsMatch(CaravanResourceSnapshot snapshot)

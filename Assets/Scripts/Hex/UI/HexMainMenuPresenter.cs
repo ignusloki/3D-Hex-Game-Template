@@ -30,53 +30,20 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
     private bool isInitialized;
     private bool isOpen;
     private bool isTransitioning;
-    private static bool startGameplayOnNextSceneLoad;
 
     public bool IsOpen => isOpen;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStaticState()
-    {
-        startGameplayOnNextSceneLoad = false;
-    }
-
-    public static void RequestGameplayOnNextSceneLoad()
-    {
-        startGameplayOnNextSceneLoad = true;
-    }
-
-    public static bool ConsumeGameplayOnNextSceneLoadRequest()
-    {
-        bool requested = startGameplayOnNextSceneLoad;
-        startGameplayOnNextSceneLoad = false;
-        return requested;
-    }
-
-    private void Awake()
-    {
-        PrepareBootBlackout();
-    }
 
     private void OnEnable()
     {
         if (!isInitialized)
         {
-            PrepareBootBlackout();
+            EnsureInitialized();
         }
     }
 
-    public void PrepareBootBlackout()
+    public void InitializeForBootstrap()
     {
         EnsureInitialized();
-        if (!isInitialized)
-        {
-            return;
-        }
-
-        HexGlobalUiTransitionController globalTransitionController = HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        globalTransitionController?.ShowBlackoutImmediate();
-        SetMenuVisibility(false, showGameplayLayers: false);
     }
 
     public void ShowBootMenu(Action onNewGameRequested)
@@ -88,7 +55,28 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
             return;
         }
 
-        newGameRequested = onNewGameRequested;
+        newGameRequested = () =>
+        {
+            bool startedGameplay = false;
+            void StartGameplayOnce()
+            {
+                if (startedGameplay)
+                {
+                    return;
+                }
+
+                startedGameplay = true;
+                HideForGameplay();
+                onNewGameRequested?.Invoke();
+            }
+
+            transitionService ??= GetComponent<HexMainMenuTransitionService>() ?? gameObject.AddComponent<HexMainMenuTransitionService>();
+            bool started = transitionService.PlayMainMenuToActOne(StartGameplayOnce);
+            if (!started)
+            {
+                StartGameplayOnce();
+            }
+        };
         SetMenuInteractionEnabled(false);
         isTransitioning = true;
 
@@ -120,6 +108,33 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         SetMenuVisibility(false, showGameplayLayers: true);
         newGameRequested = null;
         isTransitioning = false;
+    }
+
+    public void ShowMenu(Action onNewGameRequested, bool showGameplayLayers, bool enableInteraction)
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            onNewGameRequested?.Invoke();
+            return;
+        }
+
+        newGameRequested = onNewGameRequested;
+        isTransitioning = false;
+        SetMenuVisibility(true, showGameplayLayers);
+        SetMenuInteractionEnabled(enableInteraction);
+    }
+
+    public void SetMenuVisibleImmediate(bool visible, bool showGameplayLayers)
+    {
+        EnsureInitialized();
+        if (!isInitialized)
+        {
+            return;
+        }
+
+        SetMenuVisibility(visible, showGameplayLayers);
+        SetMenuInteractionEnabled(visible);
     }
 
     private void EnsureInitialized()
@@ -215,26 +230,8 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         isTransitioning = true;
         SetMenuInteractionEnabled(false);
 
-        bool startedGameplay = false;
-        void StartGameplayOnce()
-        {
-            if (startedGameplay)
-            {
-                return;
-            }
-
-            startedGameplay = true;
-            Action callback = newGameRequested;
-            HideForGameplay();
-            callback?.Invoke();
-        }
-
-        transitionService ??= GetComponent<HexMainMenuTransitionService>() ?? gameObject.AddComponent<HexMainMenuTransitionService>();
-        bool started = transitionService.PlayMainMenuToActOne(StartGameplayOnce);
-        if (!started)
-        {
-            StartGameplayOnce();
-        }
+        Action callback = newGameRequested;
+        callback?.Invoke();
     }
 
     private void HandleQuitClicked()
@@ -275,7 +272,7 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         LogDebug($"SetMenuVisibility visible={visible} showGameplayLayers={showGameplayLayers}.");
     }
 
-    private void SetMenuInteractionEnabled(bool enabled)
+    public void SetMenuInteractionEnabled(bool enabled)
     {
         if (newGameButton != null)
         {

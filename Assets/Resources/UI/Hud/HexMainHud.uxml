@@ -6,6 +6,7 @@
             </ui:VisualElement>
 
             <ui:VisualElement name="top-bar-center">
+                <ui:VisualElement class="status-divider" />
                 <ui:VisualElement name="center-status-pocket">
                     <ui:Label name="selection-status" text="Select a departure tile." class="status-line" />
                     <ui:VisualElement name="status-meta-row">
@@ -13,6 +14,7 @@
                         <ui:Label name="hint-text" text="" class="hint-copy" />
                     </ui:VisualElement>
                 </ui:VisualElement>
+                <ui:VisualElement class="status-divider" />
             </ui:VisualElement>
 
             <ui:VisualElement name="top-bar-right">

@@ -149,6 +149,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1722897117}
+  - {fileID: 778810002}
   - {fileID: 1822504937}
   - {fileID: 1822504942}
   - {fileID: 1822504961}
@@ -256,6 +257,62 @@ Transform:
   m_Children: []
   m_Father: {fileID: 959898466}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &778810000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 778810002}
+  - component: {fileID: 778810001}
+  m_Layer: 0
+  m_Name: Game Bootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &778810001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 778810000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abb0b29f569949eda9b32637372e4a26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexGameBootstrap
+  forceStartupResolution: 1
+  targetResolution: {x: 1920, y: 1080}
+  startupFullScreenMode: 3
+  controlSceneBoot: 1
+  enableBootDebugLogging: 0
+  playerController: {fileID: 1822504938}
+  mapGenerator: {fileID: 1722897116}
+  pitstopSpawner: {fileID: 1900944118}
+  gameplayUiRootController: {fileID: 0}
+  globalTransitionController: {fileID: 0}
+  mainMenuPresenter: {fileID: 0}
+  mainMenuTransitionService: {fileID: 0}
+--- !u!4 &778810002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 778810000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &959898465
 GameObject:
   m_ObjectHideFlags: 0
