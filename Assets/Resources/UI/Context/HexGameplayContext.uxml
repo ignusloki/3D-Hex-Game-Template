@@ -1,13 +1,32 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="gameplay-context-root">
-        <ui:VisualElement name="tile-inspector-panel" class="context-card">
-            <ui:Label text="Tile Inspector" class="panel-kicker" />
-            <ui:Label name="tile-details" text="Click a tile to inspect terrain cost." class="body-copy" />
-        </ui:VisualElement>
+        <ui:VisualElement name="MapContentRoot">
+            <ui:VisualElement name="MapViewportContainer" />
+            <ui:VisualElement name="MapInspectorDock">
+                <ui:VisualElement name="UnifiedInspectorPanel">
+                    <ui:Label name="UnifiedInspectorTitle" text="Inspection" />
 
-        <ui:VisualElement name="pitstop-panel" class="context-card">
-            <ui:Label text="Pitstop Intel" class="panel-kicker" />
-            <ui:Label name="pitstop-info" text="Pitstop Info&#10;Select a pitstop to inspect its stop effect." class="body-copy" />
+                    <ui:VisualElement name="UnifiedInspectorEmptyState">
+                        <ui:Label
+                            name="UnifiedInspectorEmptyBody"
+                            text="Click a hex to inspect its details." />
+                        <ui:Label
+                            name="UnifiedInspectorEmptyHint"
+                            text="Pitstops reveal additional contextual information." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="UnifiedInspectorLegacyState">
+                        <ui:Label
+                            name="tile-details"
+                            text="Click a tile to inspect terrain cost."
+                            class="unified-inspector-body" />
+                        <ui:Label
+                            name="pitstop-info"
+                            text="Pitstop Info&#10;Select a pitstop to inspect its stop effect."
+                            class="unified-inspector-body unified-inspector-body--secondary" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

@@ -47,8 +47,9 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     private Label tileDetailsLabel;
     private Label hintLabel;
     private Label pitstopInfoLabel;
-    private VisualElement tileInspectorPanel;
-    private VisualElement pitstopPanel;
+    private VisualElement unifiedInspectorPanel;
+    private VisualElement unifiedInspectorEmptyState;
+    private VisualElement unifiedInspectorLegacyState;
     private VisualElement foodIconElement;
     private VisualElement moraleIconElement;
     private VisualElement goldIconElement;
@@ -157,8 +158,9 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         hintLabel = hudTree.Q<Label>("hint-text");
         tileDetailsLabel = contextTree.Q<Label>("tile-details");
         pitstopInfoLabel = contextTree.Q<Label>("pitstop-info");
-        tileInspectorPanel = contextTree.Q<VisualElement>("tile-inspector-panel");
-        pitstopPanel = contextTree.Q<VisualElement>("pitstop-panel");
+        unifiedInspectorPanel = contextTree.Q<VisualElement>("UnifiedInspectorPanel");
+        unifiedInspectorEmptyState = contextTree.Q<VisualElement>("UnifiedInspectorEmptyState");
+        unifiedInspectorLegacyState = contextTree.Q<VisualElement>("UnifiedInspectorLegacyState");
         foodIconElement = hudTree.Q<VisualElement>("resource-food-icon");
         moraleIconElement = hudTree.Q<VisualElement>("resource-morale-icon");
         goldIconElement = hudTree.Q<VisualElement>("resource-gold-icon");
@@ -172,7 +174,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Context, false);
         isInitialized = true;
         LogDiagnostic(
-            $"Bound HUD into shared root. topBarFound={topBar != null} contextMounted={contextMount != null} tileInspectorFound={tileInspectorPanel != null} pitstopPanelFound={pitstopPanel != null}.");
+            $"Bound HUD into shared root. topBarFound={topBar != null} contextMounted={contextMount != null} unifiedInspectorFound={unifiedInspectorPanel != null}.");
         RefreshRunContext();
         SetResources(0, 0, 0);
         SetStatusText("Select a departure tile.");
@@ -286,8 +288,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         }
 
         RefreshBoonStatusVisibility();
-        RefreshTileInspectorVisibility();
-        RefreshPitstopPanelVisibility();
+        RefreshUnifiedInspectorState();
         LogDiagnostic($"SetGameplayModalState active={active}.");
     }
 
@@ -352,27 +353,51 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
 
     private void RefreshTileInspectorVisibility()
     {
-        if (tileInspectorPanel == null)
-        {
-            return;
-        }
-
-        bool shouldDisplay = !isGameplayModalActive && ShouldShowTileInspector(tileDetailsLabel?.text);
-        tileInspectorPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
-        LogDiagnostic($"Tile inspector visibility resolved. visible={shouldDisplay} modalActive={isGameplayModalActive}.");
-        LogDiagnostic($"RefreshTileInspectorVisibility visible={shouldDisplay}.", true);
+        RefreshUnifiedInspectorState();
     }
 
     private void RefreshPitstopPanelVisibility()
     {
-        if (pitstopPanel == null)
+        RefreshUnifiedInspectorState();
+    }
+
+    private void RefreshUnifiedInspectorState()
+    {
+        if (unifiedInspectorPanel == null)
         {
             return;
         }
 
-        bool shouldDisplay = !isGameplayModalActive && ShouldShowPitstopPanel(pitstopInfoLabel?.text);
-        pitstopPanel.style.display = shouldDisplay ? DisplayStyle.Flex : DisplayStyle.None;
-        LogDiagnostic($"RefreshPitstopPanelVisibility visible={shouldDisplay}.", true);
+        bool shouldDisplayPanel = !isGameplayModalActive;
+        bool hasTileDetails = ShouldShowTileInspector(tileDetailsLabel?.text);
+        bool hasPitstopDetails = ShouldShowPitstopPanel(pitstopInfoLabel?.text);
+        bool hasAnyDetails = hasTileDetails || hasPitstopDetails;
+
+        unifiedInspectorPanel.style.display = shouldDisplayPanel ? DisplayStyle.Flex : DisplayStyle.None;
+
+        if (unifiedInspectorEmptyState != null)
+        {
+            unifiedInspectorEmptyState.style.display = hasAnyDetails ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        if (unifiedInspectorLegacyState != null)
+        {
+            unifiedInspectorLegacyState.style.display = hasAnyDetails ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        if (tileDetailsLabel != null)
+        {
+            tileDetailsLabel.style.display = hasTileDetails ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        if (pitstopInfoLabel != null)
+        {
+            pitstopInfoLabel.style.display = hasPitstopDetails ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        LogDiagnostic(
+            $"RefreshUnifiedInspectorState panel={shouldDisplayPanel} empty={!hasAnyDetails} tile={hasTileDetails} pitstop={hasPitstopDetails}.",
+            true);
     }
 
     private static bool ShouldShowTravelTime(string value)
