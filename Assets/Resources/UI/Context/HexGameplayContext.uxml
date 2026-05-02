@@ -39,6 +39,53 @@
                             text="Dense woodland. Travel is slower here." />
                     </ui:VisualElement>
 
+                    <ui:VisualElement name="UnifiedInspectorPitstopState">
+                        <ui:Label name="UnifiedInspectorPitstopTitle" text="Working Mill" />
+                        <ui:Label name="UnifiedInspectorPitstopType" text="Pitstop • Mill" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Terrain" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopTerrainValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="UnifiedInspectorPitstopStatusList" class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Working" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopWorkingValue" text="Yes" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Destroyed" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopDestroyedValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Refuel" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopRefuelValue" text="Yes" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Repeatable" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopRepeatableValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Visited" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopVisitedValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:Label
+                            name="UnifiedInspectorPitstopDescription"
+                            text="The millers trade flour and dried grain for the road ahead." />
+                    </ui:VisualElement>
+
                     <ui:VisualElement name="UnifiedInspectorLegacyState">
                         <ui:Label
                             name="tile-details"

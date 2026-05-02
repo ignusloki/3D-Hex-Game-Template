@@ -238,7 +238,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetPitstopInfoText(FormatPitstopPanel(eventResult.Site, eventResult));
+        runtimeView?.ShowPitstopInspector(BuildPitstopDisplayData(tile, eventResult.Site));
         SetStatusText(
             $"{eventResult.Title} at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
@@ -252,13 +252,13 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetPitstopInfoText(FormatPitstopPanel(eventResult.Site, eventResult));
         string title = eventResult.Title;
         if (eventResult.SelectedOption != null)
         {
             title = $"{title}: {eventResult.SelectedOption.label}";
         }
 
+        runtimeView?.ShowPitstopInspector(BuildPitstopDisplayData(tile, eventResult.Site));
         SetStatusText(title);
         ClearHintText();
     }
@@ -271,7 +271,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        SetPitstopInfoText(FormatPitstopPanel(site));
+        runtimeView?.ShowPitstopInspector(BuildPitstopDisplayData(tile, site));
         SetStatusText(
             $"Returned to {site.EventTitle} at {FormatCoordinates(tile.Coordinates)}.");
         ClearHintText();
@@ -338,6 +338,12 @@ public sealed class HexHudPresenter
         HexTileData tileData = tile.TileData;
         string biome = FormatBiome(tileData?.Biome ?? Biome.grass);
         string travelCost = (tileData?.TravelCost ?? tile.travelCost).ToString();
+
+        if (pitstopSite != null && visibleObstacle == null && string.IsNullOrWhiteSpace(extraDetails))
+        {
+            runtimeView?.ShowPitstopInspector(BuildPitstopDisplayData(tile, pitstopSite));
+            return;
+        }
 
         if (pitstopSite == null && visibleObstacle == null && string.IsNullOrWhiteSpace(extraDetails))
         {
@@ -429,6 +435,48 @@ public sealed class HexHudPresenter
             Biome.desert => "Dry open ground. The route is exposed and demanding.",
             _ => "Open grassland. Travel is straightforward here."
         };
+    }
+
+    private static HexInspectorPitstopDisplayData BuildPitstopDisplayData(HexagonTile tile, PitstopSite pitstopSite)
+    {
+        HexTileData tileData = tile?.TileData;
+        Biome biome = tileData?.Biome ?? Biome.grass;
+        string title = string.IsNullOrWhiteSpace(pitstopSite.EventTitle) ? FormatPitstopKindName(pitstopSite.Kind) : pitstopSite.EventTitle;
+        string description = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
+            || string.Equals(pitstopSite.SpecialEventDescription, "placeholder", System.StringComparison.OrdinalIgnoreCase)
+                ? "The caravan pauses at a roadside stop."
+                : pitstopSite.SpecialEventDescription;
+
+        return new HexInspectorPitstopDisplayData(
+            title,
+            $"Pitstop • {FormatPitstopKindName(pitstopSite.Kind)}",
+            FormatCoordinates(tile.Coordinates),
+            FormatBiome(biome),
+            (tileData?.TravelCost ?? tile.travelCost).ToString(),
+            pitstopSite.IsDestroyed ? "No" : "Yes",
+            pitstopSite.IsDestroyed ? "Yes" : "No",
+            pitstopSite.HasRefuelPoint ? "Yes" : "No",
+            pitstopSite.Repeatable ? "Yes" : "No",
+            pitstopSite.Visited ? "Yes" : "No",
+            description);
+    }
+
+    private static string FormatPitstopKindName(PitstopKind kind)
+    {
+        string raw = kind.ToString();
+        System.Text.StringBuilder builder = new(raw.Length + 4);
+        for (int index = 0; index < raw.Length; index++)
+        {
+            char character = raw[index];
+            if (index > 0 && char.IsUpper(character))
+            {
+                builder.Append(' ');
+            }
+
+            builder.Append(character);
+        }
+
+        return builder.ToString();
     }
 
     private static string AppendObstacleDetails(string details, HexObstacleInstance visibleObstacle)

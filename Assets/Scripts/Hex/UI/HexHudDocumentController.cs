@@ -9,6 +9,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     {
         Empty,
         Biome,
+        Pitstop,
         Legacy
     }
 
@@ -57,12 +58,24 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     private VisualElement unifiedInspectorPanel;
     private VisualElement unifiedInspectorEmptyState;
     private VisualElement unifiedInspectorBiomeState;
+    private VisualElement unifiedInspectorPitstopState;
     private VisualElement unifiedInspectorLegacyState;
     private Label unifiedInspectorBiomeTitle;
     private Label unifiedInspectorBiomeHexValue;
     private Label unifiedInspectorBiomeValue;
     private Label unifiedInspectorBiomeTravelCostValue;
     private Label unifiedInspectorBiomeDescription;
+    private Label unifiedInspectorPitstopTitle;
+    private Label unifiedInspectorPitstopType;
+    private Label unifiedInspectorPitstopHexValue;
+    private Label unifiedInspectorPitstopTerrainValue;
+    private Label unifiedInspectorPitstopTravelCostValue;
+    private Label unifiedInspectorPitstopWorkingValue;
+    private Label unifiedInspectorPitstopDestroyedValue;
+    private Label unifiedInspectorPitstopRefuelValue;
+    private Label unifiedInspectorPitstopRepeatableValue;
+    private Label unifiedInspectorPitstopVisitedValue;
+    private Label unifiedInspectorPitstopDescription;
     private VisualElement foodIconElement;
     private VisualElement moraleIconElement;
     private VisualElement goldIconElement;
@@ -175,12 +188,24 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         unifiedInspectorPanel = contextTree.Q<VisualElement>("UnifiedInspectorPanel");
         unifiedInspectorEmptyState = contextTree.Q<VisualElement>("UnifiedInspectorEmptyState");
         unifiedInspectorBiomeState = contextTree.Q<VisualElement>("UnifiedInspectorBiomeState");
+        unifiedInspectorPitstopState = contextTree.Q<VisualElement>("UnifiedInspectorPitstopState");
         unifiedInspectorLegacyState = contextTree.Q<VisualElement>("UnifiedInspectorLegacyState");
         unifiedInspectorBiomeTitle = contextTree.Q<Label>("UnifiedInspectorBiomeTitle");
         unifiedInspectorBiomeHexValue = contextTree.Q<Label>("UnifiedInspectorBiomeHexValue");
         unifiedInspectorBiomeValue = contextTree.Q<Label>("UnifiedInspectorBiomeValue");
         unifiedInspectorBiomeTravelCostValue = contextTree.Q<Label>("UnifiedInspectorBiomeTravelCostValue");
         unifiedInspectorBiomeDescription = contextTree.Q<Label>("UnifiedInspectorBiomeDescription");
+        unifiedInspectorPitstopTitle = contextTree.Q<Label>("UnifiedInspectorPitstopTitle");
+        unifiedInspectorPitstopType = contextTree.Q<Label>("UnifiedInspectorPitstopType");
+        unifiedInspectorPitstopHexValue = contextTree.Q<Label>("UnifiedInspectorPitstopHexValue");
+        unifiedInspectorPitstopTerrainValue = contextTree.Q<Label>("UnifiedInspectorPitstopTerrainValue");
+        unifiedInspectorPitstopTravelCostValue = contextTree.Q<Label>("UnifiedInspectorPitstopTravelCostValue");
+        unifiedInspectorPitstopWorkingValue = contextTree.Q<Label>("UnifiedInspectorPitstopWorkingValue");
+        unifiedInspectorPitstopDestroyedValue = contextTree.Q<Label>("UnifiedInspectorPitstopDestroyedValue");
+        unifiedInspectorPitstopRefuelValue = contextTree.Q<Label>("UnifiedInspectorPitstopRefuelValue");
+        unifiedInspectorPitstopRepeatableValue = contextTree.Q<Label>("UnifiedInspectorPitstopRepeatableValue");
+        unifiedInspectorPitstopVisitedValue = contextTree.Q<Label>("UnifiedInspectorPitstopVisitedValue");
+        unifiedInspectorPitstopDescription = contextTree.Q<Label>("UnifiedInspectorPitstopDescription");
         foodIconElement = hudTree.Q<VisualElement>("resource-food-icon");
         moraleIconElement = hudTree.Q<VisualElement>("resource-morale-icon");
         goldIconElement = hudTree.Q<VisualElement>("resource-gold-icon");
@@ -323,6 +348,26 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         LogDiagnostic($"ShowBiomeInspector biome='{data.Biome}' hex='{data.Hex}'.", true);
     }
 
+    public void ShowPitstopInspector(HexInspectorPitstopDisplayData data)
+    {
+        inspectorMode = InspectorMode.Pitstop;
+        SetLabelText(tileDetailsLabel, DefaultTileDetailsText);
+        SetLabelText(pitstopInfoLabel, DefaultPitstopInfoText);
+        SetLabelText(unifiedInspectorPitstopTitle, data.Title);
+        SetLabelText(unifiedInspectorPitstopType, data.Type);
+        SetLabelText(unifiedInspectorPitstopHexValue, data.Hex);
+        SetLabelText(unifiedInspectorPitstopTerrainValue, data.Terrain);
+        SetLabelText(unifiedInspectorPitstopTravelCostValue, data.TravelCost);
+        SetStatusValue(unifiedInspectorPitstopWorkingValue, data.Working);
+        SetStatusValue(unifiedInspectorPitstopDestroyedValue, data.Destroyed);
+        SetStatusValue(unifiedInspectorPitstopRefuelValue, data.Refuel);
+        SetStatusValue(unifiedInspectorPitstopRepeatableValue, data.Repeatable);
+        SetStatusValue(unifiedInspectorPitstopVisitedValue, data.Visited);
+        SetLabelText(unifiedInspectorPitstopDescription, data.Description);
+        RefreshUnifiedInspectorState();
+        LogDiagnostic($"ShowPitstopInspector title='{data.Title}' hex='{data.Hex}'.", true);
+    }
+
     public void SetTravelTimeText(string value)
     {
         SetLabelText(travelTimeLabel, value);
@@ -432,6 +477,7 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         bool shouldDisplayPanel = !isGameplayModalActive;
         bool showEmptyState = inspectorMode == InspectorMode.Empty;
         bool showBiomeState = inspectorMode == InspectorMode.Biome;
+        bool showPitstopState = inspectorMode == InspectorMode.Pitstop;
         bool showLegacyState = inspectorMode == InspectorMode.Legacy;
         bool hasTileDetails = showLegacyState && ShouldShowTileInspector(tileDetailsLabel?.text);
         bool hasPitstopDetails = showLegacyState && ShouldShowPitstopPanel(pitstopInfoLabel?.text);
@@ -446,6 +492,11 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         if (unifiedInspectorBiomeState != null)
         {
             unifiedInspectorBiomeState.style.display = showBiomeState ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        if (unifiedInspectorPitstopState != null)
+        {
+            unifiedInspectorPitstopState.style.display = showPitstopState ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         if (unifiedInspectorLegacyState != null)
@@ -466,6 +517,17 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         LogDiagnostic(
             $"RefreshUnifiedInspectorState panel={shouldDisplayPanel} mode={inspectorMode} tile={hasTileDetails} pitstop={hasPitstopDetails}.",
             true);
+    }
+
+    private static void SetStatusValue(Label target, string value)
+    {
+        SetLabelText(target, value);
+        target?.EnableInClassList("inspector-fact-value--positive", IsPositiveValue(value));
+    }
+
+    private static bool IsPositiveValue(string value)
+    {
+        return string.Equals(value?.Trim(), "Yes", System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool ShouldShowTravelTime(string value)
