@@ -33,9 +33,6 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     [SerializeField] private Texture2D moraleIcon;
     [SerializeField] private Texture2D goldIcon;
 
-    [Header("Compatibility")]
-    [SerializeField] private bool hideLegacyHudPanels = true;
-
     private HexGameplayUiRootController gameplayUiRootController;
     private VisualElement hudLayer;
     private VisualElement contextMount;
@@ -232,11 +229,6 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
         SetTravelTimeText("Travel Time: --");
         SetHintText(string.Empty);
         ShowInspectorEmptyState();
-
-        if (hideLegacyHudPanels)
-        {
-            HideLegacyHudPanelsNow();
-        }
     }
 
     public void RefreshRunContext()
@@ -489,21 +481,6 @@ public sealed class HexHudDocumentController : MonoBehaviour, IHexHudView, IHexT
     private static bool ShouldShowTravelTime(string value)
     {
         return !string.IsNullOrWhiteSpace(value) && !value.Contains("--");
-    }
-
-    private static void HideLegacyHudPanelsNow()
-    {
-        HideLegacyObject("HUD Panel");
-        HideLegacyObject("Pitstop Info Panel");
-    }
-
-    private static void HideLegacyObject(string objectName)
-    {
-        GameObject target = GameObject.Find(objectName);
-        if (target != null)
-        {
-            target.SetActive(false);
-        }
     }
 
     private void LogDiagnostic(string message, bool verbose = false)
