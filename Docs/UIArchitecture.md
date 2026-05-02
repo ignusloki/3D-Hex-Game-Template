@@ -1,258 +1,122 @@
 # UI Architecture
 
-## Goal
+Last updated: 2026-05-02
 
-This project is migrating gameplay UI from legacy UGUI and multiple ad-hoc UI Toolkit documents to one shared UI Toolkit runtime architecture.
+## Purpose
 
-The target architecture is designed to:
+This document describes the current runtime UI architecture. The migration from
+legacy gameplay UGUI and multiple ad-hoc UI Toolkit documents is complete.
 
-- follow Unity UI Toolkit runtime layout practices
-- keep layout in UXML and USS rather than runtime positioning patches
-- make modal input ownership predictable
-- reduce regressions when changing one screen
-- support phased migration without redesigning gameplay systems
+## Runtime Model
 
-## Current Problem
-
-The current gameplay UI evolved into multiple separate runtime `UIDocument` instances:
-
-- HUD
-- pitstop modal
-- act transition / boon selection
-- additional legacy UGUI overlays
-
-That causes several recurring problems:
-
-- document sorting order conflicts
-- pointer picking conflicts between passive HUD and interactive modal UI
-- duplicated panel setup logic
-- runtime layout overrides fighting USS
-- regressions where fixing one screen breaks another
-
-## Target Runtime Architecture
-
-Use one shared gameplay UI Toolkit root document for all gameplay-facing UI.
-
-### Layer Model
-
-The shared root contains these top-level layers:
-
-1. `hud-layer`
-- persistent gameplay HUD
-- top status bar
-- tile inspector
-- contextual pitstop info card
-
-2. `context-layer`
-- temporary non-modal contextual overlays
-- route preview helpers
-- future contextual panels that should not block the whole screen
-
-3. `modal-layer`
-- interactive modal states
-- pitstop event choice and result
-- act intermission
-- boon selection
-- victory
-- defeat
-
-4. `debug-layer`
-- debug-only overlays
-- development instrumentation
-
-## Ownership Rules
-
-### Root Ownership
-
-One controller owns the shared gameplay root:
+The game uses one shared UI Toolkit root for gameplay-facing UI:
 
 - `HexGameplayUiRootController`
 
-Its responsibilities are:
+This controller owns the shared `UIDocument`, `PanelSettings`, root UXML, and
+named layer containers. Feature presenters bind their UXML into those layers
+instead of creating separate runtime UI roots.
 
-- load the shared `UIDocument`
-- load root UXML and root USS
-- expose named layer containers
-- centralize shared `PanelSettings`
-- control layer visibility and modal interaction state
+## Layer Model
 
-It should not contain gameplay-specific presentation logic.
+Current layers:
 
-### Feature Ownership
+1. `Hud`
+   - top status bar
+   - run context
+   - selected-hex status
+   - resource display
 
-Each feature keeps its own presenter/controller, but binds into the shared root instead of creating its own `UIDocument`.
+2. `Context`
+   - right-side unified map inspector
+   - non-modal contextual UI
 
-Examples:
+3. `Menu`
+   - main menu screen
+   - blocks gameplay interaction while visible
 
-- `HexHudDocumentController` binds into `hud-layer`
-- `PitstopEventModalPresenter` binds into `modal-layer`
-- `HexActTransitionModalPresenter` binds into `modal-layer`
-- future victory / defeat presenters bind into `modal-layer`
+4. `Modal`
+   - pitstop event modal
+   - act-complete intermission
+   - boon selection
+   - victory overlay
+   - game over overlay
 
-### Layout Ownership
+5. `GlobalTransition`
+   - full-screen blackout/fade layer
+   - used to hide scene reloads and major flow changes
 
-Visual structure belongs in:
+6. `Debug`
+   - debug-only UI when needed
 
-- UXML for hierarchy
-- USS for layout, spacing, typography, state classes, and visual variants
+## Boot Ownership
 
-C# should only:
+`HexGameBootstrap` is responsible for early setup:
 
-- populate dynamic content
-- toggle visibility
-- toggle state classes
-- respond to user input
-- forward gameplay callbacks
+- applies startup resolution/fullscreen settings
+- resolves core scene references
+- prepares the global blackout before the user sees gameplay
+- waits for map/pitstop readiness
+- shows the main menu by default
+- can boot directly into gameplay after scene reload requests
 
-C# should not:
+The game remains a single-scene flow. Returning to menu reloads the same scene and
+boots back into the menu state.
 
-- compute routine layout geometry
-- force modal width/position unless there is a strong technical constraint
-- fight USS sizing with inline values as a normal workflow
+## Feature Presenters
 
-## Input And Picking Rules
+Current presenter ownership:
 
-### Passive Layers
+- `HexHudDocumentController`: top HUD and shared UI root access
+- `HexHudPresenter`: gameplay status and inspector data formatting
+- `HexMainMenuPresenter`: main menu UI and button callbacks
+- `PitstopEventModalPresenter`: pitstop choice/result modal
+- `HexActTransitionModalPresenter`: act-complete and boon-selection flow
+- `HexRunStateModalPresenter`: Victory and Game Over overlays
+- `HexGlobalUiTransitionController`: global blackout/fade layer
 
-Passive layers should not intercept pointer input.
+Feature presenters own content and callbacks. They should not own global game
+state.
 
-Examples:
+## Layout Rules
 
-- `hud-layer` when only showing status information
-- `context-layer` when showing non-interactive inspection panels
+- UXML owns hierarchy.
+- USS owns layout, spacing, color, typography, and state classes.
+- C# binds data, toggles visibility/classes, and forwards user callbacks.
+- Internal UI layout should use flex layout.
+- Absolute positioning is reserved for full-screen overlays and root anchors.
 
-These layers should use non-interactive picking by default.
+## Input Rules
 
-### Modal Layer
+- Passive HUD/context layers use ignored picking unless they contain explicit
+  controls.
+- Modal, menu, and global-transition layers own input while active.
+- Gameplay input is blocked while modals, menu, or full-screen transitions are
+  active.
+- Buttons are disabled during transition playback when interaction would cause
+  duplicate actions.
 
-When a modal is open:
+## Current Map UI
 
-- `modal-layer` becomes the active interactive layer
-- world input should already be blocked by gameplay state
-- modal controls must own pointer and keyboard focus
-- HUD can remain visible but must be visually secondary and non-blocking
+The old bottom-left tile inspector and top-right pitstop panel are removed.
 
-Interactive modals must not rely on document sorting conflicts to receive input.
+The map screen now uses:
 
-## Styling Strategy
+- larger top status bar
+- click-to-inspect state
+- persistent selected-hex highlight
+- unified right-side inspector
+- structured inspector states for biome, pitstop, generic context, and empty state
 
-Use shared USS tokens and component classes so screens feel consistent.
+`Docs/Example.png` remains as the visual reference for the final map UI check.
 
-Shared primitives should cover:
+## Regression Checklist
 
-- colors
-- typography scale
-- spacing scale
-- card surfaces
-- chip variants
-- button variants
-- muted gameplay-under-modal state
-
-Feature-specific USS should extend shared primitives instead of redefining the entire system.
-
-## Migration Rules
-
-The migration must happen in small slices.
-
-Each slice should:
-
-1. add the new shared-root implementation for one area
-2. wire existing gameplay data into it
-3. test that area in isolation
-4. remove the old path for that area only after validation
-
-Do not migrate multiple interactive flows at once unless they share the same infrastructure and are already stable.
-
-## Migration Order
-
-### Slice 1: Foundation
-
-- create shared gameplay UI root assets
-- create `HexGameplayUiRootController`
-- create empty runtime layers
-- initialize the shared root at runtime
-- no intentional visual change yet
-
-### Slice 2: HUD
-
-- migrate top status bar
-- keep the top status bar in `hud-layer`
-- remove standalone HUD `UIDocument` path after validation
-
-### Slice 3: Pitstop Modal
-
-- move pitstop event choice and result UI into `modal-layer`
-- remove standalone pitstop modal `UIDocument`
-- validate choice and result flow
-
-### Slice 4: Act Transition
-
-- move act intermission screen into `modal-layer`
-- move boon selection screen into `modal-layer`
-- remove standalone act transition `UIDocument`
-
-### Slice 5: Run-End Modals
-
-- move victory UI into `modal-layer`
-- move defeat UI into `modal-layer`
-- remove remaining legacy gameplay modal paths
-
-### Slice 6: Cleanup
-
-- move tile inspector and pitstop intel into `context-layer`
-- remove dead UGUI gameplay UI objects
-- remove unused modal/document bootstrap code
-- remove temporary debug migration helpers
-
-## Testing Standard
-
-Every migrated slice must be tested before the next one starts.
-
-### Per-Slice Checklist
-
-- correct visibility state
-- correct input behavior
-- correct focus/selection behavior
-- no overlap with unrelated gameplay UI
-- no missing resource/status data
-- no regression in startup flow
-- no regression in resolution scaling at the main target size
-
-### Full Gameplay UI Checklist
-
-- startup HUD
-- tile selection
-- route preview
-- pitstop inspection
-- pitstop event choice
-- pitstop result
-- act 1 to act 2 transition
-- act 2 to act 3 boon selection
-- victory
-- defeat
-
-## Current Status
-
-This document defines the target architecture and phased migration plan.
-
-Current implementation status:
-
-- slice 1 complete: shared gameplay UI root and runtime layers
-- slice 2 complete: top status bar migrated to the shared HUD layer
-- slice 3 complete: pitstop event choice/result migrated to the shared modal layer
-- slice 4 complete: act intermission and boon selection migrated to the shared modal layer
-- slice 5 complete: run-end modal flow migrated to the shared modal layer
-- slice 6 complete: tile inspector and pitstop intel moved into the shared context layer, and the legacy scene HUD canvas was removed
-- slice 7 complete: gameplay HUD flow no longer depends on legacy UGUI `Text` references
-- slice 8 complete: run-end and transition modal usage no longer routes through the legacy run-state presenter, and the remaining compatibility-only gameplay UI scripts were removed
-
-Gameplay UI migration is now complete:
-
-- the shared UI Toolkit root owns the HUD, context panels, and gameplay modals
-- the legacy gameplay UGUI canvas and text objects are gone from the main scene
-- the old compatibility selector and run-state modal implementation are no longer part of the gameplay runtime
-
-Remaining work is no longer architectural migration work. It is standard QA and polish:
-
-- full gameplay regression pass across startup, pitstops, act transitions, boon selection, victory, and defeat
-- visual polish or layout adjustments discovered during testing
+- Main menu appears on boot.
+- New Game hides menu and activates gameplay.
+- HUD/context are hidden while menu is active.
+- Pitstop modal blocks gameplay input.
+- Act transition modals block gameplay input.
+- Victory and Game Over hide/suppress normal gameplay HUD/context.
+- Return-to-menu and retry/restart flows are hidden by global fade.
+- No gameplay UI flow depends on legacy scene UGUI objects.

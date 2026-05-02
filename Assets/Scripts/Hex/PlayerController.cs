@@ -1,10 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class PlayerController : MonoBehaviour
 {
+    private const string CurrentTileSelectionPrefabPath = "Assets/Prefabs/Selection Hex.prefab";
+
     public Transform caravanVisual;
     public Transform goalVisual;
     [Min(1)] public int startingFood = 30;
@@ -16,10 +20,19 @@ public class PlayerController : MonoBehaviour
     [Min(0.1f)] public float goalScale = 0.3f;
     public Color caravanColor = new(0.95f, 0.76f, 0.29f, 1f);
     public Color goalColor = new(0.25f, 0.87f, 0.44f, 1f);
+    public Color selectedHexColor = new(0.12f, 0.78f, 1f, 0.72f);
+    [Min(0.01f)] public float selectedHexMarkerRadius = 0.58f;
+    [Min(0.01f)] public float selectedHexMarkerScale = 1.2f;
+    [Min(0f)] public float selectedHexMarkerYOffset = 0.1f;
+    public GameObject currentTileSelectionPrefab;
+    [Min(0.01f)] public float currentTileSelectionScale = 1f;
+    [Min(0f)] public float currentTileSelectionYOffset = 0.12f;
     public Color outOfRangeSelectionColor = new(0.42f, 0.65f, 0.95f, 1f);
 
     private HexTileInputService inputService;
     private HexPathHighlighter pathHighlighter;
+    private HexSelectionMarker selectionMarker;
+    private GameObject currentTileSelectionInstance;
     private HexTravelTimePresenter travelTimePresenter;
     private HexHudPresenter hudPresenter;
     private HexGameplayUiRootController gameplayUiRootController;
@@ -49,6 +62,7 @@ public class PlayerController : MonoBehaviour
     private bool isGameplaySessionActive;
     private bool isRunOver;
     private bool resourcesInitialized;
+    private bool didWarnMissingCurrentTileSelectionPrefab;
     private string pendingPitstopBoonHint;
 
     private void Awake()
@@ -63,6 +77,13 @@ public class PlayerController : MonoBehaviour
         EnsureRuntimeReferences();
     }
 
+    private void OnDestroy()
+    {
+        selectionMarker?.Destroy();
+        selectionMarker = null;
+        DestroyCurrentTileSelectionInstance();
+    }
+
     private void OnValidate()
     {
         hudDocumentController = GetComponent<HexHudDocumentController>();
@@ -73,13 +94,49 @@ public class PlayerController : MonoBehaviour
         caravanScale = Mathf.Max(0.1f, caravanScale);
         goalHeight = Mathf.Max(0.1f, goalHeight);
         goalScale = Mathf.Max(0.1f, goalScale);
+        selectedHexColor.a = Mathf.Clamp01(selectedHexColor.a);
+        selectedHexMarkerRadius = Mathf.Max(0.01f, selectedHexMarkerRadius);
+        selectedHexMarkerScale = Mathf.Max(0.01f, selectedHexMarkerScale);
+        selectedHexMarkerYOffset = Mathf.Max(0f, selectedHexMarkerYOffset);
+        currentTileSelectionScale = Mathf.Max(0.01f, currentTileSelectionScale);
+        currentTileSelectionYOffset = Mathf.Max(0f, currentTileSelectionYOffset);
+        outOfRangeSelectionColor.a = 1f;
+
+#if UNITY_EDITOR
+        currentTileSelectionPrefab ??= AssetDatabase.LoadAssetAtPath<GameObject>(CurrentTileSelectionPrefabPath);
+#endif
     }
 
     private IEnumerator Start()
     {
-        EnsureRuntimeReferences();
-        bool startGameplayDirectly = HexMainMenuPresenter.ConsumeGameplayOnNextSceneLoadRequest()
+        if (HexGameBootstrap.HasActiveBootController)
+        {
+            yield break;
+        }
+
+        yield return PrepareGameplaySessionForBoot();
+        bool startGameplayDirectly = HexGameBootstrap.ConsumeGameplayOnNextSceneLoadRequest()
             || HexActTransitionService.HasActiveRunSession();
+
+        if (!startGameplayDirectly && mainMenuPresenter != null)
+        {
+            mainMenuPresenter.ShowBootMenu(ActivateGameplaySession);
+        }
+        else
+        {
+            ActivateGameplaySession();
+            RevealGameplayAfterSceneLoad();
+        }
+    }
+
+    public IEnumerator PrepareGameplaySessionForBoot()
+    {
+        if (isReady)
+        {
+            yield break;
+        }
+
+        EnsureRuntimeReferences();
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -126,16 +183,6 @@ public class PlayerController : MonoBehaviour
         isReady = true;
         RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
-
-        if (!startGameplayDirectly && mainMenuPresenter != null)
-        {
-            mainMenuPresenter.ShowBootMenu(StartGameplayFromMainMenu);
-        }
-        else
-        {
-            StartGameplayFromMainMenu();
-            RevealGameplayAfterSceneLoad();
-        }
     }
 
     private void Update()
@@ -444,16 +491,7 @@ public class PlayerController : MonoBehaviour
     private void RefreshHighlights()
     {
         pathHighlighter.Reset(currentTile, selectedTile, previewPath, mapGenerator);
-
-        if (caravanSelectionActive && currentTile != null)
-        {
-            pathHighlighter.HighlightEndpoint(currentTile);
-        }
-
-        if (selectedTile != null && selectedTile != currentTile)
-        {
-            pathHighlighter.HighlightEndpoint(selectedTile, ResolveSelectionHighlightColor(selectedTile));
-        }
+        RefreshSelectionMarker();
 
         if (caravanSelectionActive && previewPath != null && currentTile != null && selectedTile != null)
         {
@@ -464,6 +502,190 @@ public class PlayerController : MonoBehaviour
     private void ClearHighlights()
     {
         pathHighlighter.Reset(currentTile, selectedTile, previewPath, mapGenerator);
+        selectionMarker?.Hide();
+        HideCurrentTileSelectionInstance();
+    }
+
+    private void RefreshSelectionMarker()
+    {
+        bool shouldShowCurrentTileSelection = caravanSelectionActive && currentTile != null;
+        if (shouldShowCurrentTileSelection)
+        {
+            ShowCurrentTileSelectionInstance(currentTile);
+        }
+        else
+        {
+            HideCurrentTileSelectionInstance();
+        }
+
+        if (selectedTile == null)
+        {
+            selectionMarker?.Hide();
+            return;
+        }
+
+        if (currentTile != null && selectedTile == currentTile)
+        {
+            selectionMarker?.Hide();
+            return;
+        }
+
+        selectionMarker ??= new HexSelectionMarker();
+        selectionMarker.Show(
+            selectedTile,
+            ResolveSelectionMarkerColor(selectedTile),
+            selectedHexMarkerRadius,
+            selectedHexMarkerScale,
+            selectedHexMarkerYOffset);
+    }
+
+    private void ShowCurrentTileSelectionInstance(HexagonTile tile)
+    {
+        if (tile == null)
+        {
+            HideCurrentTileSelectionInstance();
+            return;
+        }
+
+        if (currentTileSelectionPrefab == null)
+        {
+            WarnMissingCurrentTileSelectionPrefabOnce();
+            return;
+        }
+
+        if (currentTileSelectionInstance == null)
+        {
+            currentTileSelectionInstance = InstantiateCurrentTileSelectionPrefab();
+            if (currentTileSelectionInstance == null)
+            {
+                return;
+            }
+
+            currentTileSelectionInstance.name = "Current Tile Selection Marker";
+            DisableSelectionMarkerColliders(currentTileSelectionInstance);
+        }
+
+        Transform markerTransform = currentTileSelectionInstance.transform;
+        markerTransform.SetParent(tile.transform, false);
+        markerTransform.localPosition = new Vector3(0f, currentTileSelectionYOffset, 0f);
+        markerTransform.localRotation = Quaternion.identity;
+        markerTransform.localScale = Vector3.one * Mathf.Max(0.01f, currentTileSelectionScale);
+        currentTileSelectionInstance.SetActive(true);
+    }
+
+    private GameObject InstantiateCurrentTileSelectionPrefab()
+    {
+#if UNITY_EDITOR
+        GameObject editorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CurrentTileSelectionPrefabPath);
+        if (editorPrefab != null)
+        {
+            UnityEngine.Object editorInstance = PrefabUtility.InstantiatePrefab(editorPrefab);
+            GameObject editorInstanceGameObject = ResolveInstantiatedSelectionGameObject(editorInstance);
+            if (editorInstanceGameObject != null)
+            {
+                return editorInstanceGameObject;
+            }
+        }
+#endif
+
+        if (currentTileSelectionPrefab == null)
+        {
+            WarnMissingCurrentTileSelectionPrefabOnce();
+            return null;
+        }
+
+        UnityEngine.Object instance = UnityEngine.Object.Instantiate((UnityEngine.Object)currentTileSelectionPrefab);
+        GameObject instanceGameObject = ResolveInstantiatedSelectionGameObject(instance);
+        if (instanceGameObject != null)
+        {
+            return instanceGameObject;
+        }
+
+        Debug.LogWarning(
+            $"PlayerController could not instantiate '{CurrentTileSelectionPrefabPath}' as a GameObject. Falling back to no caravan tile selection marker.",
+            this);
+
+        if (instance != null)
+        {
+            Destroy(instance);
+        }
+
+        return null;
+    }
+
+    private static GameObject ResolveInstantiatedSelectionGameObject(UnityEngine.Object instance)
+    {
+        return instance switch
+        {
+            GameObject gameObject => gameObject,
+            Component component => component.gameObject,
+            _ => null
+        };
+    }
+
+    private void HideCurrentTileSelectionInstance()
+    {
+        if (currentTileSelectionInstance != null)
+        {
+            currentTileSelectionInstance.SetActive(false);
+        }
+    }
+
+    private void DestroyCurrentTileSelectionInstance()
+    {
+        if (currentTileSelectionInstance == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(currentTileSelectionInstance);
+        }
+        else
+        {
+            DestroyImmediate(currentTileSelectionInstance);
+        }
+
+        currentTileSelectionInstance = null;
+    }
+
+    private void WarnMissingCurrentTileSelectionPrefabOnce()
+    {
+        if (didWarnMissingCurrentTileSelectionPrefab)
+        {
+            return;
+        }
+
+        didWarnMissingCurrentTileSelectionPrefab = true;
+        Debug.LogWarning(
+            $"PlayerController cannot show the caravan tile selection marker because '{CurrentTileSelectionPrefabPath}' is not assigned.",
+            this);
+    }
+
+    private static void DisableSelectionMarkerColliders(GameObject markerRoot)
+    {
+        if (markerRoot == null)
+        {
+            return;
+        }
+
+        foreach (Collider collider in markerRoot.GetComponentsInChildren<Collider>(true))
+        {
+            collider.enabled = false;
+        }
+    }
+
+    private Color ResolveSelectionMarkerColor(HexagonTile tile)
+    {
+        if (!caravanSelectionActive || tile == null || currentTile == null)
+        {
+            return selectedHexColor;
+        }
+
+        return IsWithinImmediateMovementRange(tile)
+            ? selectedHexColor
+            : outOfRangeSelectionColor;
     }
 
     private bool TrySpawnCaravan()
@@ -763,19 +985,6 @@ public class PlayerController : MonoBehaviour
         return alwaysKnownCoordinates;
     }
 
-    private Color ResolveSelectionHighlightColor(HexagonTile tile)
-    {
-        if (tile == null || currentTile == null || tile == currentTile)
-        {
-            return new Color(0f, 1f, 0f, 1f);
-        }
-
-        bool isWithinImmediateMovementRange = IsWithinImmediateMovementRange(tile);
-        return isWithinImmediateMovementRange
-            ? new Color(0f, 1f, 0f, 1f)
-            : outOfRangeSelectionColor;
-    }
-
     private bool IsWithinImmediateMovementRange(HexagonTile tile)
     {
         return tile != null && currentTile != null && currentTile.Coordinates.DistanceTo(tile.Coordinates) <= 1;
@@ -830,10 +1039,12 @@ public class PlayerController : MonoBehaviour
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>() ?? gameObject.AddComponent<HexMainMenuPresenter>();
+        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
+            ?? FindAnyObjectByType<HexMainMenuPresenter>()
+            ?? gameObject.AddComponent<HexMainMenuPresenter>();
     }
 
-    private void StartGameplayFromMainMenu()
+    public void ActivateGameplaySession()
     {
         isGameplaySessionActive = true;
         hudDocumentController?.SetGameplayModalState(false);
@@ -857,35 +1068,12 @@ public class PlayerController : MonoBehaviour
 
     private void ReturnToMainMenuWithFade()
     {
-        bool sceneLoadRequested = false;
-        void LoadMenuSceneOnce()
-        {
-            if (sceneLoadRequested)
-            {
-                return;
-            }
-
-            sceneLoadRequested = true;
-            ReturnToMainMenuAfterFade();
-        }
-
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        bool started = globalTransitionController != null
-            && globalTransitionController.PlayFadeToBlack(
-                LoadMenuSceneOnce,
-                null,
-                fadeBackOut: false);
-        if (!started)
-        {
-            LoadMenuSceneOnce();
-        }
+        HexGameBootstrap.ReloadActiveSceneToMainMenu(this, resetRunSession: true);
     }
 
     private void ReturnToMainMenuAfterFade()
     {
-        HexActTransitionService.ResetRunSession();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        HexGameBootstrap.LoadActiveSceneToMainMenu(resetRunSession: true);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -1041,9 +1229,7 @@ public class PlayerController : MonoBehaviour
 
     private void RetryCurrentScene()
     {
-        HexActTransitionService.ResetRunSession();
-        HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: true);
     }
 
     private void ContinueToNextAct(HexBoonDefinition selectedBoon)
@@ -1058,30 +1244,7 @@ public class PlayerController : MonoBehaviour
 
     private void LoadCurrentSceneBehindFade()
     {
-        bool sceneLoadRequested = false;
-        void LoadCurrentSceneOnce()
-        {
-            if (sceneLoadRequested)
-            {
-                return;
-            }
-
-            sceneLoadRequested = true;
-            HexMainMenuPresenter.RequestGameplayOnNextSceneLoad();
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        }
-
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        bool started = globalTransitionController != null
-            && globalTransitionController.PlayFadeToBlack(
-                LoadCurrentSceneOnce,
-                null,
-                fadeBackOut: false);
-        if (!started)
-        {
-            LoadCurrentSceneOnce();
-        }
+        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: false);
     }
 }
 

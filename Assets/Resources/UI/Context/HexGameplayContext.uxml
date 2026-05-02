@@ -1,13 +1,118 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="gameplay-context-root">
-        <ui:VisualElement name="tile-inspector-panel" class="context-card">
-            <ui:Label text="Tile Inspector" class="panel-kicker" />
-            <ui:Label name="tile-details" text="Click a tile to inspect terrain cost." class="body-copy" />
-        </ui:VisualElement>
+        <ui:VisualElement name="MapContentRoot">
+            <ui:VisualElement name="MapViewportContainer" />
+            <ui:VisualElement name="MapInspectorDock">
+                <ui:VisualElement name="UnifiedInspectorPanel">
+                    <ui:Label name="UnifiedInspectorTitle" text="Inspection" />
 
-        <ui:VisualElement name="pitstop-panel" class="context-card">
-            <ui:Label text="Pitstop Intel" class="panel-kicker" />
-            <ui:Label name="pitstop-info" text="Pitstop Info&#10;Select a pitstop to inspect its stop effect." class="body-copy" />
+                    <ui:VisualElement name="UnifiedInspectorEmptyState">
+                        <ui:Label
+                            name="UnifiedInspectorEmptyBody"
+                            text="Click a hex to inspect its details." />
+                        <ui:Label
+                            name="UnifiedInspectorEmptyHint"
+                            text="Pitstops reveal additional contextual information." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="UnifiedInspectorBiomeState">
+                        <ui:Label name="UnifiedInspectorBiomeTitle" text="Forest" />
+                        <ui:Label name="UnifiedInspectorBiomeSubtitle" text="Selected Hex" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Biome" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:Label
+                            name="UnifiedInspectorBiomeDescription"
+                            text="Dense woodland. Travel is slower here." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="UnifiedInspectorPitstopState">
+                        <ui:Label name="UnifiedInspectorPitstopTitle" text="Working Mill" />
+                        <ui:Label name="UnifiedInspectorPitstopType" text="Pitstop • Mill" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Terrain" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopTerrainValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="UnifiedInspectorPitstopStatusList" class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Working" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopWorkingValue" text="Yes" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Destroyed" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopDestroyedValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Refuel" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopRefuelValue" text="Yes" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Repeatable" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopRepeatableValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Visited" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorPitstopVisitedValue" text="No" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:Label
+                            name="UnifiedInspectorPitstopDescription"
+                            text="The millers trade flour and dried grain for the road ahead." />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="UnifiedInspectorGenericState">
+                        <ui:Label name="UnifiedInspectorGenericTitle" text="Selected Hex" />
+                        <ui:Label
+                            name="UnifiedInspectorGenericSubtitle"
+                            text="Context" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Terrain" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericTerrainValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:Label
+                            name="UnifiedInspectorGenericDescription"
+                            text="No additional details." />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

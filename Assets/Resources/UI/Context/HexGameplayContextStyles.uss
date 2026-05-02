@@ -6,53 +6,207 @@
     bottom: 0;
 }
 
-.context-card {
+#MapContentRoot {
     position: absolute;
-    padding-left: 11px;
-    padding-right: 11px;
-    padding-top: 9px;
-    padding-bottom: 9px;
-    background-color: rgba(10, 18, 28, 0.44);
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
+    left: 0;
+    top: 76px;
+    right: 0;
+    bottom: 0;
+    flex-direction: row;
+}
+
+#MapViewportContainer {
+    flex-grow: 1;
+}
+
+#MapInspectorDock {
+    width: 348px;
+    min-width: 348px;
+    max-width: 348px;
+    padding-left: 12px;
+    padding-right: 16px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    align-items: center;
+}
+
+#UnifiedInspectorPanel {
+    width: 320px;
+    min-height: 560px;
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+    flex-direction: column;
+    background-color: rgb(34, 51, 68);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
     border-left-width: 1px;
     border-right-width: 1px;
     border-top-width: 1px;
     border-bottom-width: 1px;
-    border-left-color: rgba(255, 255, 255, 0.03);
-    border-right-color: rgba(255, 255, 255, 0.03);
-    border-top-color: rgba(255, 255, 255, 0.03);
-    border-bottom-color: rgba(255, 255, 255, 0.03);
+    border-left-color: rgba(198, 177, 138, 0.45);
+    border-right-color: rgba(198, 177, 138, 0.45);
+    border-top-color: rgba(198, 177, 138, 0.45);
+    border-bottom-color: rgba(198, 177, 138, 0.45);
 }
 
-#tile-inspector-panel {
-    left: 24px;
-    bottom: 24px;
-    width: 224px;
+#UnifiedInspectorTitle {
+    margin-bottom: 18px;
+    color: rgb(233, 226, 210);
+    font-size: 26px;
+    line-height: 30px;
+    -unity-font-style: bold;
+    white-space: nowrap;
 }
 
-#pitstop-panel {
-    right: 24px;
-    top: 68px;
-    width: 256px;
+#UnifiedInspectorEmptyState {
+    flex-direction: column;
+}
+
+#UnifiedInspectorEmptyBody {
+    color: rgb(217, 210, 196);
+    font-size: 18px;
+    line-height: 24px;
+    white-space: normal;
+}
+
+#UnifiedInspectorEmptyHint {
+    margin-top: 18px;
+    color: rgb(200, 193, 178);
+    font-size: 16px;
+    line-height: 22px;
+    white-space: normal;
+}
+
+#UnifiedInspectorGenericState {
+    flex-direction: column;
     display: none;
 }
 
-.panel-kicker {
-    color: rgba(241, 213, 159, 0.72);
-    font-size: 11px;
-    line-height: 12px;
+#UnifiedInspectorBiomeState {
+    flex-direction: column;
+    display: none;
+}
+
+#UnifiedInspectorPitstopState {
+    flex-direction: column;
+    display: none;
+}
+
+#UnifiedInspectorBiomeTitle {
+    color: rgb(247, 242, 231);
+    font-size: 36px;
+    line-height: 40px;
     -unity-font-style: bold;
-    letter-spacing: 0.6px;
+    white-space: normal;
+}
+
+#UnifiedInspectorPitstopTitle {
+    color: rgb(246, 230, 180);
+    font-size: 34px;
+    line-height: 38px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+#UnifiedInspectorGenericTitle {
+    color: rgb(247, 242, 231);
+    font-size: 34px;
+    line-height: 38px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+#UnifiedInspectorBiomeSubtitle {
+    margin-top: 6px;
+    margin-bottom: 16px;
+    color: rgb(184, 156, 99);
+    font-size: 14px;
+    line-height: 16px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
     text-transform: uppercase;
 }
 
-.body-copy {
-    margin-top: 5px;
-    color: rgb(214, 225, 234);
-    font-size: 10px;
-    line-height: 12px;
+#UnifiedInspectorPitstopType {
+    margin-top: 4px;
+    margin-bottom: 18px;
+    color: rgb(217, 210, 196);
+    font-size: 18px;
+    line-height: 22px;
+    white-space: normal;
+}
+
+#UnifiedInspectorGenericSubtitle {
+    margin-top: 6px;
+    margin-bottom: 16px;
+    color: rgb(184, 156, 99);
+    font-size: 14px;
+    line-height: 16px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.inspector-fact-list {
+    flex-direction: column;
+}
+
+#UnifiedInspectorPitstopStatusList {
+    margin-top: 18px;
+}
+
+.inspector-fact-row {
+    height: 36px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.inspector-fact-label {
+    color: rgb(207, 199, 182);
+    font-size: 17px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.inspector-fact-value {
+    color: rgb(245, 240, 227);
+    font-size: 19px;
+    line-height: 22px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+}
+
+.inspector-fact-value--positive {
+    color: rgb(142, 211, 155);
+}
+
+#UnifiedInspectorBiomeDescription {
+    margin-top: 18px;
+    color: rgb(217, 210, 196);
+    font-size: 18px;
+    line-height: 24px;
+    white-space: normal;
+}
+
+#UnifiedInspectorPitstopDescription {
+    margin-top: 18px;
+    color: rgb(216, 208, 192);
+    font-size: 18px;
+    line-height: 24px;
+    white-space: normal;
+}
+
+#UnifiedInspectorGenericDescription {
+    margin-top: 18px;
+    color: rgb(217, 210, 196);
+    font-size: 18px;
+    line-height: 24px;
     white-space: normal;
 }
