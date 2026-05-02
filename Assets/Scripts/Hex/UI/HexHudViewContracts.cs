@@ -1,12 +1,11 @@
 public interface IHexHudView
 {
     void SetStatusText(string value);
-    void SetTileDetailsText(string value);
     void SetHintText(string value);
-    void SetPitstopInfoText(string value);
     void ShowInspectorEmptyState();
     void ShowBiomeInspector(HexInspectorBiomeDisplayData data);
     void ShowPitstopInspector(HexInspectorPitstopDisplayData data);
+    void ShowGenericInspector(HexInspectorGenericDisplayData data);
 }
 
 public interface IHexTravelTimeView
@@ -68,5 +67,31 @@ public readonly struct HexInspectorPitstopDisplayData
     public string Refuel { get; }
     public string Repeatable { get; }
     public string Visited { get; }
+    public string Description { get; }
+}
+
+public readonly struct HexInspectorGenericDisplayData
+{
+    public HexInspectorGenericDisplayData(
+        string title,
+        string subtitle,
+        string hex,
+        string terrain,
+        string travelCost,
+        string description)
+    {
+        Title = string.IsNullOrWhiteSpace(title) ? "Selected Hex" : title;
+        Subtitle = string.IsNullOrWhiteSpace(subtitle) ? "Context" : subtitle;
+        Hex = string.IsNullOrWhiteSpace(hex) ? "--" : hex;
+        Terrain = string.IsNullOrWhiteSpace(terrain) ? "Unknown" : terrain;
+        TravelCost = string.IsNullOrWhiteSpace(travelCost) ? "--" : travelCost;
+        Description = string.IsNullOrWhiteSpace(description) ? "No additional details." : description;
+    }
+
+    public string Title { get; }
+    public string Subtitle { get; }
+    public string Hex { get; }
+    public string Terrain { get; }
+    public string TravelCost { get; }
     public string Description { get; }
 }

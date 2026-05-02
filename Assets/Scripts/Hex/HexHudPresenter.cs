@@ -355,12 +355,13 @@ public sealed class HexHudPresenter
             return;
         }
 
-        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}";
-        details = AppendObstacleDetails(details, visibleObstacle);
-        details = AppendExtraDetails(details, extraDetails);
-
-        SetTileDetailsText(details);
-        SetPitstopInfoText(FormatPitstopPanel(pitstopSite));
+        runtimeView?.ShowGenericInspector(BuildGenericTileDisplayData(
+            tile,
+            biome,
+            travelCost,
+            pitstopSite,
+            visibleObstacle,
+            extraDetails));
     }
 
     public void ShowUnknownTileDetails(HexagonTile tile, PitstopSite pitstopSite = null, string extraDetails = null)
@@ -371,10 +372,7 @@ public sealed class HexHudPresenter
             return;
         }
 
-        string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: Unknown\nTravel Cost: Unknown\nVisibility: Unseen";
-        details = AppendExtraDetails(details, extraDetails);
-        SetTileDetailsText(details);
-        SetPitstopInfoText(FormatPitstopPanel(pitstopSite));
+        runtimeView?.ShowGenericInspector(BuildUnknownTileDisplayData(tile, pitstopSite, extraDetails));
     }
 
     public void ResetTileDetails()
@@ -382,26 +380,14 @@ public sealed class HexHudPresenter
         runtimeView?.ShowInspectorEmptyState();
     }
 
-    private const string DefaultPitstopPanelText = "Pitstop Info\nSelect a pitstop to inspect its stop effect.";
-
     private void SetStatusText(string value)
     {
         runtimeView?.SetStatusText(value);
     }
 
-    private void SetTileDetailsText(string value)
-    {
-        runtimeView?.SetTileDetailsText(value);
-    }
-
     private void SetHintText(string value)
     {
         runtimeView?.SetHintText(value);
-    }
-
-    private void SetPitstopInfoText(string value)
-    {
-        runtimeView?.SetPitstopInfoText(value);
     }
 
     private void ClearHintText()
@@ -479,27 +465,118 @@ public sealed class HexHudPresenter
         return builder.ToString();
     }
 
-    private static string AppendObstacleDetails(string details, HexObstacleInstance visibleObstacle)
+    private static HexInspectorGenericDisplayData BuildGenericTileDisplayData(
+        HexagonTile tile,
+        string biome,
+        string travelCost,
+        PitstopSite pitstopSite,
+        HexObstacleInstance visibleObstacle,
+        string extraDetails)
+    {
+        string title = pitstopSite != null
+            ? ResolvePitstopTitle(pitstopSite)
+            : biome;
+        string subtitle = visibleObstacle != null
+            ? "Hazard Context"
+            : pitstopSite != null
+                ? "Pitstop Context"
+                : "Selected Hex";
+
+        List<string> descriptions = new();
+        if (visibleObstacle != null)
+        {
+            descriptions.Add(FormatObstacleSummary(visibleObstacle));
+        }
+
+        if (pitstopSite != null)
+        {
+            descriptions.Add($"Pitstop: {ResolvePitstopTitle(pitstopSite)}.");
+        }
+
+        AddExtraDescriptionLines(descriptions, extraDetails);
+        if (descriptions.Count == 0)
+        {
+            descriptions.Add(FormatBiomeDescription(tile?.TileData?.Biome ?? Biome.grass));
+        }
+
+        return new HexInspectorGenericDisplayData(
+            title,
+            subtitle,
+            FormatCoordinates(tile.Coordinates),
+            biome,
+            travelCost,
+            string.Join(" ", descriptions));
+    }
+
+    private static HexInspectorGenericDisplayData BuildUnknownTileDisplayData(HexagonTile tile, PitstopSite pitstopSite, string extraDetails)
+    {
+        List<string> descriptions = new()
+        {
+            "This hex is outside caravan sight."
+        };
+
+        if (pitstopSite != null)
+        {
+            descriptions.Add($"Possible pitstop: {ResolvePitstopTitle(pitstopSite)}.");
+        }
+
+        AddExtraDescriptionLines(descriptions, extraDetails);
+
+        return new HexInspectorGenericDisplayData(
+            "Unknown",
+            "Unseen Hex",
+            FormatCoordinates(tile.Coordinates),
+            "Unknown",
+            "Unknown",
+            string.Join(" ", descriptions));
+    }
+
+    private static string FormatObstacleSummary(HexObstacleInstance visibleObstacle)
     {
         if (visibleObstacle == null || visibleObstacle.Definition == null)
         {
-            return details;
+            return "Hazard details are unavailable.";
         }
 
         HexObstacleDefinition definition = visibleObstacle.Definition;
         string resourceLabel = FormatResourceType(definition.primaryResource);
-        string obstacleLine = $"{definition.displayName} ({resourceLabel} -{definition.primaryDrainAmount})";
+        string summary = $"{definition.displayName}: -{definition.primaryDrainAmount} {resourceLabel}";
         if (definition.penaltyMode == HexObstaclePenaltyMode.FallbackDrainIfPrimaryUnavailable)
         {
-            obstacleLine += $" / fallback {FormatResourceType(definition.fallbackResource)} -{definition.fallbackDrainAmount}";
+            summary += $"; fallback -{definition.fallbackDrainAmount} {FormatResourceType(definition.fallbackResource)}";
         }
 
-        return $"{details}\nObstacle: {obstacleLine}";
+        return $"{summary}.";
     }
 
-    private static string AppendExtraDetails(string details, string extraDetails)
+    private static void AddExtraDescriptionLines(List<string> descriptions, string extraDetails)
     {
-        return string.IsNullOrWhiteSpace(extraDetails) ? details : $"{details}\n{extraDetails}";
+        if (string.IsNullOrWhiteSpace(extraDetails))
+        {
+            return;
+        }
+
+        string[] lines = extraDetails.Split('\n');
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = lines[index]?.Trim();
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                descriptions.Add(line.EndsWith(".", System.StringComparison.Ordinal) ? line : $"{line}.");
+            }
+        }
+    }
+
+    private static string ResolvePitstopTitle(PitstopSite pitstopSite)
+    {
+        if (pitstopSite == null)
+        {
+            return "Pitstop";
+        }
+
+        return string.IsNullOrWhiteSpace(pitstopSite.EventTitle)
+            ? FormatPitstopKindName(pitstopSite.Kind)
+            : pitstopSite.EventTitle;
     }
 
     private static string FormatResourceType(CaravanResourceType resourceType)
@@ -516,80 +593,6 @@ public sealed class HexHudPresenter
     private static string FormatResourceSummary(CaravanResourceSnapshot resources)
     {
         return $"Food {resources.Food}, Morale {resources.Morale}, Gold {resources.Gold}";
-    }
-
-    private static string FormatPitstopEffectSummary(PitstopEventResult eventResult)
-    {
-        if (eventResult == null)
-        {
-            return "The caravan pauses at a roadside stop.";
-        }
-
-        if (eventResult.AppliedEffects.Count == 0)
-        {
-            return string.IsNullOrWhiteSpace(eventResult.Description)
-                ? "The caravan pauses at a roadside stop."
-                : eventResult.Description;
-        }
-
-        List<string> effectParts = new(eventResult.AppliedEffects.Count);
-        for (int index = 0; index < eventResult.AppliedEffects.Count; index++)
-        {
-            PitstopResourceEffectResult effect = eventResult.AppliedEffects[index];
-            string sign = effect.Amount >= 0 ? "+" : string.Empty;
-            effectParts.Add($"{sign}{effect.Amount} {FormatResourceType(effect.ResourceType)}");
-        }
-
-        return $"{eventResult.Description} Gained {string.Join(", ", effectParts)}.";
-    }
-
-    private static string FormatPitstopPanel(PitstopSite pitstopSite, PitstopEventResult eventResult = null)
-    {
-        if (pitstopSite == null)
-        {
-            return DefaultPitstopPanelText;
-        }
-
-        string title = string.IsNullOrWhiteSpace(pitstopSite.EventTitle) ? pitstopSite.Kind.ToString() : pitstopSite.EventTitle;
-        string refuelStatus = pitstopSite.HasRefuelPoint ? "Yes" : "No";
-        string repeatableStatus = pitstopSite.Repeatable ? "Yes" : "No";
-        string visitedStatus = pitstopSite.Visited ? $"Yes ({pitstopSite.VisitCount})" : "No";
-        string description = string.IsNullOrWhiteSpace(pitstopSite.SpecialEventDescription)
-            ? "placeholder"
-            : pitstopSite.SpecialEventDescription;
-
-        string destroyedStatus = pitstopSite.IsDestroyed ? "Yes" : "No";
-        string panel = $"Pitstop Info\n{title}\nDestroyed: {destroyedStatus}\nRefuel: {refuelStatus}\nRepeatable: {repeatableStatus}\nVisited: {visitedStatus}\n{description}";
-        if (eventResult == null || !eventResult.Triggered || !eventResult.EffectsApplied)
-        {
-            return panel;
-        }
-
-        if (eventResult.SelectedOption != null)
-        {
-            string outcomeText = string.IsNullOrWhiteSpace(eventResult.OutcomeText) ? eventResult.SelectedOption.label : eventResult.OutcomeText;
-            return $"{panel}\nEvent: {eventResult.Title}\nChoice: {eventResult.SelectedOption.label}\nOutcome: {outcomeText}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
-        }
-
-        return $"{panel}\nEvent: {eventResult.Title}\nReward: {FormatEffectList(eventResult.AppliedEffects)}";
-    }
-
-    private static string FormatEffectList(IReadOnlyList<PitstopResourceEffectResult> effects)
-    {
-        if (effects == null || effects.Count == 0)
-        {
-            return "None";
-        }
-
-        List<string> parts = new(effects.Count);
-        for (int index = 0; index < effects.Count; index++)
-        {
-            PitstopResourceEffectResult effect = effects[index];
-            string sign = effect.Amount >= 0 ? "+" : string.Empty;
-            parts.Add($"{sign}{effect.Amount} {FormatResourceType(effect.ResourceType)}");
-        }
-
-        return string.Join(", ", parts);
     }
 
     private static string FormatNemesisArchetype(HexNemesisArchetype archetype)

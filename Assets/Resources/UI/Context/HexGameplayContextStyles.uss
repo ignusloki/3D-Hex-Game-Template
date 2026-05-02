@@ -81,7 +81,7 @@
     white-space: normal;
 }
 
-#UnifiedInspectorLegacyState {
+#UnifiedInspectorGenericState {
     flex-direction: column;
     display: none;
 }
@@ -112,6 +112,14 @@
     white-space: normal;
 }
 
+#UnifiedInspectorGenericTitle {
+    color: rgb(247, 242, 231);
+    font-size: 34px;
+    line-height: 38px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
 #UnifiedInspectorBiomeSubtitle {
     margin-top: 6px;
     margin-bottom: 16px;
@@ -130,6 +138,17 @@
     font-size: 18px;
     line-height: 22px;
     white-space: normal;
+}
+
+#UnifiedInspectorGenericSubtitle {
+    margin-top: 6px;
+    margin-bottom: 16px;
+    color: rgb(184, 156, 99);
+    font-size: 14px;
+    line-height: 16px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .inspector-fact-list {
@@ -184,16 +203,10 @@
     white-space: normal;
 }
 
-.unified-inspector-body {
+#UnifiedInspectorGenericDescription {
+    margin-top: 18px;
     color: rgb(217, 210, 196);
     font-size: 18px;
     line-height: 24px;
     white-space: normal;
-}
-
-.unified-inspector-body--secondary {
-    margin-top: 18px;
-    padding-top: 18px;
-    border-top-width: 1px;
-    border-top-color: rgba(255, 255, 255, 0.06);
 }

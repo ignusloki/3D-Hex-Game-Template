@@ -86,15 +86,30 @@
                             text="The millers trade flour and dried grain for the road ahead." />
                     </ui:VisualElement>
 
-                    <ui:VisualElement name="UnifiedInspectorLegacyState">
+                    <ui:VisualElement name="UnifiedInspectorGenericState">
+                        <ui:Label name="UnifiedInspectorGenericTitle" text="Selected Hex" />
                         <ui:Label
-                            name="tile-details"
-                            text="Click a tile to inspect terrain cost."
-                            class="unified-inspector-body" />
+                            name="UnifiedInspectorGenericSubtitle"
+                            text="Context" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Terrain" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericTerrainValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorGenericTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
                         <ui:Label
-                            name="pitstop-info"
-                            text="Pitstop Info&#10;Select a pitstop to inspect its stop effect."
-                            class="unified-inspector-body unified-inspector-body--secondary" />
+                            name="UnifiedInspectorGenericDescription"
+                            text="No additional details." />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
