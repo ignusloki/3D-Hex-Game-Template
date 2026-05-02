@@ -1,43 +1,96 @@
-# UI Art Placeholders
+# UI Art Slots
 
-This document tracks the current UI locations that are using placeholder art panels instead of final illustrations.
+Last updated: 2026-05-02
 
-## 1. Act Transition Screen 1 - Intermission Journal Image
+## Purpose
 
-- Location:
-  - `HexRunStateModalPresenter` intermission screen
-  - `HexActTransitionStepDefinition.intermissionIllustration`
-- Purpose:
-  - one landscape illustration for the act-complete / road-intermission story page
-- Current live slot:
-  - outer framed block: approximately `676 x 236`
-  - visible image area inside the frame: approximately `632 x 192`
-- Orientation:
-  - landscape / banner
-- Recommended source export:
-  - at least `1896 x 576` to keep a clean 3x source for the current slot
-- Notes:
-  - the UI now shows a `placeholder` panel when no art is assigned
-  - this is the main authored image for screen 1 and should carry the mood of the transition
+This document tracks current UI art slots that should be authored or replaced
+through data/assets rather than hardcoded presenter changes.
 
-## 2. Act Transition Screen 2 - Boon Card Illustration Area
+## Act Complete Hero Images
 
-- Location:
-  - `HexRunStateModalPresenter` boon selection cards
-  - currently a presenter-level placeholder panel inside each boon card
-- Purpose:
-  - one illustration per boon card
-- Current live slot per card:
-  - visible image area inside the card: approximately `180 x 140`
-- Orientation:
-  - compact landscape panel inside a portrait card
-- Recommended source export:
-  - at least `540 x 420` to keep a clean 3x source for the current slot
-- Notes:
-  - there are 3 simultaneous card art slots on screen
-  - the UI now shows `placeholder` instead of reusing the boon icon in the art area
-  - if final boon art should be data-driven per boon, add a dedicated illustration field to `HexBoonDefinition` instead of reusing small icon assets
+Location:
 
-## Current Scope
+- `HexActTransitionStepDefinition.intermissionIllustration`
 
-These are the current non-icon UI art slots found in the act transition flow.
+Purpose:
+
+- landscape hero image for the act-complete intermission screen
+
+Current behavior:
+
+- the image is shown inside the Act Complete modal
+- the UI crops/scales the image to the configured frame
+- missing art should show a quiet framed surface with no visible placeholder text
+
+Current placeholder guidance:
+
+- Act 1 -> Act 2 may use `Placeholder01.png` / `Placeholder02.png`
+- Act 2 -> Act 3 may use `Placeholder03.png` / `Placeholder04.png`
+
+## Boon Choice Images
+
+Location:
+
+- boon ScriptableObject image field on `HexBoonDefinition`
+
+Purpose:
+
+- the selectable boon image shown in the boon-selection screen
+
+Current behavior:
+
+- each boon image comes from boon data
+- images are not hardcoded in presenter code
+- the selection UI uses the image as the primary choice object
+- hover updates inspect content
+- click selects the boon
+
+## Boon Family Icons
+
+Location:
+
+- boon ScriptableObject family icon field on `HexBoonDefinition`
+
+Purpose:
+
+- small family identity icon used with boon/family display
+
+Current placeholder icon assets:
+
+- `Assets/Art/Image/Placeholder/tile_0110.png`
+- `Assets/Art/Image/Placeholder/tile_0121.png`
+- `Assets/Art/Image/Placeholder/tile_0122.png`
+
+## Victory Hero Image
+
+Location:
+
+- Victory overlay UI
+
+Current asset:
+
+- `S_2.png`
+
+Purpose:
+
+- hero image inside the Victory page
+
+## Main Menu Logo
+
+Location:
+
+- main menu UI
+
+Current asset:
+
+- `Logo.png`
+
+Purpose:
+
+- title/logo graphic on the parchment main menu panel
+
+## Reference Images
+
+- `Docs/Example.png` is retained as the visual reference for the final map screen
+  UI check.

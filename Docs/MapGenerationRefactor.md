@@ -1,462 +1,105 @@
-# Map Generation Refactor Architecture
+# Map Generation Architecture
 
-Last updated: 2026-04-16
+Last updated: 2026-05-02
 
 ## Purpose
 
-This document defines the target architecture for the next map-generation refactor.
+This document describes the current map-generation architecture. The earlier
+refactor work is complete enough for the current game loop and act system.
 
-The goal is not to replace the current generator from scratch.
+## Current Architecture
 
-The goal is to preserve the current playable rules while making the system flexible enough to support:
+The map generator keeps the original layered terrain approach and adds a shared
+runtime context for feature systems.
 
-- biome-odds tuning from boons or future scenario rules
-- explicit terrain landmarks such as mini lakes and oases
-- custom spawned map objects such as outposts or quest markers
-- future act-based map modifiers without hardcoding one-off cases
-
-## Current Implementation Status
-
-The refactor is now through the first playable quest-marker prototype slice.
-
-What is implemented:
-
-- a shared `HexMapGenerationContext`
-- a generalized `HexMapGenerationModifiers` runtime bundle
-- boon-to-map integration routed through that modifier bundle
-- terrain generation consuming the shared context
-- pitstop placement consuming the same modifier bundle
-- initial opt-in debug logging for map generation attempts and summaries
-- asset-driven `HexTerrainLandmarkDefinition` authoring
-- a terrain landmark stamp pass for exact biome footprints
-- scene-level terrain landmark requests on `MapGenerator` for testing and scenario setup
-- scene-level map-object requests on `MapGenerator` for testing and scenario setup
-- generated-map placement reservations for start, goal, terrain landmarks, and pitstops
-- pitstop planning consuming map reservations so landmark tiles are rejected up front
-- a shared map-object placement result model
-- a shared map-object placement pass that now plans pitstops and non-pitstop objects together
-- `MapGenerator` retaining map-object placement metadata after planning
-- sample `Outpost` and `QuestMarker` definition assets
-- current runtime spawning of non-pitstop map objects from the shared placement plan
-- a mock quest-marker arrival interaction with placeholder modal UI so shared map-object placement can be tested in play
-
-What is not implemented yet:
-
-- landmark placement rotation / mirroring
-- shipped boon content that actually uses terrain-landmark or map-object requests
-- real quest data, quest-state progression, and per-marker quest payloads
-- interactive outpost behavior
-- movement-blocking map objects at runtime
-
-## Strict Assessment
-
-### What should stay
-
-The current layered terrain generator is a good foundation and should stay:
+Current generation layers include:
 
 - base biome sampling
-- macro land regions
+- macro land-region painting
 - feature overlays
 - quality rerolls
-- start / goal biome enforcement
+- start and goal placement
+- act-specific profile overrides
+- terrain landmark stamping
+- shared placement reservations
+- shared map-object placement pass
 
-This is already more structured than a pure random-noise generator and is worth extending.
+## Core Runtime Types
 
-### What is not good enough
+- `MapGenerator`
+- `HexBiomeMapGenerator`
+- `HexBiomeMacroRegionPainter`
+- `HexBiomeFeaturePainter`
+- `HexMapGenerationContext`
+- `HexMapGenerationModifiers`
+- `HexTerrainLandmarkDefinition`
+- `HexTerrainLandmarkStampPass`
+- `HexMapPlacementReservations`
+- `HexMapObjectPlacementPass`
 
-The old map-generation architecture was not expressive enough for planned boon and landmark work because:
+## Modifier Flow
 
-- boon map modifiers were originally limited to extra pitstops
-- terrain tuning was mostly threshold-driven, not exposed as a reusable modifier bundle
-- water blobs were random compact features, not explicit authored landmarks
-- pitstops were placed by a specialized post-generation system instead of a broader map-placement architecture
-- tile occupancy was too simple to represent multiple non-blocking map objects safely
+`HexMapGenerationModifiers` is the shared bundle for generation changes from:
 
-Most of those structural gaps are now addressed in code. The main remaining gaps are deeper content behaviors and polish rather than missing core placement architecture.
+- act profiles
+- boons
+- scene/debug requests
+- future scenario rules
 
-### Recommendation
+Terrain generation and pitstop/map-object placement consume the same context so
+new systems do not need to patch the generator with one-off hooks.
 
-Do not switch to a completely different map-generation approach.
+## Placement Flow
 
-Do not rewrite the whole game.
+The map-object placement architecture supports:
 
-Refactor the current generator into a clearer pipeline with explicit data passed between phases.
+- pitstops
+- outposts
+- quest markers
+- future authored map objects
 
-That is the lowest-risk path and keeps compatibility with the current prototype.
+The placement pass respects reservations for:
+
+- start tile
+- goal tile
+- terrain landmarks
+- pitstops
+- other placed map objects
+
+## Current Content State
+
+Implemented:
+
+- pitstop placement through the shared placement pipeline
+- terrain landmark definition assets
+- exact terrain landmark stamping
+- sample outpost and quest-marker definitions
+- runtime spawning of non-pitstop map objects
+- mock quest-marker arrival interaction for testing
+
+Not yet production-complete:
+
+- real quest data and quest progression
+- interactive outpost behavior
+- landmark rotation/mirroring
+- shipped boon content that meaningfully uses terrain landmarks or map-object requests
+- optional movement-blocking map objects
+
+## Act Integration
+
+The act system can select act-specific map profiles:
+
+- Act 1: general starting map
+- Act 2: desert-biased map
+- Act 3: general/final map with locked-family nemesis support
+
+Act-to-act map reloads are hidden behind the shared global UI fade.
 
 ## Design Constraints
 
-### Preserve current gameplay assumptions
-
-The refactor must preserve these current rules unless explicitly changed later:
-
-- all biomes remain passable
-- terrain continues to define travel cost
-- start and goal still have highest placement priority
-- pitstops remain important route anchors
-- current `5x5` and `10x10` support remains intact
-
-### Do not describe hex landmarks as square grids
-
-Future requests such as `2x2 lake` or `4x4 oasis` should not be implemented literally as square-grid logic.
-
-This is a hex game.
-
-The architecture should define landmark footprints as explicit hex patterns rather than square dimensions.
-
-Examples:
-
-- `MiniLake4`: a 4-hex compact water cluster
-- `OasisCore`: a compact water cluster with a surrounding desert ring
-- `QuestOutpostSmall`: a one-hex or multi-hex reserved placement footprint for visuals
-
-## Target Architecture
-
-### 1. Generation context
-
-Add a single runtime context object passed into map generation.
-
-Suggested runtime type:
-
-- `HexMapGenerationContext`
-
-It should carry:
-
-- map size
-- resolved seed
-- base generation settings
-- special tile settings
-- act / boon generation modifiers
-- optional scenario directives
-
-This becomes the main contract between the boon system and the generator.
-
-### 2. Generation phases
-
-The target terrain pipeline should be split into explicit phases.
-
-#### Phase A: base terrain pass
-
-Responsibilities:
-
-- generate initial biome map from noise and thresholds
-
-Input:
-
-- base biome settings
-- threshold modifiers
-- biome enable / disable modifiers
-
-#### Phase B: macro region pass
-
-Responsibilities:
-
-- reshape land regions to avoid noisy scatter
-
-Input:
-
-- region settings
-- modifier multipliers or deltas if needed later
-
-#### Phase C: feature pass
-
-Responsibilities:
-
-- paint random compact biome features such as water or forest blobs
-- paint mountain ridges
-
-Input:
-
-- feature settings
-- modifier multipliers for counts and ratios
-
-#### Phase D: authored landmark stamp pass
-
-Responsibilities:
-
-- place exact biome landmarks defined by asset-driven footprints
-- examples: mini lakes, oasis clusters, corrupted ground, sacred groves
-
-Input:
-
-- list of `HexTerrainLandmarkPlacementRequest`
-- list of available `HexTerrainLandmarkDefinition` assets
-
-This phase is now implemented.
-
-#### Phase E: special tile enforcement pass
-
-Responsibilities:
-
-- force start / goal biome rules
-- enforce any protected special tiles
-
-#### Phase F: terrain validation and reroll pass
-
-Responsibilities:
-
-- run current quality validation
-- reject impossible or poor terrain layouts before object placement
-
-#### Phase G: map-object placement pass
-
-Responsibilities:
-
-- place pitstops
-- place outposts
-- place quest markers
-- place future non-terrain landmarks
-
-Input:
-
-- placement rules
-- placement reservations
-- generation context
-
-This pass should operate on the final terrain result rather than directly on raw noise output.
-
-#### Phase H: scene spawn pass
-
-Responsibilities:
-
-- instantiate tile visuals
-- instantiate object prefabs on chosen placements
-- preserve access to runtime metadata for HUD and gameplay systems
-
-## Data Model Changes
-
-### A. Generalized map modifier bundle
-
-Replace the current narrow map modifier model with a broader generation modifier bundle.
-
-Suggested runtime type:
-
-- `HexMapGenerationModifiers`
-
-It should be able to carry values such as:
-
-- biome threshold deltas
-- biome feature count multipliers
-- biome feature size multipliers
-- landmark placement requests
-- extra pitstop count
-- future object placement requests
-
-This should be the runtime output consumed from boon selection, scenario setup, or act progression.
-
-### B. Terrain landmark definitions
-
-Add an authoring asset type for exact biome stamps.
-
-Suggested asset type:
-
-- `HexTerrainLandmarkDefinition : ScriptableObject`
-
-Suggested fields:
-
-- `Id`
-- `DisplayName`
-- `FootprintPattern`
-- `BiomeAssignments`
-- `PlacementRules`
-- `MinDistanceFromStart`
-- `MinDistanceFromGoal`
-- `AllowedBaseBiomes`
-- `ForbiddenBiomes`
-- `CanRotate`
-- `CanMirror`
-- `Weight`
-
-This lets designers author a mini lake or oasis as a reusable landmark asset instead of burying the rule in code.
-
-### C. Object placement definitions
-
-Add a separate authoring asset type for non-terrain spawned objects.
-
-Suggested asset type:
-
-- `HexMapObjectDefinition : ScriptableObject`
-
-Suggested fields:
-
-- `Id`
-- `DisplayName`
-- `Prefab`
-- `FootprintPattern`
-- `PlacementRules`
-- `VisualHeightOffset`
-- `BlocksPlacementOfOtherObjects`
-- `BlocksMovement` only if needed later
-- `GameplayTags`
-
-This should support objects such as:
-
-- outposts
-- quest markers
-- relic sites
-- future narrative landmarks
-
-Current implementation note:
-
-- the runtime placement result model and pitstop-backed placement pass now exist
-- outpost and quest-marker definitions can now use that same pass through map-object placement requests
-
-### D. Placement reservations
-
-Do not overload runtime tile occupancy for map-generation placement.
-
-Current `HexTileData.IsOccupied` is too narrow because it mainly represents runtime unit occupation.
-
-Instead add a dedicated generation-time reservation model.
-
-Suggested runtime type:
-
-- `HexMapPlacementReservations`
-
-It should track separate placement layers such as:
-
-- start / goal protected tiles
-- terrain landmark reserved tiles
-- pitstop reserved tiles
-- object reserved tiles
-- optional blocked-for-placement-only tiles
-
-This avoids breaking pathfinding and unit movement when decorative or interactive objects are added.
-
-## How Pitstops Fit The New Architecture
-
-Pitstops should remain a special gameplay system, but their coordinates should eventually come from the shared map-object placement phase rather than a completely isolated post-process.
-
-Migration status:
-
-1. `PitstopPlacementPlanner` and `PitstopSpawner` were kept in place.
-2. They now consume shared placement reservations.
-3. Pitstop coordinates now flow through the shared map-object placement pipeline before spawning.
-4. Non-pitstop map objects now spawn from the same placement plan in the current runtime.
-
-This kept current gameplay stable while preparing for landmarks and future non-pitstop objects.
-
-## How Boons Fit The New Architecture
-
-### Current problem
-
-The first boon slice originally could only express extra pitstops as map modification.
-
-That is too narrow for:
-
-- more water
-- less desert
-- spawned lakes
-- spawned quest outposts
-
-### Target solution
-
-Boons should author data into the generalized generation modifier bundle.
-
-Examples:
-
-- `+25% water feature size`
-- `-0.03 water threshold`
-- `place 2 MiniLake4 landmarks`
-- `spawn 1 quest outpost in mid-progress band`
-
-This keeps boon logic declarative instead of hardcoded into terrain generation.
-
-Current implementation note:
-
-- boons can already drive terrain-threshold changes, feature multipliers, terrain-landmark requests, and map-object requests through `HexMapGenerationModifiers`
-- no shipped boon content uses terrain-landmark or map-object placement requests yet
-
-## Debug Logging And Observability
-
-The refactored map-generation system should include explicit debug logging support from the start.
-
-This should not be added later as an afterthought.
-
-### Logging goals
-
-- make generation failures easier to diagnose
-- make boon-driven terrain changes easier to validate
-- make landmark and object placement decisions inspectable
-- keep normal play logs compact unless verbose logging is enabled
-
-### Recommended logging shape
-
-Add an opt-in generation debug setting that can be enabled from the editor or scenario configuration.
-
-Suggested runtime controls:
-
-- `EnableDebugLogging`
-- `EnableVerbosePhaseLogging`
-- optional per-system prefixes such as `[MapGen]`, `[TerrainStamp]`, `[ObjectPlacement]`
-
-### Minimum useful log output
-
-When debug logging is enabled, the generator should report:
-
-- resolved seed and map size
-- applied generation modifiers
-- per-phase summaries for terrain, regions, features, landmarks, and object placement
-- accepted and rejected landmark placement attempts with rejection reasons
-- accepted and rejected object placements with rejection reasons
-- validation failures that cause rerolls
-- final summary of biome distribution and placed special content
-
-### Rule for future systems
-
-This logging requirement should be treated as a standard engineering rule for future systems as well.
-
-New gameplay systems should ship with at least:
-
-- a clear debug toggle
-- compact success logs
-- actionable warning / failure logs
-- stable log prefixes so related messages can be filtered quickly
-
-The map-generation refactor should follow that rule from the first implementation slice.
-
-## What The Current Code Already Supports Well
-
-The current code already provides useful foundations:
-
-- `HexBiomeMapGenerator` is a clear central terrain entry point
-- `HexBiomeFeaturePainter` already paints compact biome blobs
-- `MapGenerator` already turns biome output into runtime tile views
-- `PitstopSpawner` already proves post-terrain prefab placement works
-
-These are strong enough to build on.
-
-## What Already Changed
-
-The first implementation wave is now in place:
-
-1. `HexMapGenerationContext` is the shared runtime contract for terrain generation.
-2. `HexMapGenerationModifiers` replaced the old pitstop-only modifier path.
-3. Terrain generation now consumes threshold and feature modifiers.
-4. Terrain landmarks are stamped from authored definition assets.
-5. Placement reservations keep landmarks, pitstops, and map objects from colliding.
-6. Pitstops, outposts, and quest markers can now flow through the shared map-object placement plan.
-
-That is the minimum architecture that was needed before implementing new biome-spawn boons and shared map objects.
-
-## What Can Wait
-
-These parts can still be deferred after the current slice:
-
-- sophisticated landmark rarity tables
-- deeper multi-act act-profile rules beyond what is now tracked in `Docs/ActTransitionSystem.md`
-- complex quest-object behaviors beyond the current mock quest-marker flow
-- movement-blocking objects
-
-## Expected Outcome
-
-After this refactor, the project should be able to support without hacks:
-
-- “increase water generation”
-- “reduce mountain generation”
-- “place two mini lakes”
-- “stamp an oasis landmark”
-- “spawn an outpost in the mid band”
-- “spawn a quest marker near a pitstop but not on it”
-
-That is the design target.
+- Keep all biomes passable unless explicitly changed.
+- Terrain continues to define travel cost.
+- Start and goal remain highest-priority placements.
+- Pitstops remain important route anchors.
+- Preserve both `5x5` and `10x10` support.
+- Do not replace the current generator wholesale without a specific design reason.
