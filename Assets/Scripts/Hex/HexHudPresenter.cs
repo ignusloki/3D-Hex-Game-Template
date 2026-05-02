@@ -339,6 +339,16 @@ public sealed class HexHudPresenter
         string biome = FormatBiome(tileData?.Biome ?? Biome.grass);
         string travelCost = (tileData?.TravelCost ?? tile.travelCost).ToString();
 
+        if (pitstopSite == null && visibleObstacle == null && string.IsNullOrWhiteSpace(extraDetails))
+        {
+            runtimeView?.ShowBiomeInspector(new HexInspectorBiomeDisplayData(
+                FormatCoordinates(tile.Coordinates),
+                biome,
+                travelCost,
+                FormatBiomeDescription(tileData?.Biome ?? Biome.grass)));
+            return;
+        }
+
         string details = $"Tile {FormatCoordinates(tile.Coordinates)}\nTerrain: {biome}\nTravel Cost: {travelCost}";
         details = AppendObstacleDetails(details, visibleObstacle);
         details = AppendExtraDetails(details, extraDetails);
@@ -363,8 +373,7 @@ public sealed class HexHudPresenter
 
     public void ResetTileDetails()
     {
-        SetTileDetailsText("Click a tile to inspect terrain cost.");
-        SetPitstopInfoText(DefaultPitstopPanelText);
+        runtimeView?.ShowInspectorEmptyState();
     }
 
     private const string DefaultPitstopPanelText = "Pitstop Info\nSelect a pitstop to inspect its stop effect.";
@@ -408,6 +417,18 @@ public sealed class HexHudPresenter
     {
         string raw = biome.ToString();
         return char.ToUpperInvariant(raw[0]) + raw[1..];
+    }
+
+    private static string FormatBiomeDescription(Biome biome)
+    {
+        return biome switch
+        {
+            Biome.forest => "Dense woodland. Travel is slower here.",
+            Biome.mountain => "Broken highland terrain. Crossing it costs more.",
+            Biome.water => "Open water blocks normal caravan travel.",
+            Biome.desert => "Dry open ground. The route is exposed and demanding.",
+            _ => "Open grassland. Travel is straightforward here."
+        };
     }
 
     private static string AppendObstacleDetails(string details, HexObstacleInstance visibleObstacle)

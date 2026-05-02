@@ -86,6 +86,66 @@
     display: none;
 }
 
+#UnifiedInspectorBiomeState {
+    flex-direction: column;
+    display: none;
+}
+
+#UnifiedInspectorBiomeTitle {
+    color: rgb(247, 242, 231);
+    font-size: 36px;
+    line-height: 40px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+#UnifiedInspectorBiomeSubtitle {
+    margin-top: 6px;
+    margin-bottom: 16px;
+    color: rgb(184, 156, 99);
+    font-size: 14px;
+    line-height: 16px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.inspector-fact-list {
+    flex-direction: column;
+}
+
+.inspector-fact-row {
+    height: 36px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.inspector-fact-label {
+    color: rgb(207, 199, 182);
+    font-size: 17px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.inspector-fact-value {
+    color: rgb(245, 240, 227);
+    font-size: 19px;
+    line-height: 22px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+}
+
+#UnifiedInspectorBiomeDescription {
+    margin-top: 18px;
+    color: rgb(217, 210, 196);
+    font-size: 18px;
+    line-height: 24px;
+    white-space: normal;
+}
+
 .unified-inspector-body {
     color: rgb(217, 210, 196);
     font-size: 18px;

@@ -15,6 +15,30 @@
                             text="Pitstops reveal additional contextual information." />
                     </ui:VisualElement>
 
+                    <ui:VisualElement name="UnifiedInspectorBiomeState">
+                        <ui:Label name="UnifiedInspectorBiomeTitle" text="Forest" />
+                        <ui:Label name="UnifiedInspectorBiomeSubtitle" text="Selected Hex" />
+
+                        <ui:VisualElement class="inspector-fact-list">
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Hex" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeHexValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Biome" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="inspector-fact-row">
+                                <ui:Label text="Travel Cost" class="inspector-fact-label" />
+                                <ui:Label name="UnifiedInspectorBiomeTravelCostValue" text="--" class="inspector-fact-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:Label
+                            name="UnifiedInspectorBiomeDescription"
+                            text="Dense woodland. Travel is slower here." />
+                    </ui:VisualElement>
+
                     <ui:VisualElement name="UnifiedInspectorLegacyState">
                         <ui:Label
                             name="tile-details"
