@@ -286,11 +286,13 @@ internal sealed class HexActTransitionModalDocumentController
 
         if (intermissionContinueButton != null)
         {
+            HexAudioUiBinder.BindButton(intermissionContinueButton, owner);
             intermissionContinueButton.clicked += HandleIntermissionContinueClicked;
         }
 
         if (selectionContinueButton != null)
         {
+            HexAudioUiBinder.BindButton(selectionContinueButton, owner);
             selectionContinueButton.clicked += HandleSelectionContinueClicked;
         }
 
@@ -536,6 +538,7 @@ internal sealed class HexActTransitionModalDocumentController
         artInset.Add(artImage);
         artFrame.Add(artInset);
         root.Add(artFrame);
+        HexAudioUiBinder.BindClickable(root, owner, clickSfx: HexSfxId.BoonSelect);
 
         Texture cardTexture = boon.GetPortraitTexture();
         if (cardTexture != null)
@@ -1357,6 +1360,7 @@ internal sealed class HexVictoryOverlayDocumentController
 
         if (continueButton != null)
         {
+            HexAudioUiBinder.BindButton(continueButton, owner);
             continueButton.clicked += HandleContinueClicked;
         }
 
@@ -1729,11 +1733,13 @@ internal sealed class HexGameOverOverlayDocumentController
 
         if (retryButton != null)
         {
+            HexAudioUiBinder.BindButton(retryButton, owner);
             retryButton.clicked += HandleRetryClicked;
         }
 
         if (returnToTitleButton != null)
         {
+            HexAudioUiBinder.BindButton(returnToTitleButton, owner);
             returnToTitleButton.clicked += HandleReturnToTitleClicked;
         }
 
@@ -2091,6 +2097,7 @@ internal sealed class HexSimpleActionModalDocumentController
 
         if (actionButton != null)
         {
+            HexAudioUiBinder.BindButton(actionButton, owner);
             actionButton.clicked += HandleActionClicked;
         }
 

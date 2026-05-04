@@ -423,6 +423,7 @@ internal sealed class HexPitstopEventModalDocumentController
 
         if (continueButton != null)
         {
+            HexAudioUiBinder.BindButton(continueButton, owner);
             continueButton.clicked += HandleContinueClicked;
             continueButton.RegisterCallback<PointerEnterEvent>(_ => LogDebug("Continue button pointer enter.", true));
             continueButton.RegisterCallback<PointerLeaveEvent>(_ => LogDebug("Continue button pointer leave.", true));
@@ -569,6 +570,7 @@ internal sealed class HexPitstopEventModalDocumentController
             optionButton.focusable = option.IsEnabled;
             optionButton.tabIndex = option.IsEnabled ? 0 : -1;
             optionButton.userData = option.IsEnabled;
+            HexAudioUiBinder.BindButton(optionButton, owner, bindClick: false);
             optionButton.clicked += () => HandleOptionClicked(optionIndex);
 
             Label optionLabel = new(option.Label);
@@ -741,9 +743,20 @@ internal sealed class HexPitstopEventModalDocumentController
             return;
         }
 
+        PlayPitstopChoiceSfx(optionIndex);
         LogDebug($"HandleOptionClicked index={optionIndex} callbackAssigned={optionSelected != null}.");
         Action<int> callback = optionSelected;
         callback?.Invoke(optionIndex);
+    }
+
+    private void PlayPitstopChoiceSfx(int optionIndex)
+    {
+        HexAudioSystem audioSystem = HexAudioSystem.ResolveShared(owner);
+        LogDebug($"PlayPitstopChoiceSfx index={optionIndex} audioResolved={audioSystem != null}.");
+        if (audioSystem != null)
+        {
+            audioSystem.PlaySfx(HexSfxId.PitstopChoice);
+        }
     }
 
     private void HandleContinueClicked()

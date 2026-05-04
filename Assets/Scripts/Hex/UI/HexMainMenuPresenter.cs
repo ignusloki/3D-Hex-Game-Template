@@ -205,11 +205,13 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
 
         if (newGameButton != null)
         {
+            HexAudioUiBinder.BindButton(newGameButton, this);
             newGameButton.clicked += HandleNewGameClicked;
         }
 
         if (quitButton != null)
         {
+            HexAudioUiBinder.BindButton(quitButton, this);
             quitButton.clicked += HandleQuitClicked;
         }
 
@@ -233,7 +235,6 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
             return;
         }
 
-        PlayUiSfx(HexSfxId.UiClick);
         isTransitioning = true;
         SetMenuInteractionEnabled(false);
 
@@ -248,7 +249,6 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
             return;
         }
 
-        PlayUiSfx(HexSfxId.UiClick);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -397,16 +397,4 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         }
     }
 
-    private void PlayUiSfx(HexSfxId id)
-    {
-        if (audioSystem == null)
-        {
-            audioSystem = HexAudioSystem.ResolveShared(this);
-        }
-
-        if (audioSystem != null)
-        {
-            audioSystem.PlaySfx(id);
-        }
-    }
 }

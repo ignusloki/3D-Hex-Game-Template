@@ -101,12 +101,12 @@ MonoBehaviour:
     pitchRange: {x: 1, y: 1}
     interruptSameId: 0
   - id: 10
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 13c74e2b4e850407ea7214103a7e2d40, type: 3}
     volume: 1
     pitchRange: {x: 1, y: 1}
     interruptSameId: 0
   - id: 11
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 5191e4b2c504e42e8b877082c4416959, type: 3}
     volume: 1
     pitchRange: {x: 1, y: 1}
     interruptSameId: 0
@@ -116,7 +116,7 @@ MonoBehaviour:
     pitchRange: {x: 1, y: 1}
     interruptSameId: 0
   - id: 13
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 5191e4b2c504e42e8b877082c4416959, type: 3}
     volume: 1
     pitchRange: {x: 1, y: 1}
     interruptSameId: 0

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -47,6 +48,8 @@ public sealed class HexAudioSystem : MonoBehaviour
     private AudioSource activeMusicSource;
     private AudioSource inactiveMusicSource;
     private Coroutine musicFadeRoutine;
+    private readonly HashSet<HexMusicStage> loggedMissingMusicStages = new();
+    private readonly HashSet<HexSfxId> loggedMissingSfxIds = new();
     private HexMusicStage currentMusicStage = HexMusicStage.None;
     private float masterVolume = 1f;
     private float musicVolume = 1f;
@@ -161,7 +164,7 @@ public sealed class HexAudioSystem : MonoBehaviour
         {
             currentMusicStage = stage;
             StopMusic(fadeSeconds);
-            LogMissing($"No music clip configured for stage '{stage}'.");
+            LogMissingMusic(stage);
             return;
         }
 
@@ -265,7 +268,7 @@ public sealed class HexAudioSystem : MonoBehaviour
 
         if (!TryGetSfxClip(id, out HexSfxEntry entry) || entry.clip == null)
         {
-            LogMissing($"No SFX clip configured for id '{id}'.");
+            LogMissingSfx(id);
             return;
         }
 
@@ -507,6 +510,22 @@ public sealed class HexAudioSystem : MonoBehaviour
     {
         activeMusicSource = newActiveSource;
         inactiveMusicSource = activeMusicSource == musicSourceA ? musicSourceB : musicSourceA;
+    }
+
+    private void LogMissingMusic(HexMusicStage stage)
+    {
+        if (loggedMissingMusicStages.Add(stage))
+        {
+            LogMissing($"No music clip configured for stage '{stage}'.");
+        }
+    }
+
+    private void LogMissingSfx(HexSfxId id)
+    {
+        if (loggedMissingSfxIds.Add(id))
+        {
+            LogMissing($"No SFX clip configured for id '{id}'.");
+        }
     }
 
     private void LogMissing(string message)

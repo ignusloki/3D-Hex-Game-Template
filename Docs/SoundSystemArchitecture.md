@@ -171,8 +171,10 @@ Initial values should cover the first integration points:
 - `TransitionStart`
 - `TransitionComplete`
 - `HexSelect`
+- `ObstacleSelect`
 - `RoutePreview`
 - `CaravanMove`
+- `ObstacleTravel`
 - `PitstopOpen`
 - `PitstopChoice`
 - `ActComplete`
@@ -300,11 +302,19 @@ Recommended first callers:
 Recommended first callers:
 
 - selected hex changes -> `HexSelect`
+- selected visible obstacle hex changes -> `ObstacleSelect`
 - valid route preview created -> `RoutePreview`
-- caravan movement begins or completes -> `CaravanMove`
+- caravan movement begins or completes on a normal destination -> `CaravanMove`
+- caravan movement resolves on a destination with obstacle contact -> `ObstacleTravel`
 
 If movement animation is added later, the same `CaravanMove` hook can move from
 instant movement completion to animation start/footstep timing.
+
+Obstacle-specific SFX should be resolved from gameplay state, not UI state:
+
+- selection can use `HexObstacleController.TryGetVisibleObstacle(clickedTile.Coordinates, out _)`
+- travel can use `HexObstacleTurnResult.ContactResult.HasContact`
+- if a boon ignores the obstacle penalty, still play `ObstacleTravel` unless a separate ignored-obstacle SFX is added later
 
 ## Scene Setup
 
@@ -406,15 +416,20 @@ Test:
 
 ### Slice 5 - Gameplay SFX
 
+- add `ObstacleSelect` and `ObstacleTravel` SFX ids
 - add hex select SFX
+- add obstacle-specific hex select SFX
 - add route preview SFX if it does not become noisy
-- add caravan move SFX
+- add normal caravan move SFX
+- add obstacle-contact caravan move SFX
 - add pitstop open/choice SFX
 - add victory/defeat sting SFX
 
 Test:
 
 - repeated map interaction does not spam sounds excessively
+- selecting a visible obstacle hex plays `ObstacleSelect`, not `HexSelect`
+- moving into a visible obstacle/contact hex plays `ObstacleTravel`, not `CaravanMove`
 - gameplay SFX respect SFX volume
 
 ### Slice 6 - QA And Tuning
