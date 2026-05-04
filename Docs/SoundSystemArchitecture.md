@@ -1,155 +1,94 @@
 # Sound System Architecture
 
-Last updated: 2026-05-02
+Last updated: 2026-05-04
 
 ## Purpose
 
-This document defines a simple, flexible Unity sound system for the current
-single-scene game architecture.
+The sound system provides a small, editor-configurable audio layer for the
+single-scene game flow. It supports:
 
-The system should support:
+- looping music by game stage
+- UI sound effects
+- gameplay sound effects
+- master/music/SFX volume controls
+- safe no-op behavior when clips are not assigned yet
 
-- editor-configurable music and SFX assets
-- master/music/SFX volume control
-- UI SFX
-- gameplay/animation SFX
-- looping background music by game stage
-- safe no-op behavior while clips are still missing
-
-## Current Project Context
-
-The project currently has no runtime audio system.
-
-Relevant architecture:
-
-- the game uses one scene
-- `HexGameBootstrap` owns early boot flow and main menu/gameplay destination
-- UI is built through a shared UI Toolkit root
-- major flow states already exist:
-  - Main Menu
-  - Act 1
-  - Act 2
-  - Act 3
-  - Victory
-  - Game Over
-
-The sound system should integrate with this architecture rather than adding a
-separate scene, separate bootstrap path, or per-screen ad-hoc AudioSources.
-
-## Design Goals
-
-- Keep it small.
-- Use standard Unity audio primitives.
-- Keep audio clip assignment in the Unity editor.
-- Avoid hardcoded asset paths in gameplay code.
-- Allow missing clips during development without errors.
-- Keep music and one-shot SFX separated.
-- Make volume settings controllable globally.
-
-## Non-Goals
-
-Do not build:
-
-- a complex adaptive music system
-- spatial/3D audio for this first pass
-- runtime audio asset loading by addressables
-- a full settings menu
-- audio ducking/sidechain behavior
-- per-biome ambience layering
-
-Those can be added later if the game needs them.
+The system is intentionally simple. It uses standard Unity `AudioSource`
+components and a single ScriptableObject library for clip assignment.
 
 ## Runtime Components
 
 ### `HexAudioSystem`
 
-Scene-level MonoBehaviour responsible for audio playback.
+`HexAudioSystem` is the scene-level audio service.
 
-Recommended location:
+Scene location:
 
-- `Systems/Audio System`
+```text
+Systems
+└── Audio System
+    └── HexAudioSystem
+```
 
 Responsibilities:
 
-- own AudioSources
-- own current music stage
-- play music loops
-- stop/fade music
-- play SFX one-shots
-- apply volume settings
-- expose simple public methods for presenters/controllers
+- load or reference `HexAudioLibrary`
+- create missing runtime `AudioSource` children
+- play and crossfade music stages
+- play UI and gameplay SFX one-shots
+- apply master/music/SFX volume
+- persist volume values with `PlayerPrefs`
+- tolerate missing clips without throwing errors
 
-Suggested serialized fields:
+Runtime AudioSources:
 
-- `HexAudioLibrary audioLibrary`
-- `AudioMixer audioMixer`
-- `AudioMixerGroup musicMixerGroup`
-- `AudioMixerGroup sfxMixerGroup`
-- `AudioSource musicSourceA`
-- `AudioSource musicSourceB`
-- `AudioSource uiSfxSource`
-- `AudioSource gameplaySfxSource`
-- `int sfxPoolSize`
-- `float defaultMusicFadeSeconds`
+- `Music Source A`
+- `Music Source B`
+- `UI SFX Source`
+- `Gameplay SFX Source`
 
-Use two music sources so music can crossfade without stopping abruptly.
+Music uses two sources so one track can fade into another without hard cuts.
+SFX are split into UI and gameplay sources so they can be routed separately
+later if needed.
 
 ### `HexAudioLibrary`
 
-ScriptableObject that stores editor-configurable audio clips and per-clip
-settings.
+`HexAudioLibrary` is the editor-facing clip configuration asset.
 
-Recommended path:
+Path:
 
-- `Assets/Resources/Audio/HexAudioLibrary.asset`
+```text
+Assets/Resources/Audio/HexAudioLibrary.asset
+```
 
-Responsibilities:
+It contains:
 
-- map music stages to loop clips
-- map SFX IDs to clips
-- expose per-entry volume/pitch variation
-- keep all clip assignment editor-driven
+- `musicEntries`: maps `HexMusicStage` values to looping music clips
+- `sfxEntries`: maps `HexSfxId` values to one-shot SFX clips
 
-Suggested fields:
+Design rule:
 
-- `List<HexMusicEntry> musicEntries`
-- `List<HexSfxEntry> sfxEntries`
+- gameplay and UI code should call enum ids, not direct clip references
+- designers can replace clips in the Unity editor without code changes
 
-### `HexMusicEntry`
+## Asset Folders
 
-Data type for looping music.
+Current audio asset folders:
 
-Fields:
+```text
+Assets/Audio
+Assets/Audio/Music
+Assets/Audio/SFX
+Assets/Audio/Mixers
+Assets/Resources/Audio
+```
 
-- `HexMusicStage stage`
-- `AudioClip clip`
-- `float volume`
-- `float fadeInSeconds`
-- `float fadeOutSeconds`
-- `bool loop`
+Music and SFX files can be imported into the music/SFX folders, then assigned to
+entries in `HexAudioLibrary.asset`.
 
-Default `loop` should be true for stage music.
+## Music Stages
 
-### `HexSfxEntry`
-
-Data type for one-shot sounds.
-
-Fields:
-
-- `HexSfxId id`
-- `AudioClip clip`
-- `float volume`
-- `Vector2 pitchRange`
-- `bool interruptSameId`
-
-`interruptSameId` is useful for repeated UI hover/click sounds if needed, but it
-should default to false.
-
-## Enums
-
-### `HexMusicStage`
-
-Initial values:
+`HexMusicStage` values:
 
 - `None`
 - `MainMenu`
@@ -159,9 +98,22 @@ Initial values:
 - `Victory`
 - `Defeat`
 
-### `HexSfxId`
+Current stage mapping:
 
-Initial values should cover the first integration points:
+- main menu visible -> `MainMenu`
+- gameplay activated in Act 1 -> `Act1`
+- gameplay activated in Act 2 -> `Act2`
+- gameplay activated in Act 3 -> `Act3`
+- victory overlay shown -> `Victory`
+- game over overlay shown -> `Defeat`
+- return to menu -> `MainMenu`
+
+Duplicate requests for the currently-playing stage are ignored when the same
+clip is already playing.
+
+## SFX IDs
+
+`HexSfxId` values:
 
 - `UiHover`
 - `UiClick`
@@ -171,10 +123,8 @@ Initial values should cover the first integration points:
 - `TransitionStart`
 - `TransitionComplete`
 - `HexSelect`
-- `ObstacleSelect`
 - `RoutePreview`
 - `CaravanMove`
-- `ObstacleTravel`
 - `PitstopOpen`
 - `PitstopChoice`
 - `ActComplete`
@@ -185,281 +135,145 @@ Initial values should cover the first integration points:
 - `ObstacleTravel`
 - `NemesisMove`
 
-Keep the enum small. Add values only when a real caller needs them.
+Important serialization rule:
 
-Append new SFX ids to the end of the enum when possible so existing serialized
-`HexAudioLibrary.asset` numeric assignments remain stable.
+- append new SFX ids to the end of the enum when possible
+- do not insert new ids in the middle unless the audio library asset is migrated
+- Unity serializes enum values numerically inside `HexAudioLibrary.asset`
 
-## Mixer And Volume Model
+## UI SFX
 
-Use one Unity `AudioMixer` with three exposed volume parameters:
+UI Toolkit controls use `HexAudioUiBinder`.
 
-- `MasterVolume`
-- `MusicVolume`
-- `SfxVolume`
+Default behavior:
 
-Recommended groups:
+- pointer enter -> `UiHover`
+- click -> `UiClick`
 
-- `Master`
-- `Music`
-- `SFX`
+Currently bound controls:
 
-Optional later:
+- main menu buttons
+- pitstop modal continue button
+- pitstop option buttons
+- act transition intermission button
+- boon selection cards and continue button
+- victory continue button
+- game over retry and return buttons
+- simple action modal button
 
-- `UI` under `SFX`
-- `Gameplay` under `SFX`
+Pitstop choice selection plays `PitstopChoice` from the actual option-selection
+handler so it is tied to the command path, not only to UI Toolkit click bubbling.
 
-For the first pass, a single SFX group is enough because the user only requested
-overall, music, and SFX volume control.
+Boon cards play `BoonSelect` when clicked.
 
-### Volume API
+## Gameplay SFX
 
-`HexAudioSystem` should expose:
+Gameplay SFX are fired from `PlayerController`, where gameplay context is
+available.
 
-- `SetMasterVolume(float normalized)`
-- `SetMusicVolume(float normalized)`
-- `SetSfxVolume(float normalized)`
-- `float MasterVolume { get; }`
-- `float MusicVolume { get; }`
-- `float SfxVolume { get; }`
+Current behavior:
 
-Use normalized values from `0.0` to `1.0` in code/UI.
+- selecting a normal visible hex -> `HexSelect`
+- selecting a visible obstacle hex -> `ObstacleSelect`
+- moving to a normal destination -> `CaravanMove`
+- moving into an obstacle/contact destination -> `ObstacleTravel`
+- nemesis turn result with `Moved == true` -> `NemesisMove`
 
-Convert normalized volume to mixer dB:
+Obstacle selection uses:
 
-- `0.0` -> `-80 dB`
-- `1.0` -> `0 dB`
-- use logarithmic conversion for values above zero
+```csharp
+HexObstacleController.TryGetVisibleObstacle(tile.Coordinates, out _)
+```
 
-Store settings with `PlayerPrefs`:
+Obstacle travel uses:
+
+```csharp
+HexObstacleTurnResult.ContactResult.HasContact
+```
+
+If a boon ignores the obstacle penalty, the movement still plays
+`ObstacleTravel` because the caravan still interacted with an obstacle.
+
+## Volume Model
+
+`HexAudioSystem` exposes normalized volume controls:
+
+```csharp
+SetMasterVolume(float normalized);
+SetMusicVolume(float normalized);
+SetSfxVolume(float normalized);
+```
+
+Values use `0.0` to `1.0`.
+
+Current persistence keys:
 
 - `audio.masterVolume`
 - `audio.musicVolume`
 - `audio.sfxVolume`
 
-This allows a future settings menu to bind to the same API without changing the
-audio backend.
+If an `AudioMixer` is assigned, the system writes to these mixer parameters:
 
-## Playback API
+- `MasterVolume`
+- `MusicVolume`
+- `SfxVolume`
 
-Recommended public methods:
+If no mixer is assigned, the system applies volume directly to the runtime
+AudioSources.
+
+## Boot Integration
+
+`HexGameBootstrap` resolves and initializes `HexAudioSystem` during boot.
+
+This ensures audio is ready before the main menu or gameplay flow starts.
+
+The audio system can also resolve itself through:
 
 ```csharp
-public void PlayMusic(HexMusicStage stage, float? fadeSeconds = null);
-public void StopMusic(float? fadeSeconds = null);
-public void PlaySfx(HexSfxId id);
-public void PlaySfx(HexSfxId id, float volumeScale);
-public void SetMasterVolume(float normalized);
-public void SetMusicVolume(float normalized);
-public void SetSfxVolume(float normalized);
+HexAudioSystem.ResolveShared(owner)
 ```
 
-Music calls should ignore duplicate requests for the current stage unless
-`forceRestart` is added later.
+If the scene object is missing, it can create an `Audio System` GameObject at
+runtime. The scene object is still preferred because it exposes configuration in
+the editor.
 
-SFX calls should no-op if the clip is missing.
+## Missing Clip Behavior
 
-## Integration Points
+Missing clips are allowed during development.
 
-### Bootstrap And Game Stage Music
+If a music or SFX entry has no clip:
 
-`HexGameBootstrap` should resolve `HexAudioSystem` during boot.
+- playback no-ops
+- one missing-clip diagnostic is logged per missing id/stage when logging is enabled
+- gameplay continues normally
 
-Recommended stage mapping:
+This lets incomplete audio libraries exist without breaking Play Mode.
 
-- boot to main menu -> `MainMenu`
-- New Game / Act 1 gameplay -> `Act1`
-- Act 2 gameplay -> `Act2`
-- Act 3 gameplay -> `Act3`
-- Victory overlay -> `Victory`
-- Game Over overlay -> `Defeat`
-- Return to menu -> `MainMenu`
+## How To Add Or Replace Sounds
 
-Act music can be resolved from `HexActTransitionService.GetCurrentActNumber()`.
+1. Import the audio file into `Assets/Audio/Music` or `Assets/Audio/SFX`.
+2. Open `Assets/Resources/Audio/HexAudioLibrary.asset`.
+3. Assign the clip to the desired `musicEntries` or `sfxEntries` row.
+4. Adjust per-entry volume or pitch range if needed.
+5. Enter Play Mode and trigger the relevant flow.
 
-### UI Toolkit Buttons
+No code change is needed when replacing clips for existing ids.
 
-Use small helper binding methods so presenters do not duplicate callback wiring:
+## Extension Guidelines
 
-- `HexAudioUiBinder.BindButton(Button button)`
-- or `HexAudioSystem.BindButtonAudio(Button button)`
+Add a new SFX id only when a real caller needs it.
 
-Behavior:
+Preferred process:
 
-- pointer enter -> `UiHover`
-- click -> `UiClick`
+1. Append the new value to `HexSfxId`.
+2. Add a new entry to `HexAudioLibrary.asset`.
+3. Call `HexAudioSystem.PlaySfx` or `PlayGameplaySfx` from the gameplay/UI
+   owner that has the right context.
+4. Keep missing clips safe.
 
-Do not put sound logic in USS or UXML.
+Avoid:
 
-### Modal And Flow SFX
-
-Recommended first callers:
-
-- main menu button click
-- pitstop modal open
-- pitstop choice selected
-- act-complete screen open
-- boon selected
-- victory shown
-- defeat shown
-
-### Gameplay / Animation SFX
-
-Recommended first callers:
-
-- selected hex changes -> `HexSelect`
-- selected visible obstacle hex changes -> `ObstacleSelect`
-- valid route preview created -> `RoutePreview`
-- caravan movement begins or completes on a normal destination -> `CaravanMove`
-- caravan movement resolves on a destination with obstacle contact -> `ObstacleTravel`
-- nemesis movement resolves after caravan movement -> `NemesisMove`
-
-If movement animation is added later, the same `CaravanMove` hook can move from
-instant movement completion to animation start/footstep timing.
-
-Obstacle-specific SFX should be resolved from gameplay state, not UI state:
-
-- selection can use `HexObstacleController.TryGetVisibleObstacle(clickedTile.Coordinates, out _)`
-- travel can use `HexObstacleTurnResult.ContactResult.HasContact`
-- if a boon ignores the obstacle penalty, still play `ObstacleTravel` unless a separate ignored-obstacle SFX is added later
-
-## Scene Setup
-
-Add one scene object:
-
-```text
-Systems
-└── Audio System
-    └── HexAudioSystem
-```
-
-AudioSources:
-
-- `Music Source A`
-- `Music Source B`
-- `UI SFX Source`
-- `Gameplay SFX Source`
-- optional pooled SFX sources as children
-
-The component should auto-create missing child AudioSources in editor or at
-runtime only if that keeps setup simple. Prefer serialized scene references once
-the object exists.
-
-## Asset Setup
-
-Recommended folders:
-
-```text
-Assets/Audio
-Assets/Audio/Music
-Assets/Audio/SFX
-Assets/Audio/Mixers
-Assets/Resources/Audio
-```
-
-Required assets:
-
-- `HexAudioMixer.mixer`
-- `HexAudioLibrary.asset`
-
-Music and SFX clips can remain unassigned while the system is implemented.
-
-## Implementation Slices
-
-### Slice 1 - Foundation
-
-- add `HexMusicStage`
-- add `HexSfxId`
-- add `HexAudioLibrary`
-- add `HexAudioSystem`
-- support serialized clip configuration
-- support master/music/SFX volume API
-- create editor-safe no-op behavior for missing clips
-
-Test:
-
-- add the component to the scene
-- assign or leave clips empty
-- call volume setters without errors
-
-### Slice 2 - Mixer And Scene Setup
-
-- create AudioMixer with Master/Music/SFX groups
-- expose volume parameters
-- create scene `Audio System` object
-- wire sources and mixer groups
-- load/save volume with PlayerPrefs
-
-Test:
-
-- changing serialized/default volumes changes mixer values
-- missing clips do not throw errors
-
-### Slice 3 - Music Stage Integration
-
-- hook `HexAudioSystem` into `HexGameBootstrap`
-- play `MainMenu` music on menu boot
-- play `Act1`, `Act2`, or `Act3` music when gameplay activates
-- play `Victory` and `Defeat` music from run-end overlay flow
-- return to `MainMenu` music on return-to-menu
-
-Test:
-
-- music stage switches across menu, gameplay, victory, and defeat
-- duplicate stage requests do not restart the same track
-
-### Slice 4 - UI SFX
-
-- add button audio helper
-- bind main menu buttons
-- bind pitstop modal buttons
-- bind act transition and boon selection buttons
-- bind victory/game over buttons
-
-Test:
-
-- hover/click UI sounds play once per event
-- buttons remain silent if clips are missing
-
-### Slice 5 - Gameplay SFX
-
-- add `ObstacleSelect` and `ObstacleTravel` SFX ids
-- add hex select SFX
-- add obstacle-specific hex select SFX
-- add route preview SFX if it does not become noisy
-- add normal caravan move SFX
-- add obstacle-contact caravan move SFX
-- add nemesis move SFX
-- add pitstop open/choice SFX
-- add victory/defeat sting SFX
-
-Test:
-
-- repeated map interaction does not spam sounds excessively
-- selecting a visible obstacle hex plays `ObstacleSelect`, not `HexSelect`
-- moving into a visible obstacle/contact hex plays `ObstacleTravel`, not `CaravanMove`
-- a nemesis turn result with `Moved == true` plays `NemesisMove`
-- gameplay SFX respect SFX volume
-
-### Slice 6 - QA And Tuning
-
-- verify all audio respects master volume
-- verify music respects music volume
-- verify UI/gameplay SFX respect SFX volume
-- verify scene reloads do not create duplicate audio systems
-- verify return-to-menu, retry, and act-to-act flows switch music correctly
-
-## Risks And Constraints
-
-- No clips are currently available in the project, so early implementation must
-  tolerate missing assets.
-- UI Toolkit has no USS-driven sound events; presenters must bind button events.
-- Repeated hover/selection sounds can become annoying; keep SFX hooks deliberate.
-- The game reloads the same scene for major flows, so the audio system must avoid
-  duplicate instances and should initialize cleanly on reload.
-
-## Recommended First Implementation
-
-Start with Slice 1 and Slice 2 together only if scene setup is straightforward.
-Do not wire all gameplay/UI callers until the core mixer, library, and sources are
-stable.
+- direct clip references in gameplay code
+- per-screen ad-hoc AudioSources
+- USS/UXML-driven sound behavior
+- inserting enum values in the middle of `HexSfxId`
