@@ -17,6 +17,7 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
     [SerializeField] private Texture2D logoTexture;
     [SerializeField] private Font buttonFont;
     [SerializeField] private HexMainMenuTransitionService transitionService;
+    [SerializeField] private HexAudioSystem audioSystem;
 
     private HexGameplayUiRootController gameplayUiRootController;
     private HexHudDocumentController hudDocumentController;
@@ -214,6 +215,11 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
 
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? FindAnyObjectByType<HexHudDocumentController>();
         transitionService ??= GetComponent<HexMainMenuTransitionService>() ?? gameObject.AddComponent<HexMainMenuTransitionService>();
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
         gameplayUiRootController.SetLayerVisible(HexGameplayUiLayerId.Menu, false);
         gameplayUiRootController.SetLayerInteractive(HexGameplayUiLayerId.Menu, false);
         isInitialized = true;
@@ -227,6 +233,7 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
             return;
         }
 
+        PlayUiSfx(HexSfxId.UiClick);
         isTransitioning = true;
         SetMenuInteractionEnabled(false);
 
@@ -241,6 +248,7 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
             return;
         }
 
+        PlayUiSfx(HexSfxId.UiClick);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -266,6 +274,11 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         if (menuRoot != null)
         {
             menuRoot.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        if (visible)
+        {
+            PlayMusic(HexMusicStage.MainMenu);
         }
 
         isOpen = visible;
@@ -369,5 +382,31 @@ public sealed class HexMainMenuPresenter : MonoBehaviour
         }
 
         Debug.Log($"[GameplayUI:MainMenu] {message}", this);
+    }
+
+    private void PlayMusic(HexMusicStage stage)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlayMusic(stage);
+        }
+    }
+
+    private void PlayUiSfx(HexSfxId id)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlaySfx(id);
+        }
     }
 }

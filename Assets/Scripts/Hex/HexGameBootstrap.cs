@@ -29,6 +29,7 @@ public sealed class HexGameBootstrap : MonoBehaviour
     [SerializeField] private HexGlobalUiTransitionController globalTransitionController;
     [SerializeField] private HexMainMenuPresenter mainMenuPresenter;
     [SerializeField] private HexMainMenuTransitionService mainMenuTransitionService;
+    [SerializeField] private HexAudioSystem audioSystem;
 
     private static HexGameBootstrap activeBootstrap;
     private static BootDestination? requestedNextBootDestination;
@@ -153,6 +154,15 @@ public sealed class HexGameBootstrap : MonoBehaviour
         gameplayUiRootController?.EnsureInitialized();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
         globalTransitionController?.EnsureInitialized();
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.EnsureInitialized();
+        }
         mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
             ?? FindAnyObjectByType<HexMainMenuPresenter>()
             ?? gameObject.AddComponent<HexMainMenuPresenter>();

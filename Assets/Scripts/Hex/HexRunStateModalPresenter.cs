@@ -1175,6 +1175,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
     private HexVictoryOverlayDocumentController victoryDocumentController;
     private HexGameOverOverlayDocumentController gameOverDocumentController;
     private HexGameplayUiRootController gameplayUiRootController;
+    private HexAudioSystem audioSystem;
 
     public bool IsOpen =>
         (documentController != null && documentController.IsOpen)
@@ -1186,6 +1187,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         LogDebug("ShowVictory requested.");
         documentController?.Hide();
         gameOverDocumentController?.Hide();
+        PlayMusic(HexMusicStage.Victory);
         EnsureVictoryView();
         victoryDocumentController?.Show(onContinueRequested);
     }
@@ -1195,6 +1197,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         LogDebug("ShowDefeat requested.");
         documentController?.Hide();
         victoryDocumentController?.Hide();
+        PlayMusic(HexMusicStage.Defeat);
         EnsureGameOverView();
         gameOverDocumentController?.Show(onRetryRequested, onReturnToTitleRequested);
     }
@@ -1239,6 +1242,19 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         }
 
         Debug.Log($"[GameplayUI:RunEndModal] {message}", this);
+    }
+
+    private void PlayMusic(HexMusicStage stage)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlayMusic(stage);
+        }
     }
 }
 

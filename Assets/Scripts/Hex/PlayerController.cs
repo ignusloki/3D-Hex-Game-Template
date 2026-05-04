@@ -49,6 +49,7 @@ public class PlayerController : MonoBehaviour
     private HexMockQuestMarkerController mockQuestMarkerController;
     private HexGlobalUiTransitionController globalTransitionController;
     private HexMainMenuPresenter mainMenuPresenter;
+    private HexAudioSystem audioSystem;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -219,6 +220,7 @@ public class PlayerController : MonoBehaviour
         LogUiDiagnostic(
             "TileDetails",
             $"HandleTileClick tile={FormatCoordinates(clickedTile.Coordinates)} current={(currentTile != null ? FormatCoordinates(currentTile.Coordinates) : "none")} selected={(selectedTile != null ? FormatCoordinates(selectedTile.Coordinates) : "none")} caravanSelectionActive={caravanSelectionActive}.");
+        PlayGameplaySfx(HexSfxId.HexSelect);
 
         if (selectedTile == clickedTile)
         {
@@ -1042,6 +1044,10 @@ public class PlayerController : MonoBehaviour
         mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
             ?? FindAnyObjectByType<HexMainMenuPresenter>()
             ?? gameObject.AddComponent<HexMainMenuPresenter>();
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
     }
 
     public void ActivateGameplaySession()
@@ -1054,6 +1060,7 @@ public class PlayerController : MonoBehaviour
         gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Context, false);
         RefreshTileDetails(currentTile);
         hudPresenter.ShowCaravanIdle(currentTile);
+        PlayCurrentActMusic();
     }
 
     private void RevealGameplayAfterSceneLoad()
@@ -1245,6 +1252,32 @@ public class PlayerController : MonoBehaviour
     private void LoadCurrentSceneBehindFade()
     {
         HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: false);
+    }
+
+    private void PlayCurrentActMusic()
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlayMusicForCurrentAct();
+        }
+    }
+
+    private void PlayGameplaySfx(HexSfxId id)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlayGameplaySfx(id);
+        }
     }
 }
 

@@ -158,6 +158,7 @@ Transform:
   - {fileID: 2114172011}
   - {fileID: 2114172001}
   - {fileID: 2114172021}
+  - {fileID: 2000020001}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &408798155
@@ -298,6 +299,7 @@ MonoBehaviour:
   globalTransitionController: {fileID: 0}
   mainMenuPresenter: {fileID: 0}
   mainMenuTransitionService: {fileID: 0}
+  audioSystem: {fileID: 2000020002}
 --- !u!4 &778810002
 Transform:
   m_ObjectHideFlags: 0
@@ -810,7 +812,8 @@ MonoBehaviour:
   selectedHexMarkerRadius: 0.58
   selectedHexMarkerScale: 1.08
   selectedHexMarkerYOffset: 0.05
-  currentTileSelectionPrefab: {fileID: 3115533833674441363, guid: 42281cdb064854efba587ea53822be96, type: 3}
+  currentTileSelectionPrefab: {fileID: 3115533833674441363, guid: 42281cdb064854efba587ea53822be96,
+    type: 3}
   currentTileSelectionScale: 1
   currentTileSelectionYOffset: 0.12
   outOfRangeSelectionColor: {r: 0.42, g: 0.65, b: 0.95, a: 1}
@@ -1377,6 +1380,66 @@ MonoBehaviour:
   visualHeight: 0.08
   visualScale: 1.2
   randomizeRotation: 1
+--- !u!1 &2000020000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2000020001}
+  - component: {fileID: 2000020002}
+  m_Layer: 0
+  m_Name: Audio System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2000020001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000020000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 67381634}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2000020002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000020000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d59b629f0f24d16b4cf0c16f147d890, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexAudioSystem
+  audioLibrary: {fileID: 11400000, guid: e3d2dca26d7c4083a1c4adcad9c9790f, type: 2}
+  audioMixer: {fileID: 0}
+  musicMixerGroup: {fileID: 0}
+  sfxMixerGroup: {fileID: 0}
+  musicSourceA: {fileID: 0}
+  musicSourceB: {fileID: 0}
+  uiSfxSource: {fileID: 0}
+  gameplaySfxSource: {fileID: 0}
+  defaultMasterVolume: 1
+  defaultMusicVolume: 1
+  defaultSfxVolume: 1
+  saveVolumesToPlayerPrefs: 1
+  defaultMusicFadeSeconds: 0.75
+  debugMusicStage: 0
+  debugSfxId: 1
+  logMissingClips: 0
 --- !u!1 &2114172000
 GameObject:
   m_ObjectHideFlags: 0
