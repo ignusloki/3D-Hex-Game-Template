@@ -286,11 +286,13 @@ internal sealed class HexActTransitionModalDocumentController
 
         if (intermissionContinueButton != null)
         {
+            HexAudioUiBinder.BindButton(intermissionContinueButton, owner);
             intermissionContinueButton.clicked += HandleIntermissionContinueClicked;
         }
 
         if (selectionContinueButton != null)
         {
+            HexAudioUiBinder.BindButton(selectionContinueButton, owner);
             selectionContinueButton.clicked += HandleSelectionContinueClicked;
         }
 
@@ -536,6 +538,7 @@ internal sealed class HexActTransitionModalDocumentController
         artInset.Add(artImage);
         artFrame.Add(artInset);
         root.Add(artFrame);
+        HexAudioUiBinder.BindClickable(root, owner, clickSfx: HexSfxId.BoonSelect);
 
         Texture cardTexture = boon.GetPortraitTexture();
         if (cardTexture != null)
@@ -1175,6 +1178,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
     private HexVictoryOverlayDocumentController victoryDocumentController;
     private HexGameOverOverlayDocumentController gameOverDocumentController;
     private HexGameplayUiRootController gameplayUiRootController;
+    private HexAudioSystem audioSystem;
 
     public bool IsOpen =>
         (documentController != null && documentController.IsOpen)
@@ -1186,6 +1190,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         LogDebug("ShowVictory requested.");
         documentController?.Hide();
         gameOverDocumentController?.Hide();
+        PlayMusic(HexMusicStage.Victory);
         EnsureVictoryView();
         victoryDocumentController?.Show(onContinueRequested);
     }
@@ -1195,6 +1200,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         LogDebug("ShowDefeat requested.");
         documentController?.Hide();
         victoryDocumentController?.Hide();
+        PlayMusic(HexMusicStage.Defeat);
         EnsureGameOverView();
         gameOverDocumentController?.Show(onRetryRequested, onReturnToTitleRequested);
     }
@@ -1239,6 +1245,19 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         }
 
         Debug.Log($"[GameplayUI:RunEndModal] {message}", this);
+    }
+
+    private void PlayMusic(HexMusicStage stage)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlayMusic(stage);
+        }
     }
 }
 
@@ -1341,6 +1360,7 @@ internal sealed class HexVictoryOverlayDocumentController
 
         if (continueButton != null)
         {
+            HexAudioUiBinder.BindButton(continueButton, owner);
             continueButton.clicked += HandleContinueClicked;
         }
 
@@ -1713,11 +1733,13 @@ internal sealed class HexGameOverOverlayDocumentController
 
         if (retryButton != null)
         {
+            HexAudioUiBinder.BindButton(retryButton, owner);
             retryButton.clicked += HandleRetryClicked;
         }
 
         if (returnToTitleButton != null)
         {
+            HexAudioUiBinder.BindButton(returnToTitleButton, owner);
             returnToTitleButton.clicked += HandleReturnToTitleClicked;
         }
 
@@ -2075,6 +2097,7 @@ internal sealed class HexSimpleActionModalDocumentController
 
         if (actionButton != null)
         {
+            HexAudioUiBinder.BindButton(actionButton, owner);
             actionButton.clicked += HandleActionClicked;
         }
 
