@@ -220,7 +220,7 @@ public class PlayerController : MonoBehaviour
         LogUiDiagnostic(
             "TileDetails",
             $"HandleTileClick tile={FormatCoordinates(clickedTile.Coordinates)} current={(currentTile != null ? FormatCoordinates(currentTile.Coordinates) : "none")} selected={(selectedTile != null ? FormatCoordinates(selectedTile.Coordinates) : "none")} caravanSelectionActive={caravanSelectionActive}.");
-        PlayGameplaySfx(HexSfxId.HexSelect);
+        PlayGameplaySfx(ResolveTileSelectionSfx(clickedTile));
 
         if (selectedTile == clickedTile)
         {
@@ -361,7 +361,13 @@ public class PlayerController : MonoBehaviour
         }
 
         HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
+        PlayGameplaySfx(obstacleTurnResult.ContactResult.HasContact ? HexSfxId.ObstacleTravel : HexSfxId.CaravanMove);
         HexNemesisTurnResult nemesisTurnResult = ProcessNemesisTurn(previousCoordinates, currentTile.Coordinates);
+        if (nemesisTurnResult.Moved)
+        {
+            PlayGameplaySfx(HexSfxId.NemesisMove);
+        }
+
         RefreshTileDetails(currentTile);
 
         if (nemesisTurnResult.CausedDefeat)
@@ -1278,6 +1284,24 @@ public class PlayerController : MonoBehaviour
         {
             audioSystem.PlayGameplaySfx(id);
         }
+    }
+
+    private HexSfxId ResolveTileSelectionSfx(HexagonTile tile)
+    {
+        return HasVisibleObstacle(tile) ? HexSfxId.ObstacleSelect : HexSfxId.HexSelect;
+    }
+
+    private bool HasVisibleObstacle(HexagonTile tile)
+    {
+        if (tile == null)
+        {
+            return false;
+        }
+
+        obstacleController ??= FindAnyObjectByType<HexObstacleController>();
+        return obstacleController != null
+            && obstacleController.TryGetVisibleObstacle(tile.Coordinates, out HexObstacleInstance obstacle)
+            && obstacle != null;
     }
 }
 

@@ -29,7 +29,10 @@ public enum HexSfxId
     ActComplete,
     BoonSelect,
     Victory,
-    Defeat
+    Defeat,
+    ObstacleSelect,
+    ObstacleTravel,
+    NemesisMove
 }
 
 [Serializable]

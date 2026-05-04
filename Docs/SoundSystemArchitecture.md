@@ -181,8 +181,14 @@ Initial values should cover the first integration points:
 - `BoonSelect`
 - `Victory`
 - `Defeat`
+- `ObstacleSelect`
+- `ObstacleTravel`
+- `NemesisMove`
 
 Keep the enum small. Add values only when a real caller needs them.
+
+Append new SFX ids to the end of the enum when possible so existing serialized
+`HexAudioLibrary.asset` numeric assignments remain stable.
 
 ## Mixer And Volume Model
 
@@ -306,6 +312,7 @@ Recommended first callers:
 - valid route preview created -> `RoutePreview`
 - caravan movement begins or completes on a normal destination -> `CaravanMove`
 - caravan movement resolves on a destination with obstacle contact -> `ObstacleTravel`
+- nemesis movement resolves after caravan movement -> `NemesisMove`
 
 If movement animation is added later, the same `CaravanMove` hook can move from
 instant movement completion to animation start/footstep timing.
@@ -422,6 +429,7 @@ Test:
 - add route preview SFX if it does not become noisy
 - add normal caravan move SFX
 - add obstacle-contact caravan move SFX
+- add nemesis move SFX
 - add pitstop open/choice SFX
 - add victory/defeat sting SFX
 
@@ -430,6 +438,7 @@ Test:
 - repeated map interaction does not spam sounds excessively
 - selecting a visible obstacle hex plays `ObstacleSelect`, not `HexSelect`
 - moving into a visible obstacle/contact hex plays `ObstacleTravel`, not `CaravanMove`
+- a nemesis turn result with `Moved == true` plays `NemesisMove`
 - gameplay SFX respect SFX volume
 
 ### Slice 6 - QA And Tuning
