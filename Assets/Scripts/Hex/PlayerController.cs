@@ -68,6 +68,9 @@ public class PlayerController : MonoBehaviour
     private int currentVisibilityRadiusBonus;
     private string pendingPitstopBoonHint;
 
+    public bool IsGameplaySessionActive => isGameplaySessionActive;
+    public bool IsRunOver => isRunOver;
+
     private void Awake()
     {
         EnsureRuntimeReferences();
