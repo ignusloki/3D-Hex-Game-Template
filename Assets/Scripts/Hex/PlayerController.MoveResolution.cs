@@ -2,12 +2,15 @@ public partial class PlayerController
 {
     private void CommitMove(HexagonTile destinationTile, int moveCost)
     {
+        runState.SetPhase(HexRunPhase.ResolvingMove);
+        runState.SetPendingModalContext(string.Empty);
         ClearHighlights();
         HexCoordinates previousCoordinates = currentTile.Coordinates;
 
         currentTile.TileData?.SetOccupied(false);
         currentTile = destinationTile;
         currentTile.TileData?.SetOccupied(true);
+        SyncRunStateCoordinates();
         caravanResources.Spend(CaravanResourceType.Food, moveCost);
         UpdateResourcesText();
 
@@ -64,6 +67,8 @@ public partial class PlayerController
             && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
+            runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
+            runState.SetPendingModalContext("QuestMarker");
             RefreshHighlights();
             return;
         }
@@ -72,6 +77,8 @@ public partial class PlayerController
         {
             pendingPitstopBoonHint = pitstopBoonHint;
             pendingDeferredNemesisResult = hasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
+            runState.SetPhase(HexRunPhase.PitstopChoice);
+            runState.SetPendingModalContext("Pitstop");
             pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
         }
         else if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
@@ -102,6 +109,13 @@ public partial class PlayerController
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             hudPresenter.ShowMoveComplete(currentTile, moveCost, caravanResources.ToSnapshot());
         }
+
+        if (!isRunOver && runState.Phase == HexRunPhase.ResolvingMove)
+        {
+            runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
+            runState.SetPendingModalContext(string.Empty);
+        }
+
         RefreshHighlights();
     }
 
@@ -134,6 +148,7 @@ public partial class PlayerController
         }
 
         pendingPitstopBoonHint = string.Empty;
+        SyncRunStateFromExistingModalState();
     }
 
     private void FinalizeDeferredNemesisPitstopDestructionIfNeeded(HexNemesisTurnResult turnResult)

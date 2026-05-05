@@ -3,6 +3,11 @@ public partial class PlayerController
     public void ActivateGameplaySession()
     {
         isGameplaySessionActive = true;
+        runState.ResetOutcome();
+        runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
+        runState.SetPendingModalContext(string.Empty);
+        SyncRunStateActContext();
+        SyncRunStateCoordinates();
         hudDocumentController?.SetGameplayModalState(false);
         gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Hud, true);
         gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Context, true);
@@ -25,6 +30,9 @@ public partial class PlayerController
             return;
         }
 
+        SyncRunStateActContext();
+        runState.SetResources(caravanResources.ToSnapshot());
+        runState.Complete(HexRunOutcome.Victory, "Victory");
         HexActTransitionService.ResetRunSession();
         isRunOver = true;
         ClearHighlights();
@@ -60,6 +68,9 @@ public partial class PlayerController
             return;
         }
 
+        SyncRunStateActContext();
+        runState.SetResources(caravanResources.ToSnapshot());
+        runState.Complete(HexRunOutcome.Defeat, defeatReason);
         HexActTransitionService.ResetRunSession();
         isRunOver = true;
         ClearHighlights();
@@ -76,6 +87,10 @@ public partial class PlayerController
 
     private void PrepareForActTransitionModalState()
     {
+        runState.SetPhase(HexRunPhase.ActTransition);
+        runState.SetPendingModalContext("ActTransition");
+        runState.SetResources(caravanResources.ToSnapshot());
+        SyncRunStateActContext();
         isRunOver = true;
         ClearHighlights();
         selectedTile = null;
@@ -119,6 +134,10 @@ public partial class PlayerController
             return;
         }
 
+        SyncRunStateActContext();
+        runState.SetResources(HexActTransitionService.GetStartingResources(caravanResources.ToSnapshot()));
+        runState.SetPhase(HexRunPhase.PreparingGameplay);
+        runState.SetPendingModalContext("LoadingNextAct");
         LoadCurrentSceneBehindFade();
     }
 

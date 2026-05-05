@@ -58,6 +58,7 @@ public partial class PlayerController : MonoBehaviour
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
+    private readonly HexRunState runState = new();
 
     private HexagonTile currentTile;
     private HexagonTile goalTile;
@@ -148,6 +149,8 @@ public partial class PlayerController : MonoBehaviour
         }
 
         EnsureRuntimeReferences();
+        runState.SetPhase(HexRunPhase.PreparingGameplay);
+        runState.SetPendingModalContext(string.Empty);
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -187,6 +190,7 @@ public partial class PlayerController : MonoBehaviour
             : new CaravanResourceSnapshot(startingFood, startingMorale, startingGold);
         CaravanResourceSnapshot startingResources = HexActTransitionService.GetStartingResources(configuredStartingResources);
 
+        InitializeRunState(startingResources);
         caravanResources.Initialize(startingResources.Food, startingResources.Morale, startingResources.Gold);
         resourcesInitialized = true;
         UpdateResourcesText();
@@ -280,6 +284,11 @@ public partial class PlayerController : MonoBehaviour
 
     private void UpdateResourcesText()
     {
+        if (resourcesInitialized)
+        {
+            runState.SetResources(caravanResources.ToSnapshot());
+        }
+
         string boonLine = boonRuntime != null && boonRuntime.HasActiveBoon
             ? boonRuntime.GetStatusLine()
             : string.Empty;
@@ -340,6 +349,123 @@ public partial class PlayerController : MonoBehaviour
         }
 
         ApplyBoonObstacleSpawnCap();
+        SyncRunStateActContext();
+    }
+
+    private void InitializeRunState(CaravanResourceSnapshot startingResources)
+    {
+        runState.Initialize(
+            HexActTransitionService.GetCurrentActNumber(),
+            startingResources,
+            currentTile.Coordinates,
+            goalTile.Coordinates,
+            HexActTransitionService.GetLockedBoonFamily(),
+            HexBoonSelectionService.GetSelectedBoonDefinitions(),
+            isGameplaySessionActive ? HexRunPhase.AwaitingPlayerInput : HexRunPhase.MainMenu);
+    }
+
+    private void SyncRunStateActContext()
+    {
+        runState.SetCurrentActNumber(HexActTransitionService.GetCurrentActNumber());
+        runState.SetLockedBoonFamily(HexActTransitionService.GetLockedBoonFamily());
+        runState.SetSelectedBoons(HexBoonSelectionService.GetSelectedBoonDefinitions());
+    }
+
+    private void SyncRunStateCoordinates()
+    {
+        if (currentTile != null)
+        {
+            runState.SetCaravanCoordinates(currentTile.Coordinates);
+        }
+        else
+        {
+            runState.ClearCaravanCoordinates();
+        }
+
+        if (goalTile != null)
+        {
+            runState.SetGoalCoordinates(goalTile.Coordinates);
+        }
+        else
+        {
+            runState.ClearGoalCoordinates();
+        }
+    }
+
+    private void SyncRunStateFromExistingModalState()
+    {
+        if (!isReady)
+        {
+            runState.SetPhase(HexRunPhase.PreparingGameplay);
+            return;
+        }
+
+        if (mainMenuPresenter != null && mainMenuPresenter.IsOpen)
+        {
+            runState.SetPhase(HexRunPhase.MainMenu);
+            runState.SetPendingModalContext("MainMenu");
+            return;
+        }
+
+        if (!isGameplaySessionActive)
+        {
+            runState.SetPhase(HexRunPhase.MainMenu);
+            runState.SetPendingModalContext(string.Empty);
+            return;
+        }
+
+        if (runEndModalPresenter != null && runEndModalPresenter.IsOpen)
+        {
+            if (runState.Outcome == HexRunOutcome.Victory)
+            {
+                runState.SetPhase(HexRunPhase.Victory);
+                runState.SetPendingModalContext("Victory");
+            }
+            else if (runState.Outcome == HexRunOutcome.Defeat)
+            {
+                runState.SetPhase(HexRunPhase.Defeat);
+                runState.SetPendingModalContext("Defeat");
+            }
+            else
+            {
+                runState.SetPendingModalContext("RunEnd");
+            }
+
+            return;
+        }
+
+        if (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
+        {
+            runState.SetPhase(HexRunPhase.ActTransition);
+            runState.SetPendingModalContext("ActTransition");
+            return;
+        }
+
+        if (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
+        {
+            runState.SetPhase(HexRunPhase.PitstopChoice);
+            runState.SetPendingModalContext("Pitstop");
+            return;
+        }
+
+        if (IsMockQuestMarkerModalOpen())
+        {
+            if (runState.Phase == HexRunPhase.ResolvingMove)
+            {
+                runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
+            }
+
+            runState.SetPendingModalContext("QuestMarker");
+            return;
+        }
+
+        if (isRunOver || runState.HasFinished)
+        {
+            return;
+        }
+
+        runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
+        runState.SetPendingModalContext(string.Empty);
     }
 
     private HexFogUpdateResult RefreshFogOfWar()
@@ -501,6 +627,11 @@ public partial class PlayerController : MonoBehaviour
     public CaravanResourceSnapshot GetCurrentResources()
     {
         return caravanResources.ToSnapshot();
+    }
+
+    public HexRunStateSnapshot GetRunStateSnapshot()
+    {
+        return runState.ToSnapshot();
     }
 
     public void OverrideCaravanResources(int food, int morale, int gold)

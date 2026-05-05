@@ -6,6 +6,7 @@ public partial class PlayerController
     private void Update()
     {
         EnsureRuntimeReferences();
+        SyncRunStateFromExistingModalState();
 
         if (!CanHandleGameplayInput())
         {

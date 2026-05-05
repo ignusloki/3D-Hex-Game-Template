@@ -97,10 +97,32 @@ public readonly struct HexActGenerationProfileSelection
 
 internal sealed class HexActRunSessionState
 {
-    public int CurrentActNumber = 1;
-    public CaravanResourceSnapshot CurrentResources;
-    public HexNemesisArchetype LockedBoonFamily = HexNemesisArchetype.None;
-    public readonly List<HexBoonDefinition> SelectedBoons = new();
+    public readonly HexRunState RunState = new();
+
+    public int CurrentActNumber
+    {
+        get => RunState.CurrentActNumber;
+        set => RunState.SetCurrentActNumber(value);
+    }
+
+    public CaravanResourceSnapshot CurrentResources
+    {
+        get => RunState.Resources;
+        set => RunState.SetResources(value);
+    }
+
+    public HexNemesisArchetype LockedBoonFamily
+    {
+        get => RunState.LockedBoonFamily;
+        set => RunState.SetLockedBoonFamily(value);
+    }
+
+    public IReadOnlyList<HexBoonDefinition> SelectedBoons => RunState.SelectedBoons;
+
+    public bool TryAddSelectedBoon(HexBoonDefinition boon)
+    {
+        return RunState.TryAddSelectedBoon(boon);
+    }
 }
 
 public static class HexActTransitionService
@@ -486,7 +508,7 @@ public static class HexActTransitionService
             }
         }
 
-        currentSession.SelectedBoons.Add(selectedBoon);
+        currentSession.TryAddSelectedBoon(selectedBoon);
     }
 
     private static string BuildSelectionPrompt(HexActTransitionStepDefinition step)
