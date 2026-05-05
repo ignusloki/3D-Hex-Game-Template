@@ -29,6 +29,8 @@ public class PlayerController : MonoBehaviour
     [Min(0.01f)] public float currentTileSelectionScale = 1f;
     [Min(0f)] public float currentTileSelectionYOffset = 0.12f;
     public Color outOfRangeSelectionColor = new(0.42f, 0.65f, 0.95f, 1f);
+    [Header("Debug")]
+    [SerializeField] private bool enableMockQuestMarkers;
 
     private HexTileInputService inputService;
     private HexPathHighlighter pathHighlighter;
@@ -203,7 +205,7 @@ public class PlayerController : MonoBehaviour
             || (runEndModalPresenter != null && runEndModalPresenter.IsOpen)
             || (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
             || (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
-            || (mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen))
+            || IsMockQuestMarkerModalOpen())
         {
             return;
         }
@@ -393,7 +395,9 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        if (mockQuestMarkerController != null && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
+        if (enableMockQuestMarkers
+            && mockQuestMarkerController != null
+            && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
             RefreshHighlights();
@@ -810,7 +814,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         pitstopEventController?.HideActiveModal();
-        mockQuestMarkerController?.HideActiveModal();
+        HideMockQuestMarkerModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
         runEndModalPresenter?.ShowVictory(ReturnToMainMenuAfterFade);
@@ -845,7 +849,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         pitstopEventController?.HideActiveModal();
-        mockQuestMarkerController?.HideActiveModal();
+        HideMockQuestMarkerModal();
         RefreshTileDetails(currentTile);
         hudPresenter.ShowDefeat(currentTile, defeatReason);
         runEndModalPresenter?.ShowDefeat(RetryCurrentScene, ReturnToMainMenuWithFade);
@@ -892,7 +896,7 @@ public class PlayerController : MonoBehaviour
         caravanSelectionActive = false;
         travelTimePresenter.Reset();
         pitstopEventController?.HideActiveModal();
-        mockQuestMarkerController?.HideActiveModal();
+        HideMockQuestMarkerModal();
         RefreshTileDetails(currentTile);
     }
 
@@ -1001,7 +1005,9 @@ public class PlayerController : MonoBehaviour
         nemesisController ??= FindAnyObjectByType<HexNemesisController>();
         runEndModalPresenter ??= GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
-        mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
+        mockQuestMarkerController ??= enableMockQuestMarkers
+            ? GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>()
+            : GetComponent<HexMockQuestMarkerController>();
         caravanGoalVisualController ??= GetComponent<HexCaravanGoalVisualController>() ?? gameObject.AddComponent<HexCaravanGoalVisualController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
         mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
@@ -1098,12 +1104,27 @@ public class PlayerController : MonoBehaviour
 
     private void InitializeMockQuestMarkerSystem()
     {
-        if (mockQuestMarkerController == null || mapGenerator == null)
+        if (!enableMockQuestMarkers || mockQuestMarkerController == null || mapGenerator == null)
         {
             return;
         }
 
         mockQuestMarkerController.Initialize(mapGenerator);
+    }
+
+    private bool IsMockQuestMarkerModalOpen()
+    {
+        return enableMockQuestMarkers
+            && mockQuestMarkerController != null
+            && mockQuestMarkerController.IsModalOpen;
+    }
+
+    private void HideMockQuestMarkerModal()
+    {
+        if (enableMockQuestMarkers)
+        {
+            mockQuestMarkerController?.HideActiveModal();
+        }
     }
 
     private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
