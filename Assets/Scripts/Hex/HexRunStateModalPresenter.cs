@@ -1191,6 +1191,7 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         documentController?.Hide();
         gameOverDocumentController?.Hide();
         PlayMusic(HexMusicStage.Victory);
+        PlaySfx(HexSfxId.Victory);
         EnsureVictoryView();
         victoryDocumentController?.Show(onContinueRequested);
     }
@@ -1257,6 +1258,19 @@ public sealed class HexRunEndModalPresenter : MonoBehaviour
         if (audioSystem != null)
         {
             audioSystem.PlayMusic(stage);
+        }
+    }
+
+    private void PlaySfx(HexSfxId id)
+    {
+        if (audioSystem == null)
+        {
+            audioSystem = HexAudioSystem.ResolveShared(this);
+        }
+
+        if (audioSystem != null)
+        {
+            audioSystem.PlaySfx(id);
         }
     }
 }
