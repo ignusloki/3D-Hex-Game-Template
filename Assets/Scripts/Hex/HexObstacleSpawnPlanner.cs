@@ -36,14 +36,14 @@ public sealed class HexObstacleSpawnSettings
         minimumCandidateWeight = Mathf.Max(0f, minimumCandidateWeight);
     }
 
-    public float CalculateSpawnChance(int enteredVisibilityCount)
+    public float CalculateSpawnChance(int newlyDiscoveredCount)
     {
-        if (enteredVisibilityCount <= 0)
+        if (newlyDiscoveredCount <= 0)
         {
             return 0f;
         }
 
-        return Mathf.Min(baseSpawnChance + (enteredVisibilityCount * bonusChancePerEnteredHex), maxSpawnChance);
+        return Mathf.Min(baseSpawnChance + (newlyDiscoveredCount * bonusChancePerEnteredHex), maxSpawnChance);
     }
 }
 
@@ -97,7 +97,7 @@ public sealed class HexObstacleSpawnPlanner
         public HexTileData TileData;
         public float Weight;
         public int AdjacentVisible;
-        public int AdjacentEntered;
+        public int AdjacentNewlyDiscovered;
     }
 
     public HexObstacleSpawnPlan TryPlanSpawn(
@@ -106,7 +106,7 @@ public sealed class HexObstacleSpawnPlanner
         HexObstaclePressureContext pressureContext,
         IReadOnlyDictionary<HexCoordinates, HexObstacleInstance> activeObstacles,
         IReadOnlyCollection<HexCoordinates> visibleNow,
-        IReadOnlyCollection<HexCoordinates> enteredVisibility,
+        IReadOnlyCollection<HexCoordinates> newlyDiscoveredCoordinates,
         IReadOnlyCollection<HexCoordinates> pitstopCoordinates,
         IReadOnlyCollection<HexCoordinates> protectedCoordinates,
         HexCoordinates caravanCoordinates,
@@ -124,14 +124,14 @@ public sealed class HexObstacleSpawnPlanner
             || definitions == null
             || definitions.Count == 0
             || visibleNow == null
-            || enteredVisibility == null)
+            || newlyDiscoveredCoordinates == null)
         {
             return HexObstacleSpawnPlan.None;
         }
 
-        int enteredCount = enteredVisibility.Count;
-        float spawnChance = settings.CalculateSpawnChance(enteredCount);
-        if (HasPressureNearEnteredTiles(enteredSet: new HashSet<HexCoordinates>(enteredVisibility), pressureContext))
+        int newlyDiscoveredCount = newlyDiscoveredCoordinates.Count;
+        float spawnChance = settings.CalculateSpawnChance(newlyDiscoveredCount);
+        if (HasPressureNearNewlyDiscoveredTiles(newlyDiscoveredSet: new HashSet<HexCoordinates>(newlyDiscoveredCoordinates), pressureContext))
         {
             spawnChance = Mathf.Clamp01(spawnChance + pressureContext.PressureSpawnChanceBonus);
         }
@@ -147,7 +147,7 @@ public sealed class HexObstacleSpawnPlanner
         }
 
         HashSet<HexCoordinates> visibleSet = new(visibleNow);
-        HashSet<HexCoordinates> enteredSet = new(enteredVisibility);
+        HashSet<HexCoordinates> newlyDiscoveredSet = new(newlyDiscoveredCoordinates);
         HashSet<HexCoordinates> pitstopSet = pitstopCoordinates != null ? new HashSet<HexCoordinates>(pitstopCoordinates) : new HashSet<HexCoordinates>();
         HashSet<HexCoordinates> protectedSet = protectedCoordinates != null ? new HashSet<HexCoordinates>(protectedCoordinates) : new HashSet<HexCoordinates>();
         IReadOnlyDictionary<HexCoordinates, HexObstacleInstance> activeSet = activeObstacles ?? new Dictionary<HexCoordinates, HexObstacleInstance>();
@@ -158,7 +158,7 @@ public sealed class HexObstacleSpawnPlanner
             pressureContext,
             activeSet,
             visibleSet,
-            enteredSet,
+            newlyDiscoveredSet,
             pitstopSet,
             protectedSet,
             caravanCoordinates,
@@ -187,7 +187,7 @@ public sealed class HexObstacleSpawnPlanner
         HexObstaclePressureContext pressureContext,
         IReadOnlyDictionary<HexCoordinates, HexObstacleInstance> activeObstacles,
         HashSet<HexCoordinates> visibleSet,
-        HashSet<HexCoordinates> enteredSet,
+        HashSet<HexCoordinates> newlyDiscoveredSet,
         HashSet<HexCoordinates> pitstopSet,
         HashSet<HexCoordinates> protectedSet,
         HexCoordinates caravanCoordinates,
@@ -196,10 +196,10 @@ public sealed class HexObstacleSpawnPlanner
         System.Random random)
     {
         List<CandidateInfo> candidates = new();
-        foreach (HexCoordinates visibleCoordinates in visibleSet)
+        foreach (HexCoordinates newlyDiscoveredCoordinates in newlyDiscoveredSet)
         {
-            if (caravanCoordinates.DistanceTo(visibleCoordinates) != 1
-                || !gridData.TryGetTile(visibleCoordinates, out HexTileData tile))
+            if (!visibleSet.Contains(newlyDiscoveredCoordinates)
+                || !gridData.TryGetTile(newlyDiscoveredCoordinates, out HexTileData tile))
             {
                 continue;
             }
@@ -216,14 +216,15 @@ public sealed class HexObstacleSpawnPlanner
                 continue;
             }
 
-            CountFrontierAdjacency(tile.Coordinates, gridData, visibleSet, enteredSet, out int adjacentVisible, out int adjacentEntered);
-            bool isFrontierCandidate = enteredSet.Contains(tile.Coordinates) || adjacentEntered > 0;
-            if (!isFrontierCandidate)
-            {
-                continue;
-            }
+            CountFrontierAdjacency(
+                tile.Coordinates,
+                gridData,
+                visibleSet,
+                newlyDiscoveredSet,
+                out int adjacentVisible,
+                out int adjacentNewlyDiscovered);
 
-            float weight = ScoreCandidate(tile, gridData, settings, pressureContext, adjacentVisible, adjacentEntered, random);
+            float weight = ScoreCandidate(tile, gridData, settings, pressureContext, adjacentVisible, adjacentNewlyDiscovered, random);
             if (weight < settings.minimumCandidateWeight)
             {
                 continue;
@@ -234,7 +235,7 @@ public sealed class HexObstacleSpawnPlanner
                 TileData = tile,
                 Weight = weight,
                 AdjacentVisible = adjacentVisible,
-                AdjacentEntered = adjacentEntered
+                AdjacentNewlyDiscovered = adjacentNewlyDiscovered
             });
         }
 
@@ -272,13 +273,13 @@ public sealed class HexObstacleSpawnPlanner
         HexObstacleSpawnSettings settings,
         HexObstaclePressureContext pressureContext,
         int adjacentVisible,
-        int adjacentEntered,
+        int adjacentNewlyDiscovered,
         System.Random random)
     {
         int edgeDistance = GetEdgeDistance(tile.Coordinates, gridData);
         float weight = 1f;
         weight += adjacentVisible * settings.visibleNeighborWeight;
-        weight += adjacentEntered * settings.enteredNeighborWeight;
+        weight += adjacentNewlyDiscovered * settings.enteredNeighborWeight;
         if (IsNearPressure(tile.Coordinates, pressureContext))
         {
             weight += pressureContext.PressureCandidateWeightBonus;
@@ -289,14 +290,14 @@ public sealed class HexObstacleSpawnPlanner
         return Mathf.Max(0f, weight);
     }
 
-    private static bool HasPressureNearEnteredTiles(HashSet<HexCoordinates> enteredSet, HexObstaclePressureContext pressureContext)
+    private static bool HasPressureNearNewlyDiscoveredTiles(HashSet<HexCoordinates> newlyDiscoveredSet, HexObstaclePressureContext pressureContext)
     {
-        if (enteredSet == null || enteredSet.Count == 0 || pressureContext == null || pressureContext.PressureHexes == null)
+        if (newlyDiscoveredSet == null || newlyDiscoveredSet.Count == 0 || pressureContext == null || pressureContext.PressureHexes == null)
         {
             return false;
         }
 
-        foreach (HexCoordinates coordinates in enteredSet)
+        foreach (HexCoordinates coordinates in newlyDiscoveredSet)
         {
             if (IsNearPressure(coordinates, pressureContext))
             {
@@ -329,12 +330,12 @@ public sealed class HexObstacleSpawnPlanner
         HexCoordinates coordinates,
         HexGridData gridData,
         HashSet<HexCoordinates> visibleSet,
-        HashSet<HexCoordinates> enteredSet,
+        HashSet<HexCoordinates> newlyDiscoveredSet,
         out int adjacentVisible,
-        out int adjacentEntered)
+        out int adjacentNewlyDiscovered)
     {
         adjacentVisible = 0;
-        adjacentEntered = 0;
+        adjacentNewlyDiscovered = 0;
         foreach (HexCoordinates neighborCoordinates in gridData.GetNeighborCoordinates(coordinates))
         {
             if (visibleSet.Contains(neighborCoordinates))
@@ -342,9 +343,9 @@ public sealed class HexObstacleSpawnPlanner
                 adjacentVisible++;
             }
 
-            if (enteredSet.Contains(neighborCoordinates))
+            if (newlyDiscoveredSet.Contains(neighborCoordinates))
             {
-                adjacentEntered++;
+                adjacentNewlyDiscovered++;
             }
         }
     }

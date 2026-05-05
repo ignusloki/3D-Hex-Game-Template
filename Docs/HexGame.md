@@ -1,6 +1,6 @@
 # Hex Game
 
-Last updated: 2026-05-02
+Last updated: 2026-05-04
 
 ## Game Summary
 
@@ -106,6 +106,24 @@ Pitstop arrival can grant a base resource reward and open a choice event modal.
 Pitstop details now appear in the unified right-side map inspector.
 
 See `Docs/PitstopSystem.md` for details.
+
+## Dynamic Obstacles
+
+Obstacles are turn pressure objects tied to movement and fog of war.
+
+Current obstacle rules:
+
+- obstacle spawn rolls happen only after the player completes a move
+- obstacle spawn candidates must be newly discovered by that move
+- obstacles must not spawn on previously revealed or remembered hexes
+- obstacles despawn when they leave the player's current line of sight
+- normal active obstacle cap is `2`
+- the visibility-radius boon raises the normal active obstacle cap to `4`
+- Echo Nemesis pressure can independently raise the active obstacle cap through
+  its archetype profile
+- obstacles must not spawn on water, impassable terrain, the caravan hex, the
+  start hex, the goal hex, pitstops, the Nemesis actor hex, or another active
+  obstacle
 
 ## Nemesis
 

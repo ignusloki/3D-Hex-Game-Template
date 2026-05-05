@@ -8,6 +8,7 @@ using UnityEditor;
 public class PlayerController : MonoBehaviour
 {
     private const string CurrentTileSelectionPrefabPath = "Assets/Prefabs/Selection Hex.prefab";
+    private const int VisibilityBoonObstacleCap = 4;
 
     public Transform caravanVisual;
     public Transform goalVisual;
@@ -64,6 +65,7 @@ public class PlayerController : MonoBehaviour
     private bool isRunOver;
     private bool resourcesInitialized;
     private bool didWarnMissingCurrentTileSelectionPrefab;
+    private int currentVisibilityRadiusBonus;
     private string pendingPitstopBoonHint;
 
     private void Awake()
@@ -953,10 +955,13 @@ public class PlayerController : MonoBehaviour
     {
         boonRuntime = HexBoonRuntimeState.FromCurrentSelection();
         pendingPitstopBoonHint = string.Empty;
+        currentVisibilityRadiusBonus = boonRuntime?.GetVisibilityRadiusBonus() ?? 0;
         if (fogOfWarController != null)
         {
-            fogOfWarController.SetVisionRadiusBonus(boonRuntime?.GetVisibilityRadiusBonus() ?? 0);
+            fogOfWarController.SetVisionRadiusBonus(currentVisibilityRadiusBonus);
         }
+
+        ApplyBoonObstacleSpawnCap();
     }
 
     private HexFogUpdateResult RefreshFogOfWar()
@@ -1097,7 +1102,14 @@ public class PlayerController : MonoBehaviour
         }
 
         obstacleController.Initialize(mapGenerator, pitstopSpawner, fogOfWarController);
+        ApplyBoonObstacleSpawnCap();
         obstacleController.SyncVisibility(initialFogUpdate);
+    }
+
+    private void ApplyBoonObstacleSpawnCap()
+    {
+        obstacleController?.SetRuntimeNormalMaxActiveObstacles(
+            currentVisibilityRadiusBonus > 0 ? VisibilityBoonObstacleCap : -1);
     }
 
     private void InitializePitstopEvents()

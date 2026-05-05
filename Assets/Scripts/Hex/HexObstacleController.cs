@@ -19,6 +19,7 @@ public sealed class HexObstacleController : MonoBehaviour
     private readonly System.Random random = new();
     private HashSet<HexCoordinates> currentlyVisible = new();
     private int consecutiveFailedEligibleSpawnRolls;
+    private int runtimeNormalMaxActiveObstacles = -1;
     private HexObstaclePressureContext pressureContext = HexObstaclePressureContext.Empty;
 
     private MapGenerator mapGenerator;
@@ -45,6 +46,7 @@ public sealed class HexObstacleController : MonoBehaviour
         activeObstacles.Clear();
         currentlyVisible.Clear();
         consecutiveFailedEligibleSpawnRolls = 0;
+        runtimeNormalMaxActiveObstacles = -1;
         pressureContext = HexObstaclePressureContext.Empty;
     }
 
@@ -69,6 +71,11 @@ public sealed class HexObstacleController : MonoBehaviour
         this.pressureContext = pressureContext ?? HexObstaclePressureContext.Empty;
     }
 
+    public void SetRuntimeNormalMaxActiveObstacles(int maxActiveObstacles)
+    {
+        runtimeNormalMaxActiveObstacles = maxActiveObstacles >= 0 ? maxActiveObstacles : -1;
+    }
+
     public void SyncVisibility(HexFogUpdateResult fogUpdate)
     {
         currentlyVisible = fogUpdate?.VisibleNow != null
@@ -87,7 +94,7 @@ public sealed class HexObstacleController : MonoBehaviour
         }
 
         currentlyVisible = new HashSet<HexCoordinates>(fogUpdate.VisibleNow);
-        turnResult.EnteredVisibilityCount = fogUpdate.EnteredVisibility.Count;
+        turnResult.EnteredVisibilityCount = fogUpdate.DiscoveredThisUpdate.Count;
 
         DespawnObstaclesThatLeftVisibility(fogUpdate.LeftVisibility, turnResult);
 
@@ -172,9 +179,9 @@ public sealed class HexObstacleController : MonoBehaviour
 
     private void TrySpawnObstacle(HexFogUpdateResult fogUpdate, HexCoordinates caravanCoordinates, HexObstacleTurnResult turnResult)
     {
-        if (fogUpdate.EnteredVisibility.Count == 0)
+        if (fogUpdate.DiscoveredThisUpdate.Count == 0)
         {
-            LogSpawnDebug("Skipped obstacle spawn roll because no new hexes entered visibility.");
+            LogSpawnDebug("Skipped obstacle spawn roll because no new hexes were discovered.");
             return;
         }
 
@@ -189,10 +196,10 @@ public sealed class HexObstacleController : MonoBehaviour
         turnResult.SpawnRollPerformed = true;
         bool forceSpawnFromPity = spawnSettings.enableSpawnPity
             && consecutiveFailedEligibleSpawnRolls >= spawnSettings.failedRollsBeforeGuaranteedSpawn;
-        float spawnChance = spawnSettings.CalculateSpawnChance(fogUpdate.EnteredVisibility.Count);
+        float spawnChance = spawnSettings.CalculateSpawnChance(fogUpdate.DiscoveredThisUpdate.Count);
 
         LogSpawnDebug(
-            $"Eligible obstacle roll. Entered visibility: {fogUpdate.EnteredVisibility.Count}. " +
+            $"Eligible obstacle roll. Newly discovered: {fogUpdate.DiscoveredThisUpdate.Count}. " +
             $"Active obstacles: {activeObstacles.Count}/{effectiveMaxActiveObstacles}. " +
             $"Failure streak: {consecutiveFailedEligibleSpawnRolls}. " +
             $"Chance: {spawnChance:P0}. " +
@@ -223,7 +230,7 @@ public sealed class HexObstacleController : MonoBehaviour
             pressureContext,
             activeObstacles,
             fogUpdate.VisibleNow,
-            fogUpdate.EnteredVisibility,
+            fogUpdate.DiscoveredThisUpdate,
             pitstopCoordinates,
             effectiveProtectedHexes,
             caravanCoordinates,
@@ -324,7 +331,10 @@ public sealed class HexObstacleController : MonoBehaviour
 
     private int GetEffectiveMaxActiveObstacles()
     {
+        int normalMaximum = runtimeNormalMaxActiveObstacles >= 0
+            ? Mathf.Max(spawnSettings.maxActiveObstacles, runtimeNormalMaxActiveObstacles)
+            : spawnSettings.maxActiveObstacles;
         int pressuredMinimum = pressureContext != null ? pressureContext.MinimumMaxActiveObstacles : 0;
-        return Mathf.Max(spawnSettings.maxActiveObstacles, pressuredMinimum);
+        return Mathf.Max(normalMaximum, pressuredMinimum);
     }
 }

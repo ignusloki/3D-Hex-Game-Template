@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-05-02
+Last updated: 2026-05-04
 
 ## Current Core State
 
@@ -13,7 +13,7 @@ The project is a playable single-scene Unity 6 prototype with:
 - one-step caravan movement and click-to-inspect map interaction
 - `Food`, `Morale`, and `Gold` resource economy
 - fog of war
-- obstacle spawning/contact pressure
+- obstacle spawning/contact pressure tied to newly discovered fog tiles
 - pitstop placement and choice events
 - multi-act run flow across Acts 1, 2, and 3
 - act-complete and boon-selection modals
@@ -66,7 +66,7 @@ Balance remains open across:
 
 - starting resources
 - terrain travel costs
-- obstacle pressure
+- obstacle pressure within the documented spawn/cap rules
 - pitstop density
 - event rewards
 - act grants
