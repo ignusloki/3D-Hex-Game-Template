@@ -89,7 +89,10 @@ internal sealed partial class HexActTransitionModalDocumentController
 
         layoutAsset ??= Resources.Load<UIE.VisualTreeAsset>(LayoutResourcePath);
         styleSheet ??= Resources.Load<UIE.StyleSheet>(StyleSheetResourcePath);
-        placeholderArtLibrary ??= Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
+        if (HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            placeholderArtLibrary ??= Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);
+        }
         chapterPageRevealProfile ??= Resources.Load<HexUiTransitionProfile>(ChapterPageRevealProfileResourcePath);
         rimouskiFont ??= LoadRimouskiFont();
         if (layoutAsset == null || styleSheet == null)
@@ -551,6 +554,11 @@ internal sealed partial class HexActTransitionModalDocumentController
 
     private Texture2D ResolveRandomPlaceholderTexture()
     {
+        if (!HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            return null;
+        }
+
         if (placeholderArtLibrary == null)
         {
             placeholderArtLibrary = Resources.Load<HexActTransitionPlaceholderArtLibrary>(PlaceholderArtLibraryResourcePath);

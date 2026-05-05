@@ -77,12 +77,17 @@ public class HexCameraController : MonoBehaviour
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
         runEndModalPresenter ??= FindAnyObjectByType<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= FindAnyObjectByType<HexActTransitionModalPresenter>();
-        mockQuestMarkerController ??= FindAnyObjectByType<HexMockQuestMarkerController>();
+        if (HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            mockQuestMarkerController ??= FindAnyObjectByType<HexMockQuestMarkerController>();
+        }
 
         bool pitstopModalOpen = pitstopEventController != null && pitstopEventController.IsChoiceModalOpen;
         bool runEndModalOpen = runEndModalPresenter != null && runEndModalPresenter.IsOpen;
         bool actTransitionModalOpen = actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen;
-        bool questModalOpen = mockQuestMarkerController != null && mockQuestMarkerController.IsModalOpen;
+        bool questModalOpen = HexDevelopmentContentGate.AllowsDevelopmentOnlyContent
+            && mockQuestMarkerController != null
+            && mockQuestMarkerController.IsModalOpen;
         return pitstopModalOpen || runEndModalOpen || actTransitionModalOpen || questModalOpen;
     }
 

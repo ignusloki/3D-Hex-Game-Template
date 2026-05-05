@@ -59,7 +59,7 @@ public partial class PlayerController
             return;
         }
 
-        if (enableMockQuestMarkers
+        if (ShouldUseMockQuestMarkers
             && mockQuestMarkerController != null
             && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
         {

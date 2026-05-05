@@ -7,6 +7,8 @@ public sealed class HexNemesisPresenter
     private Transform actorVisual;
     private HexCoordinates? actorVisualCoordinates;
     private GameObject actorVisualSourcePrefab;
+    private static bool didWarnMissingActorVisual;
+    private static bool didWarnMissingCorruptionVisual;
 
     public void Apply(
         MapGenerator mapGenerator,
@@ -75,6 +77,13 @@ public sealed class HexNemesisPresenter
             }
 
             actorVisual = CreateActorVisual(archetype, profile, tileView.transform);
+            if (actorVisual == null)
+            {
+                actorVisualCoordinates = null;
+                actorVisualSourcePrefab = null;
+                return;
+            }
+
             actorVisualCoordinates = actorCoordinates;
             actorVisualSourcePrefab = profile.actorPrefab;
         }
@@ -111,6 +120,11 @@ public sealed class HexNemesisPresenter
             if (!corruptionVisuals.TryGetValue(coordinates, out Transform visual) || visual == null)
             {
                 visual = CreateCorruptionVisual(tileView.transform);
+                if (visual == null)
+                {
+                    continue;
+                }
+
                 corruptionVisuals[coordinates] = visual;
             }
 
@@ -134,6 +148,12 @@ public sealed class HexNemesisPresenter
                 HexNemesisArchetype.Corruptor => PrimitiveType.Sphere,
                 _ => PrimitiveType.Sphere
             };
+
+            if (!HexDevelopmentContentGate.CanUseGeneratedPlaceholderVisuals())
+            {
+                WarnMissingGeneratedVisualOnce(ref didWarnMissingActorVisual, "nemesis actor");
+                return null;
+            }
 
             visualObject = GameObject.CreatePrimitive(primitiveType);
             visualObject.transform.SetParent(parent, false);
@@ -177,6 +197,12 @@ public sealed class HexNemesisPresenter
 
     private static Transform CreateCorruptionVisual(Transform parent)
     {
+        if (!HexDevelopmentContentGate.CanUseGeneratedPlaceholderVisuals())
+        {
+            WarnMissingGeneratedVisualOnce(ref didWarnMissingCorruptionVisual, "nemesis corruption");
+            return null;
+        }
+
         GameObject visualObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         visualObject.name = "Corruption Marker";
         visualObject.transform.SetParent(parent, false);
@@ -220,5 +246,16 @@ public sealed class HexNemesisPresenter
         {
             Object.DestroyImmediate(visual.gameObject);
         }
+    }
+
+    private static void WarnMissingGeneratedVisualOnce(ref bool didWarn, string visualName)
+    {
+        if (didWarn)
+        {
+            return;
+        }
+
+        didWarn = true;
+        Debug.LogWarning($"HexNemesisPresenter skipped generated {visualName} placeholder outside a development build.");
     }
 }

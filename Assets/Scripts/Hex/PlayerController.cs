@@ -31,6 +31,7 @@ public partial class PlayerController : MonoBehaviour
     public Color outOfRangeSelectionColor = new(0.42f, 0.65f, 0.95f, 1f);
     [Header("Debug")]
     [SerializeField] private bool enableMockQuestMarkers;
+    [SerializeField] private bool allowDebugPlaceholderVisuals = true;
 
     private HexTileInputService inputService;
     private HexPathHighlighter pathHighlighter;
@@ -73,6 +74,7 @@ public partial class PlayerController : MonoBehaviour
 
     public bool IsGameplaySessionActive => isGameplaySessionActive;
     public bool IsRunOver => isRunOver;
+    private bool ShouldUseMockQuestMarkers => HexDevelopmentContentGate.CanUseMockQuestMarkers(enableMockQuestMarkers);
 
     private void Awake()
     {
@@ -272,7 +274,8 @@ public partial class PlayerController : MonoBehaviour
             goalHeight,
             goalScale,
             caravanColor,
-            goalColor);
+            goalColor,
+            allowDebugPlaceholderVisuals);
     }
 
     private void UpdateResourcesText()
@@ -404,9 +407,9 @@ public partial class PlayerController : MonoBehaviour
         nemesisController ??= FindAnyObjectByType<HexNemesisController>();
         runEndModalPresenter ??= GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
-        mockQuestMarkerController ??= enableMockQuestMarkers
+        mockQuestMarkerController = ShouldUseMockQuestMarkers
             ? GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>()
-            : GetComponent<HexMockQuestMarkerController>();
+            : null;
         caravanGoalVisualController ??= GetComponent<HexCaravanGoalVisualController>() ?? gameObject.AddComponent<HexCaravanGoalVisualController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
         mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
@@ -470,7 +473,7 @@ public partial class PlayerController : MonoBehaviour
 
     private void InitializeMockQuestMarkerSystem()
     {
-        if (!enableMockQuestMarkers || mockQuestMarkerController == null || mapGenerator == null)
+        if (!ShouldUseMockQuestMarkers || mockQuestMarkerController == null || mapGenerator == null)
         {
             return;
         }
@@ -480,14 +483,14 @@ public partial class PlayerController : MonoBehaviour
 
     private bool IsMockQuestMarkerModalOpen()
     {
-        return enableMockQuestMarkers
+        return ShouldUseMockQuestMarkers
             && mockQuestMarkerController != null
             && mockQuestMarkerController.IsModalOpen;
     }
 
     private void HideMockQuestMarkerModal()
     {
-        if (enableMockQuestMarkers)
+        if (ShouldUseMockQuestMarkers)
         {
             mockQuestMarkerController?.HideActiveModal();
         }

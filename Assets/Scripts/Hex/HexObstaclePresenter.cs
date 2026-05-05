@@ -4,6 +4,7 @@ using UnityEngine;
 public sealed class HexObstaclePresenter
 {
     private readonly Dictionary<HexCoordinates, Transform> visuals = new();
+    private static bool didWarnMissingVisualPrefab;
 
     public void Apply(
         MapGenerator mapGenerator,
@@ -59,6 +60,11 @@ public sealed class HexObstaclePresenter
             if (!visuals.TryGetValue(coordinates, out Transform visual) || visual == null)
             {
                 visual = CreateVisual(obstacle, tileView.transform, obstacleVisualPrefab, visualHeight);
+                if (visual == null)
+                {
+                    continue;
+                }
+
                 visuals[coordinates] = visual;
             }
 
@@ -78,9 +84,20 @@ public sealed class HexObstaclePresenter
 
     private static Transform CreateVisual(HexObstacleInstance obstacle, Transform parent, GameObject obstacleVisualPrefab, float visualHeight)
     {
-        GameObject visualObject = obstacleVisualPrefab != null
-            ? Object.Instantiate(obstacleVisualPrefab, parent, false)
-            : GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        GameObject visualObject;
+        if (obstacleVisualPrefab != null)
+        {
+            visualObject = Object.Instantiate(obstacleVisualPrefab, parent, false);
+        }
+        else if (HexDevelopmentContentGate.CanUseGeneratedPlaceholderVisuals())
+        {
+            visualObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        }
+        else
+        {
+            WarnMissingVisualPrefabOnce();
+            return null;
+        }
 
         visualObject.name = $"Obstacle_{obstacle.Definition.displayName}_{obstacle.Coordinates}";
         visualObject.transform.SetParent(parent, false);
@@ -131,5 +148,16 @@ public sealed class HexObstaclePresenter
         {
             Object.DestroyImmediate(visual.gameObject);
         }
+    }
+
+    private static void WarnMissingVisualPrefabOnce()
+    {
+        if (didWarnMissingVisualPrefab)
+        {
+            return;
+        }
+
+        didWarnMissingVisualPrefab = true;
+        Debug.LogWarning("HexObstaclePresenter skipped generated obstacle placeholder outside a development build. Assign a real obstacle visual prefab.");
     }
 }

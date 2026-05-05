@@ -10,6 +10,9 @@ public sealed class HexCaravanGoalVisualController : MonoBehaviour
     private float goalScale;
     private Color caravanColor;
     private Color goalColor;
+    private bool allowDebugPlaceholderVisuals;
+    private bool didWarnMissingCaravanVisual;
+    private bool didWarnMissingGoalVisual;
 
     public Transform CaravanVisual => caravanVisual;
     public Transform GoalVisual => goalVisual;
@@ -22,7 +25,8 @@ public sealed class HexCaravanGoalVisualController : MonoBehaviour
         float goalHeight,
         float goalScale,
         Color caravanColor,
-        Color goalColor)
+        Color goalColor,
+        bool allowDebugPlaceholderVisuals)
     {
         this.caravanVisual = caravanVisual != null ? caravanVisual : this.caravanVisual;
         this.goalVisual = goalVisual != null ? goalVisual : this.goalVisual;
@@ -32,12 +36,19 @@ public sealed class HexCaravanGoalVisualController : MonoBehaviour
         this.goalScale = Mathf.Max(0.1f, goalScale);
         this.caravanColor = caravanColor;
         this.goalColor = goalColor;
+        this.allowDebugPlaceholderVisuals = allowDebugPlaceholderVisuals;
     }
 
     public Transform EnsureCaravanVisual()
     {
         if (caravanVisual == null)
         {
+            if (!HexDevelopmentContentGate.CanUseGeneratedPlaceholderVisuals(allowDebugPlaceholderVisuals))
+            {
+                WarnMissingVisualOnce(ref didWarnMissingCaravanVisual, "caravan");
+                return null;
+            }
+
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "Caravan Placeholder";
             cube.transform.localScale = Vector3.one * caravanScale;
@@ -55,6 +66,12 @@ public sealed class HexCaravanGoalVisualController : MonoBehaviour
     {
         if (goalVisual == null)
         {
+            if (!HexDevelopmentContentGate.CanUseGeneratedPlaceholderVisuals(allowDebugPlaceholderVisuals))
+            {
+                WarnMissingVisualOnce(ref didWarnMissingGoalVisual, "goal");
+                return null;
+            }
+
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = "Goal Marker";
             sphere.transform.localScale = Vector3.one * goalScale;
@@ -107,5 +124,17 @@ public sealed class HexCaravanGoalVisualController : MonoBehaviour
         {
             renderer.material.color = color;
         }
+    }
+
+    private static void WarnMissingVisualOnce(ref bool didWarn, string visualName)
+    {
+        if (didWarn)
+        {
+            return;
+        }
+
+        didWarn = true;
+        Debug.LogError(
+            $"HexCaravanGoalVisualController cannot create a generated {visualName} placeholder in a production build. Assign a real {visualName} visual.");
     }
 }
