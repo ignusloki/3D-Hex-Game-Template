@@ -288,67 +288,6 @@ public partial class PlayerController : MonoBehaviour
             boonLine);
     }
 
-    private void EndRunAsVictory()
-    {
-        if (isRunOver)
-        {
-            return;
-        }
-
-        if (TryBeginActTransition())
-        {
-            return;
-        }
-
-        HexActTransitionService.ResetRunSession();
-        isRunOver = true;
-        ClearHighlights();
-        selectedTile = null;
-        previewPath = null;
-        caravanSelectionActive = false;
-        travelTimePresenter.Reset();
-        pitstopEventController?.HideActiveModal();
-        HideMockQuestMarkerModal();
-        RefreshTileDetails(currentTile);
-        hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runEndModalPresenter?.ShowVictory(ReturnToMainMenuAfterFade);
-    }
-
-    private bool TryBeginActTransition()
-    {
-        if (!HexActTransitionService.CanAdvanceFromCurrentAct())
-        {
-            return false;
-        }
-
-        HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(caravanResources.ToSnapshot());
-        PrepareForActTransitionModalState();
-        hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
-        actTransitionModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
-        return true;
-    }
-
-    private void EndRunAsDefeat(string defeatReason)
-    {
-        if (isRunOver)
-        {
-            return;
-        }
-
-        HexActTransitionService.ResetRunSession();
-        isRunOver = true;
-        ClearHighlights();
-        selectedTile = null;
-        previewPath = null;
-        caravanSelectionActive = false;
-        travelTimePresenter.Reset();
-        pitstopEventController?.HideActiveModal();
-        HideMockQuestMarkerModal();
-        RefreshTileDetails(currentTile);
-        hudPresenter.ShowDefeat(currentTile, defeatReason);
-        runEndModalPresenter?.ShowDefeat(RetryCurrentScene, ReturnToMainMenuWithFade);
-    }
-
     private void RefreshTileDetails(HexagonTile tile)
     {
         if (tile == null)
@@ -379,19 +318,6 @@ public partial class PlayerController : MonoBehaviour
             $"RefreshTileDetails tile={FormatCoordinates(tile.Coordinates)} pitstop={(pitstopSite != null ? pitstopSite.Kind.ToString() : "none")} obstacle={(visibleObstacle?.Definition?.displayName ?? "none")} hasNemesisDetails={!string.IsNullOrWhiteSpace(nemesisDetails)}.");
 
         hudPresenter.ShowTileDetails(tile, pitstopSite, visibleObstacle, nemesisDetails);
-    }
-
-    private void PrepareForActTransitionModalState()
-    {
-        isRunOver = true;
-        ClearHighlights();
-        selectedTile = null;
-        previewPath = null;
-        caravanSelectionActive = false;
-        travelTimePresenter.Reset();
-        pitstopEventController?.HideActiveModal();
-        HideMockQuestMarkerModal();
-        RefreshTileDetails(currentTile);
     }
 
     private void InitializeFogOfWar()
@@ -492,39 +418,6 @@ public partial class PlayerController : MonoBehaviour
         }
     }
 
-    public void ActivateGameplaySession()
-    {
-        isGameplaySessionActive = true;
-        hudDocumentController?.SetGameplayModalState(false);
-        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Hud, true);
-        gameplayUiRootController?.SetLayerVisible(HexGameplayUiLayerId.Context, true);
-        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Hud, false);
-        gameplayUiRootController?.SetLayerInteractive(HexGameplayUiLayerId.Context, false);
-        RefreshTileDetails(currentTile);
-        hudPresenter.ShowCaravanIdle(currentTile);
-        PlayCurrentActMusic();
-    }
-
-    private void RevealGameplayAfterSceneLoad()
-    {
-        globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
-        globalTransitionController?.EnsureInitialized();
-        if (globalTransitionController == null || !globalTransitionController.PlayFadeFromBlack())
-        {
-            globalTransitionController?.HideBlackoutImmediate();
-        }
-    }
-
-    private void ReturnToMainMenuWithFade()
-    {
-        HexGameBootstrap.ReloadActiveSceneToMainMenu(this, resetRunSession: true);
-    }
-
-    private void ReturnToMainMenuAfterFade()
-    {
-        HexGameBootstrap.LoadActiveSceneToMainMenu(resetRunSession: true);
-    }
-
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
     {
         if (obstacleController == null)
@@ -622,26 +515,6 @@ public partial class PlayerController : MonoBehaviour
         {
             EndRunAsDefeat(caravanResources.GetDefeatReason());
         }
-    }
-
-    private void RetryCurrentScene()
-    {
-        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: true);
-    }
-
-    private void ContinueToNextAct(HexBoonDefinition selectedBoon)
-    {
-        if (!HexActTransitionService.TryAdvanceToNextAct(caravanResources.ToSnapshot(), selectedBoon))
-        {
-            return;
-        }
-
-        LoadCurrentSceneBehindFade();
-    }
-
-    private void LoadCurrentSceneBehindFade()
-    {
-        HexGameBootstrap.ReloadActiveSceneToGameplay(this, resetRunSession: false);
     }
 
     private void PlayCurrentActMusic()
