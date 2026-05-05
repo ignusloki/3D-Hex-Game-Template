@@ -1073,7 +1073,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaravanMetricsController
   playerController: {fileID: 1822504938}
-  food: 400
+  food: 10
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
