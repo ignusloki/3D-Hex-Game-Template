@@ -56,6 +56,7 @@ public partial class PlayerController : MonoBehaviour
     private HexMainMenuPresenter mainMenuPresenter;
     private HexAudioSystem audioSystem;
     private HexRunSessionController runSessionController;
+    private HexGameFlowController gameFlowController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -150,8 +151,7 @@ public partial class PlayerController : MonoBehaviour
         }
 
         EnsureRuntimeReferences();
-        runState.SetPhase(HexRunPhase.PreparingGameplay);
-        runState.SetPendingModalContext(string.Empty);
+        SetRunPhase(HexRunPhase.PreparingGameplay, string.Empty);
 
         while (mapGenerator == null || mapGenerator.GridData == null)
         {
@@ -393,80 +393,24 @@ public partial class PlayerController : MonoBehaviour
         }
     }
 
-    private void SyncRunStateFromExistingModalState()
+    private void SyncGameFlowStateFromRuntimeState()
     {
-        if (!isReady)
+        gameFlowController?.SyncPhaseFromRuntimeState(isReady, isGameplaySessionActive, isRunOver);
+    }
+
+    private void SetRunPhase(HexRunPhase phase, string pendingModalContext = null)
+    {
+        if (gameFlowController != null)
         {
-            runState.SetPhase(HexRunPhase.PreparingGameplay);
+            gameFlowController.SetPhase(phase, pendingModalContext);
             return;
         }
 
-        if (mainMenuPresenter != null && mainMenuPresenter.IsOpen)
+        runState.SetPhase(phase);
+        if (pendingModalContext != null)
         {
-            runState.SetPhase(HexRunPhase.MainMenu);
-            runState.SetPendingModalContext("MainMenu");
-            return;
+            runState.SetPendingModalContext(pendingModalContext);
         }
-
-        if (!isGameplaySessionActive)
-        {
-            runState.SetPhase(HexRunPhase.MainMenu);
-            runState.SetPendingModalContext(string.Empty);
-            return;
-        }
-
-        if (runEndModalPresenter != null && runEndModalPresenter.IsOpen)
-        {
-            if (runState.Outcome == HexRunOutcome.Victory)
-            {
-                runState.SetPhase(HexRunPhase.Victory);
-                runState.SetPendingModalContext("Victory");
-            }
-            else if (runState.Outcome == HexRunOutcome.Defeat)
-            {
-                runState.SetPhase(HexRunPhase.Defeat);
-                runState.SetPendingModalContext("Defeat");
-            }
-            else
-            {
-                runState.SetPendingModalContext("RunEnd");
-            }
-
-            return;
-        }
-
-        if (actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
-        {
-            runState.SetPhase(HexRunPhase.ActTransition);
-            runState.SetPendingModalContext("ActTransition");
-            return;
-        }
-
-        if (pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
-        {
-            runState.SetPhase(HexRunPhase.PitstopChoice);
-            runState.SetPendingModalContext("Pitstop");
-            return;
-        }
-
-        if (IsMockQuestMarkerModalOpen())
-        {
-            if (runState.Phase == HexRunPhase.ResolvingMove)
-            {
-                runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
-            }
-
-            runState.SetPendingModalContext("QuestMarker");
-            return;
-        }
-
-        if (isRunOver || runState.HasFinished)
-        {
-            return;
-        }
-
-        runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
-        runState.SetPendingModalContext(string.Empty);
     }
 
     private HexFogUpdateResult RefreshFogOfWar()
@@ -548,6 +492,15 @@ public partial class PlayerController : MonoBehaviour
         {
             audioSystem = HexAudioSystem.ResolveShared(this);
         }
+
+        gameFlowController ??= HexGameFlowController.Resolve(this);
+        gameFlowController?.ConfigureSceneReferences(
+            mainMenuPresenter,
+            runEndModalPresenter,
+            actTransitionModalPresenter,
+            pitstopEventController,
+            mockQuestMarkerController,
+            globalTransitionController);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)
@@ -608,13 +561,6 @@ public partial class PlayerController : MonoBehaviour
         }
 
         mockQuestMarkerController.Initialize(mapGenerator);
-    }
-
-    private bool IsMockQuestMarkerModalOpen()
-    {
-        return ShouldUseMockQuestMarkers
-            && mockQuestMarkerController != null
-            && mockQuestMarkerController.IsModalOpen;
     }
 
     private void HideMockQuestMarkerModal()

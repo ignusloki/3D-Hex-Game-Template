@@ -21,10 +21,7 @@ public class HexCameraController : MonoBehaviour
     private Vector3 panOffset;
     private float yawOffset;
     private float zoomMultiplier = 1f;
-    private PitstopEventController pitstopEventController;
-    private HexRunEndModalPresenter runEndModalPresenter;
-    private HexActTransitionModalPresenter actTransitionModalPresenter;
-    private HexMockQuestMarkerController mockQuestMarkerController;
+    private HexGameFlowController gameFlowController;
 
     private void Awake()
     {
@@ -57,7 +54,7 @@ public class HexCameraController : MonoBehaviour
 
     private void Update()
     {
-        if (IsModalBlockingCamera())
+        if (IsCameraInputBlocked())
         {
             return;
         }
@@ -72,23 +69,10 @@ public class HexCameraController : MonoBehaviour
         HandleZoom();
     }
 
-    private bool IsModalBlockingCamera()
+    private bool IsCameraInputBlocked()
     {
-        pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
-        runEndModalPresenter ??= FindAnyObjectByType<HexRunEndModalPresenter>();
-        actTransitionModalPresenter ??= FindAnyObjectByType<HexActTransitionModalPresenter>();
-        if (HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
-        {
-            mockQuestMarkerController ??= FindAnyObjectByType<HexMockQuestMarkerController>();
-        }
-
-        bool pitstopModalOpen = pitstopEventController != null && pitstopEventController.IsChoiceModalOpen;
-        bool runEndModalOpen = runEndModalPresenter != null && runEndModalPresenter.IsOpen;
-        bool actTransitionModalOpen = actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen;
-        bool questModalOpen = HexDevelopmentContentGate.AllowsDevelopmentOnlyContent
-            && mockQuestMarkerController != null
-            && mockQuestMarkerController.IsModalOpen;
-        return pitstopModalOpen || runEndModalOpen || actTransitionModalOpen || questModalOpen;
+        gameFlowController ??= HexGameFlowController.Resolve(this);
+        return gameFlowController != null && gameFlowController.IsCameraInputBlocked();
     }
 
     private void HandleMovement()

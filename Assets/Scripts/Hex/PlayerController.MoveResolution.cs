@@ -2,8 +2,7 @@ public partial class PlayerController
 {
     private void CommitMove(HexagonTile destinationTile, int moveCost)
     {
-        runState.SetPhase(HexRunPhase.ResolvingMove);
-        runState.SetPendingModalContext(string.Empty);
+        SetRunPhase(HexRunPhase.ResolvingMove, string.Empty);
         ClearHighlights();
         HexCoordinates previousCoordinates = currentTile.Coordinates;
 
@@ -67,8 +66,7 @@ public partial class PlayerController
             && mockQuestMarkerController.TryProcessArrival(currentTile.Coordinates))
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
-            runState.SetPendingModalContext("QuestMarker");
+            SetRunPhase(HexRunPhase.AwaitingPlayerInput, "QuestMarker");
             RefreshHighlights();
             return;
         }
@@ -77,8 +75,7 @@ public partial class PlayerController
         {
             pendingPitstopBoonHint = pitstopBoonHint;
             pendingDeferredNemesisResult = hasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
-            runState.SetPhase(HexRunPhase.PitstopChoice);
-            runState.SetPendingModalContext("Pitstop");
+            SetRunPhase(HexRunPhase.PitstopChoice, "Pitstop");
             pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
         }
         else if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
@@ -112,8 +109,7 @@ public partial class PlayerController
 
         if (!isRunOver && runState.Phase == HexRunPhase.ResolvingMove)
         {
-            runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
-            runState.SetPendingModalContext(string.Empty);
+            SetRunPhase(HexRunPhase.AwaitingPlayerInput, string.Empty);
         }
 
         RefreshHighlights();
@@ -148,7 +144,7 @@ public partial class PlayerController
         }
 
         pendingPitstopBoonHint = string.Empty;
-        SyncRunStateFromExistingModalState();
+        SyncGameFlowStateFromRuntimeState();
     }
 
     private void FinalizeDeferredNemesisPitstopDestructionIfNeeded(HexNemesisTurnResult turnResult)

@@ -4,8 +4,7 @@ public partial class PlayerController
     {
         isGameplaySessionActive = true;
         runState.ResetOutcome();
-        runState.SetPhase(HexRunPhase.AwaitingPlayerInput);
-        runState.SetPendingModalContext(string.Empty);
+        SetRunPhase(HexRunPhase.AwaitingPlayerInput, string.Empty);
         SyncRunStateActContext();
         SyncRunStateCoordinates();
         hudDocumentController?.SetGameplayModalState(false);
@@ -87,8 +86,7 @@ public partial class PlayerController
 
     private void PrepareForActTransitionModalState()
     {
-        runState.SetPhase(HexRunPhase.ActTransition);
-        runState.SetPendingModalContext("ActTransition");
+        SetRunPhase(HexRunPhase.ActTransition, "ActTransition");
         runState.SetResources(caravanResources.ToSnapshot());
         SyncRunStateActContext();
         isRunOver = true;
@@ -136,8 +134,7 @@ public partial class PlayerController
 
         SyncRunStateActContext();
         runState.SetResources(HexActTransitionService.GetStartingResources(caravanResources.ToSnapshot()));
-        runState.SetPhase(HexRunPhase.PreparingGameplay);
-        runState.SetPendingModalContext("LoadingNextAct");
+        SetRunPhase(HexRunPhase.PreparingGameplay, "LoadingNextAct");
         LoadCurrentSceneBehindFade();
     }
 

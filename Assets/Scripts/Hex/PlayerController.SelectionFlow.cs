@@ -6,7 +6,7 @@ public partial class PlayerController
     private void Update()
     {
         EnsureRuntimeReferences();
-        SyncRunStateFromExistingModalState();
+        SyncGameFlowStateFromRuntimeState();
 
         if (!CanHandleGameplayInput())
         {
@@ -22,14 +22,8 @@ public partial class PlayerController
 
     private bool CanHandleGameplayInput()
     {
-        return isReady
-            && isGameplaySessionActive
-            && !(mainMenuPresenter != null && mainMenuPresenter.IsOpen)
-            && !isRunOver
-            && !(runEndModalPresenter != null && runEndModalPresenter.IsOpen)
-            && !(actTransitionModalPresenter != null && actTransitionModalPresenter.IsOpen)
-            && !(pitstopEventController != null && pitstopEventController.IsChoiceModalOpen)
-            && !IsMockQuestMarkerModalOpen();
+        return gameFlowController != null
+            && gameFlowController.CanHandleGameplayInput(isReady, isGameplaySessionActive, isRunOver);
     }
 
     private void HandleTileClick(HexagonTile clickedTile)
