@@ -179,6 +179,24 @@ public sealed class HexRunState
         SetPhase(initialPhase);
     }
 
+    public void InitializeSession(
+        int actNumber,
+        CaravanResourceSnapshot resources,
+        HexNemesisArchetype lockedBoonFamily,
+        IReadOnlyList<HexBoonDefinition> selectedBoons,
+        HexRunPhase initialPhase)
+    {
+        SetCurrentActNumber(actNumber);
+        SetResources(resources);
+        ClearCaravanCoordinates();
+        ClearGoalCoordinates();
+        SetLockedBoonFamily(lockedBoonFamily);
+        SetSelectedBoons(selectedBoons);
+        ResetOutcome();
+        SetPendingModalContext(string.Empty);
+        SetPhase(initialPhase);
+    }
+
     public void SetCurrentActNumber(int actNumber)
     {
         currentActNumber = Math.Max(1, actNumber);

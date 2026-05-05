@@ -95,47 +95,41 @@ public readonly struct HexActGenerationProfileSelection
     public bool HasProfile => Profile != null && Profile.isEnabled;
 }
 
-internal sealed class HexActRunSessionState
+public readonly struct HexActTransitionAdvanceResult
 {
-    public readonly HexRunState RunState = new();
-
-    public int CurrentActNumber
+    public HexActTransitionAdvanceResult(
+        bool succeeded,
+        int completedActNumber,
+        int nextActNumber,
+        CaravanResourceSnapshot nextResources,
+        HexNemesisArchetype lockedBoonFamily,
+        IReadOnlyList<HexBoonDefinition> selectedBoons)
     {
-        get => RunState.CurrentActNumber;
-        set => RunState.SetCurrentActNumber(value);
+        Succeeded = succeeded;
+        CompletedActNumber = Mathf.Max(1, completedActNumber);
+        NextActNumber = Mathf.Max(1, nextActNumber);
+        NextResources = nextResources;
+        LockedBoonFamily = lockedBoonFamily;
+        SelectedBoons = selectedBoons ?? Array.Empty<HexBoonDefinition>();
     }
 
-    public CaravanResourceSnapshot CurrentResources
-    {
-        get => RunState.Resources;
-        set => RunState.SetResources(value);
-    }
-
-    public HexNemesisArchetype LockedBoonFamily
-    {
-        get => RunState.LockedBoonFamily;
-        set => RunState.SetLockedBoonFamily(value);
-    }
-
-    public IReadOnlyList<HexBoonDefinition> SelectedBoons => RunState.SelectedBoons;
-
-    public bool TryAddSelectedBoon(HexBoonDefinition boon)
-    {
-        return RunState.TryAddSelectedBoon(boon);
-    }
+    public bool Succeeded { get; }
+    public int CompletedActNumber { get; }
+    public int NextActNumber { get; }
+    public CaravanResourceSnapshot NextResources { get; }
+    public HexNemesisArchetype LockedBoonFamily { get; }
+    public IReadOnlyList<HexBoonDefinition> SelectedBoons { get; }
 }
 
 public static class HexActTransitionService
 {
     public const string DefaultConfigResourcePath = "Acts/DefaultActTransitionConfig";
 
-    private static HexActRunSessionState currentSession;
     private static HexActTransitionConfigAsset cachedSceneConfig;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStaticState()
     {
-        currentSession = null;
         cachedSceneConfig = null;
     }
 
@@ -168,26 +162,17 @@ public static class HexActTransitionService
 
     public static void EnsureRunSession(CaravanResourceSnapshot defaultResources)
     {
-        if (currentSession != null)
-        {
-            return;
-        }
-
-        currentSession = new HexActRunSessionState
-        {
-            CurrentActNumber = 1,
-            CurrentResources = defaultResources
-        };
+        HexRunSessionController.Resolve()?.GetStartingResources(defaultResources);
     }
 
     public static void ResetRunSession()
     {
-        currentSession = null;
+        HexRunSessionController.ResetActiveSession();
     }
 
     public static bool HasActiveRunSession()
     {
-        return currentSession != null;
+        return HexRunSessionController.HasActiveSession();
     }
 
     public static void DebugConfigureRunSession(
@@ -196,15 +181,14 @@ public static class HexActTransitionService
         HexNemesisArchetype lockedBoonFamily = HexNemesisArchetype.None,
         IReadOnlyList<HexBoonDefinition> selectedBoons = null)
     {
-        currentSession = new HexActRunSessionState
-        {
-            CurrentActNumber = Mathf.Max(1, currentActNumber),
-            CurrentResources = currentResources,
-            LockedBoonFamily = currentActNumber >= 2 ? lockedBoonFamily : HexNemesisArchetype.None
-        };
-
+        List<HexBoonDefinition> validSelectedBoons = new();
         if (selectedBoons == null)
         {
+            HexRunSessionController.Resolve()?.ConfigureRun(
+                currentActNumber,
+                currentResources,
+                lockedBoonFamily,
+                validSelectedBoons);
             return;
         }
 
@@ -222,8 +206,14 @@ public static class HexActTransitionService
                 continue;
             }
 
-            StoreSelectedBoon(boon);
+            validSelectedBoons.Add(boon);
         }
+
+        HexRunSessionController.Resolve()?.ConfigureRun(
+            currentActNumber,
+            currentResources,
+            lockedBoonFamily,
+            validSelectedBoons);
     }
 
     public static bool UsesActTransitionBoonState()
@@ -234,12 +224,18 @@ public static class HexActTransitionService
 
     public static int GetCurrentActNumber()
     {
-        return currentSession?.CurrentActNumber ?? 1;
+        HexRunSessionController sessionController = HexRunSessionController.Resolve(createIfMissing: false);
+        return sessionController != null && sessionController.HasActiveRunSession
+            ? sessionController.RunState.CurrentActNumber
+            : 1;
     }
 
     public static HexNemesisArchetype GetLockedBoonFamily()
     {
-        return currentSession?.LockedBoonFamily ?? HexNemesisArchetype.None;
+        HexRunSessionController sessionController = HexRunSessionController.Resolve(createIfMissing: false);
+        return sessionController != null && sessionController.HasActiveRunSession
+            ? sessionController.RunState.LockedBoonFamily
+            : HexNemesisArchetype.None;
     }
 
     public static IReadOnlyList<HexBoonDefinition> GetSelectedBoons()
@@ -249,15 +245,19 @@ public static class HexActTransitionService
             return Array.Empty<HexBoonDefinition>();
         }
 
-        if (currentSession == null || currentSession.SelectedBoons.Count == 0)
+        HexRunSessionController sessionController = HexRunSessionController.Resolve(createIfMissing: false);
+        IReadOnlyList<HexBoonDefinition> selectedBoons = sessionController != null && sessionController.HasActiveRunSession
+            ? sessionController.RunState.SelectedBoons
+            : Array.Empty<HexBoonDefinition>();
+        if (selectedBoons.Count == 0)
         {
             return Array.Empty<HexBoonDefinition>();
         }
 
-        List<HexBoonDefinition> activeBoons = new(currentSession.SelectedBoons.Count);
-        for (int index = 0; index < currentSession.SelectedBoons.Count; index++)
+        List<HexBoonDefinition> activeBoons = new(selectedBoons.Count);
+        for (int index = 0; index < selectedBoons.Count; index++)
         {
-            HexBoonDefinition boon = currentSession.SelectedBoons[index];
+            HexBoonDefinition boon = selectedBoons[index];
             if (boon == null)
             {
                 continue;
@@ -275,8 +275,10 @@ public static class HexActTransitionService
 
     public static CaravanResourceSnapshot GetStartingResources(CaravanResourceSnapshot defaultResources)
     {
-        EnsureRunSession(defaultResources);
-        return currentSession != null ? currentSession.CurrentResources : defaultResources;
+        HexRunSessionController sessionController = HexRunSessionController.Resolve();
+        return sessionController != null
+            ? sessionController.GetStartingResources(defaultResources)
+            : defaultResources;
     }
 
     public static bool CanAdvanceFromCurrentAct()
@@ -399,21 +401,29 @@ public static class HexActTransitionService
 
     public static bool TryAdvanceToNextAct(CaravanResourceSnapshot currentResources, HexBoonDefinition selectedBoon = null)
     {
-        EnsureRunSession(currentResources);
-        if (currentSession == null)
-        {
-            return false;
-        }
+        HexRunSessionController sessionController = HexRunSessionController.Resolve();
+        return sessionController != null && sessionController.TryAdvanceToNextAct(currentResources, selectedBoon);
+    }
 
+    public static bool TryBuildAdvanceResult(
+        HexRunStateSnapshot currentRunState,
+        CaravanResourceSnapshot currentResources,
+        HexBoonDefinition selectedBoon,
+        out HexActTransitionAdvanceResult advanceResult)
+    {
+        advanceResult = default;
         HexActTransitionConfigAsset config = LoadConfig();
-        int completedAct = currentSession.CurrentActNumber;
+        int completedAct = Mathf.Max(1, currentRunState.CurrentActNumber);
         HexActTransitionStepDefinition step = config != null
             ? config.GetTransitionForCompletedAct(completedAct)
             : null;
 
         HexBoonDefinition[] availableBoons = config != null
-            ? config.GetBoonOptionsForCompletedAct(completedAct, currentSession.LockedBoonFamily, currentSession.SelectedBoons)
+            ? config.GetBoonOptionsForCompletedAct(completedAct, currentRunState.LockedBoonFamily, currentRunState.SelectedBoons)
             : Array.Empty<HexBoonDefinition>();
+
+        HexNemesisArchetype nextLockedFamily = currentRunState.LockedBoonFamily;
+        List<HexBoonDefinition> nextSelectedBoons = BuildSelectedBoonList(currentRunState.SelectedBoons);
 
         if (availableBoons.Length > 0)
         {
@@ -453,21 +463,21 @@ public static class HexActTransitionService
                 return false;
             }
 
-            if (completedAct == 1 && currentSession.LockedBoonFamily == HexNemesisArchetype.None)
+            if (completedAct == 1 && nextLockedFamily == HexNemesisArchetype.None)
             {
-                currentSession.LockedBoonFamily = selectedBoon.archetypeFamily;
+                nextLockedFamily = selectedBoon.archetypeFamily;
             }
 
-            if (currentSession.LockedBoonFamily != HexNemesisArchetype.None
+            if (nextLockedFamily != HexNemesisArchetype.None
                 && completedAct >= 2
-                && selectedBoon.archetypeFamily != currentSession.LockedBoonFamily)
+                && selectedBoon.archetypeFamily != nextLockedFamily)
             {
                 Debug.LogError(
-                    $"[ActTransition] Boon '{selectedBoon.GetResolvedDisplayName()}' does not match locked family {FormatArchetype(currentSession.LockedBoonFamily)}.");
+                    $"[ActTransition] Boon '{selectedBoon.GetResolvedDisplayName()}' does not match locked family {FormatArchetype(nextLockedFamily)}.");
                 return false;
             }
 
-            StoreSelectedBoon(selectedBoon);
+            AddSelectedBoonIfMissing(nextSelectedBoons, selectedBoon);
         }
 
         CaravanResourceSnapshot nextResources = currentResources;
@@ -481,21 +491,42 @@ public static class HexActTransitionService
             nextResources = selectedBoon.ApplyActStartGrant(nextResources);
         }
 
-        currentSession.CurrentActNumber++;
-        currentSession.CurrentResources = nextResources;
+        advanceResult = new HexActTransitionAdvanceResult(
+            true,
+            completedAct,
+            completedAct + 1,
+            nextResources,
+            nextLockedFamily,
+            nextSelectedBoons);
         return true;
     }
 
-    private static void StoreSelectedBoon(HexBoonDefinition selectedBoon)
+    private static List<HexBoonDefinition> BuildSelectedBoonList(IReadOnlyList<HexBoonDefinition> selectedBoons)
     {
-        if (currentSession == null || selectedBoon == null)
+        List<HexBoonDefinition> result = new();
+        if (selectedBoons == null)
+        {
+            return result;
+        }
+
+        for (int index = 0; index < selectedBoons.Count; index++)
+        {
+            AddSelectedBoonIfMissing(result, selectedBoons[index]);
+        }
+
+        return result;
+    }
+
+    private static void AddSelectedBoonIfMissing(List<HexBoonDefinition> selectedBoons, HexBoonDefinition selectedBoon)
+    {
+        if (selectedBoons == null || selectedBoon == null)
         {
             return;
         }
 
-        for (int index = 0; index < currentSession.SelectedBoons.Count; index++)
+        for (int index = 0; index < selectedBoons.Count; index++)
         {
-            HexBoonDefinition existingBoon = currentSession.SelectedBoons[index];
+            HexBoonDefinition existingBoon = selectedBoons[index];
             if (existingBoon == null)
             {
                 continue;
@@ -508,7 +539,7 @@ public static class HexActTransitionService
             }
         }
 
-        currentSession.TryAddSelectedBoon(selectedBoon);
+        selectedBoons.Add(selectedBoon);
     }
 
     private static string BuildSelectionPrompt(HexActTransitionStepDefinition step)

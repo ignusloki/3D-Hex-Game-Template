@@ -55,10 +55,11 @@ public partial class PlayerController : MonoBehaviour
     private HexGlobalUiTransitionController globalTransitionController;
     private HexMainMenuPresenter mainMenuPresenter;
     private HexAudioSystem audioSystem;
+    private HexRunSessionController runSessionController;
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
-    private readonly HexRunState runState = new();
+    private HexRunState runState;
 
     private HexagonTile currentTile;
     private HexagonTile goalTile;
@@ -517,6 +518,8 @@ public partial class PlayerController : MonoBehaviour
     {
         gameplayUiRootController ??= HexGameplayUiRootController.ResolveShared(this);
         gameplayUiRootController?.EnsureInitialized();
+        runSessionController ??= HexRunSessionController.Resolve(this);
+        runState ??= runSessionController?.RunState ?? new HexRunState();
         hudDocumentController ??= GetComponent<HexHudDocumentController>() ?? gameObject.AddComponent<HexHudDocumentController>();
         hudDocumentController?.EnsureInitialized();
 
