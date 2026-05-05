@@ -48,6 +48,7 @@ public class PlayerController : MonoBehaviour
     private HexRunEndModalPresenter runEndModalPresenter;
     private HexActTransitionModalPresenter actTransitionModalPresenter;
     private HexMockQuestMarkerController mockQuestMarkerController;
+    private HexCaravanGoalVisualController caravanGoalVisualController;
     private HexGlobalUiTransitionController globalTransitionController;
     private HexMainMenuPresenter mainMenuPresenter;
     private HexAudioSystem audioSystem;
@@ -330,12 +331,6 @@ public class PlayerController : MonoBehaviour
         }
 
         int moveCost = GetMoveCostForSelection(clickedTile, previewPath);
-        if (moveCost > caravanResources.Food)
-        {
-            hudPresenter.ShowInsufficientResources(clickedTile, moveCost, caravanResources.Food);
-            return;
-        }
-
         CommitMove(clickedTile, moveCost);
     }
 
@@ -743,90 +738,43 @@ public class PlayerController : MonoBehaviour
 
     private void EnsureCaravanVisual()
     {
-        if (caravanVisual == null)
-        {
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = "Caravan Placeholder";
-            cube.transform.localScale = Vector3.one * caravanScale;
-
-            Collider cubeCollider = cube.GetComponent<Collider>();
-            if (cubeCollider != null)
-            {
-                Destroy(cubeCollider);
-            }
-
-            Renderer cubeRenderer = cube.GetComponent<Renderer>();
-            if (cubeRenderer != null)
-            {
-                cubeRenderer.material.color = caravanColor;
-            }
-
-            caravanVisual = cube.transform;
-        }
-
-        caravanVisual.localScale = Vector3.one * caravanScale;
-
-        if (caravanVisual.TryGetComponent<Collider>(out Collider collider))
-        {
-            collider.enabled = false;
-        }
+        ConfigureCaravanGoalVisualController();
+        caravanVisual = caravanGoalVisualController.EnsureCaravanVisual();
     }
 
     private void EnsureGoalVisual()
     {
-        if (goalVisual == null)
-        {
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "Goal Marker";
-            sphere.transform.localScale = Vector3.one * goalScale;
-
-            Collider sphereCollider = sphere.GetComponent<Collider>();
-            if (sphereCollider != null)
-            {
-                Destroy(sphereCollider);
-            }
-
-            Renderer sphereRenderer = sphere.GetComponent<Renderer>();
-            if (sphereRenderer != null)
-            {
-                sphereRenderer.material.color = goalColor;
-            }
-
-            goalVisual = sphere.transform;
-        }
-
-        goalVisual.localScale = Vector3.one * goalScale;
-
-        if (goalVisual.TryGetComponent<Collider>(out Collider collider))
-        {
-            collider.enabled = false;
-        }
+        ConfigureCaravanGoalVisualController();
+        goalVisual = caravanGoalVisualController.EnsureGoalVisual();
     }
 
     private void AttachCaravanToTile(HexagonTile tile)
     {
-        if (caravanVisual == null || tile == null)
-        {
-            return;
-        }
-
-        caravanVisual.SetParent(tile.transform, false);
-        caravanVisual.localPosition = new Vector3(0f, caravanHeight, 0f);
-        caravanVisual.localRotation = Quaternion.identity;
-        caravanVisual.localScale = Vector3.one * caravanScale;
+        ConfigureCaravanGoalVisualController();
+        caravanGoalVisualController.AttachCaravanToTile(tile);
+        caravanVisual = caravanGoalVisualController.CaravanVisual;
     }
 
     private void AttachGoalToTile(HexagonTile tile)
     {
-        if (goalVisual == null || tile == null)
-        {
-            return;
-        }
+        ConfigureCaravanGoalVisualController();
+        caravanGoalVisualController.AttachGoalToTile(tile);
+        goalVisual = caravanGoalVisualController.GoalVisual;
+    }
 
-        goalVisual.SetParent(tile.transform, false);
-        goalVisual.localPosition = new Vector3(0f, goalHeight, 0f);
-        goalVisual.localRotation = Quaternion.identity;
-        goalVisual.localScale = Vector3.one * goalScale;
+    private void ConfigureCaravanGoalVisualController()
+    {
+        caravanGoalVisualController ??= GetComponent<HexCaravanGoalVisualController>()
+            ?? gameObject.AddComponent<HexCaravanGoalVisualController>();
+        caravanGoalVisualController.Configure(
+            caravanVisual,
+            goalVisual,
+            caravanHeight,
+            caravanScale,
+            goalHeight,
+            goalScale,
+            caravanColor,
+            goalColor);
     }
 
     private void UpdateResourcesText()
@@ -1054,6 +1002,7 @@ public class PlayerController : MonoBehaviour
         runEndModalPresenter ??= GetComponent<HexRunEndModalPresenter>() ?? gameObject.AddComponent<HexRunEndModalPresenter>();
         actTransitionModalPresenter ??= GetComponent<HexActTransitionModalPresenter>() ?? gameObject.AddComponent<HexActTransitionModalPresenter>();
         mockQuestMarkerController ??= GetComponent<HexMockQuestMarkerController>() ?? gameObject.AddComponent<HexMockQuestMarkerController>();
+        caravanGoalVisualController ??= GetComponent<HexCaravanGoalVisualController>() ?? gameObject.AddComponent<HexCaravanGoalVisualController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
         mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>()
             ?? FindAnyObjectByType<HexMainMenuPresenter>()
@@ -1317,92 +1266,5 @@ public class PlayerController : MonoBehaviour
         return obstacleController != null
             && obstacleController.TryGetVisibleObstacle(tile.Coordinates, out HexObstacleInstance obstacle)
             && obstacle != null;
-    }
-}
-
-public sealed class HexMockQuestMarkerController : MonoBehaviour
-{
-    [Header("Mock Content")]
-    [SerializeField] private string fallbackTitle = "Quest Marker";
-    [TextArea(3, 6)] [SerializeField] private string placeholderBody =
-        "This is a mock quest marker.\n\nReplace this placeholder with a real quest flow later.";
-
-    private readonly Dictionary<HexCoordinates, HexMapObjectPlacement> questMarkersByCoordinate = new();
-    private readonly HashSet<HexCoordinates> resolvedQuestMarkers = new();
-
-    private MapGenerator mapGenerator;
-    private HexMockQuestMarkerModalPresenter modalPresenter;
-    private HexCoordinates? activeQuestMarker;
-
-    public bool IsModalOpen => modalPresenter != null && modalPresenter.IsOpen;
-
-    public void Initialize(MapGenerator generator)
-    {
-        mapGenerator = generator;
-        modalPresenter ??= GetComponent<HexMockQuestMarkerModalPresenter>() ?? gameObject.AddComponent<HexMockQuestMarkerModalPresenter>();
-        RebuildQuestMarkers();
-    }
-
-    public bool TryProcessArrival(HexCoordinates coordinates)
-    {
-        if (IsModalOpen
-            || resolvedQuestMarkers.Contains(coordinates)
-            || !questMarkersByCoordinate.TryGetValue(coordinates, out HexMapObjectPlacement placement))
-        {
-            return false;
-        }
-
-        activeQuestMarker = coordinates;
-        modalPresenter.Show(
-            ResolveTitle(placement),
-            ResolveBody(placement),
-            HandleDialogClosed);
-        return true;
-    }
-
-    public void HideActiveModal()
-    {
-        activeQuestMarker = null;
-        modalPresenter?.Hide();
-    }
-
-    private void HandleDialogClosed()
-    {
-        if (activeQuestMarker.HasValue)
-        {
-            resolvedQuestMarkers.Add(activeQuestMarker.Value);
-        }
-
-        activeQuestMarker = null;
-    }
-
-    private void RebuildQuestMarkers()
-    {
-        questMarkersByCoordinate.Clear();
-        if (mapGenerator?.MapObjectPlacements == null)
-        {
-            return;
-        }
-
-        List<HexMapObjectPlacement> questMarkers = mapGenerator.MapObjectPlacements.GetByType(HexMapObjectType.QuestMarker);
-        for (int index = 0; index < questMarkers.Count; index++)
-        {
-            HexMapObjectPlacement placement = questMarkers[index];
-            questMarkersByCoordinate[placement.Coordinates] = placement;
-        }
-    }
-
-    private string ResolveTitle(HexMapObjectPlacement placement)
-    {
-        return string.IsNullOrWhiteSpace(placement.DisplayName) ? fallbackTitle : placement.DisplayName;
-    }
-
-    private string ResolveBody(HexMapObjectPlacement placement)
-    {
-        string baseBody = string.IsNullOrWhiteSpace(placeholderBody)
-            ? "This is a mock quest marker placeholder."
-            : placeholderBody.Trim();
-
-        return $"{baseBody}\n\nLocation: {placement.Coordinates}";
     }
 }

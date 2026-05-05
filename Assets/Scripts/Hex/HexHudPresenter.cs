@@ -162,7 +162,7 @@ public sealed class HexHudPresenter
         }
 
         SetStatusText(
-            $"Not enough food for {FormatCoordinates(destinationTile.Coordinates)}.");
+            $"Food will run out after moving to {FormatCoordinates(destinationTile.Coordinates)}.");
         ClearHintText();
     }
 
