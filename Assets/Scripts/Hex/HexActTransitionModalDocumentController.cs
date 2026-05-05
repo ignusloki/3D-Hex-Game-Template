@@ -22,7 +22,7 @@ internal sealed class HexActTransitionModalDocumentController
     }
 
     private readonly MonoBehaviour owner;
-    private readonly List<TransitionBoonCardView> cardViews = new();
+    private readonly List<HexActTransitionBoonCardView> cardViews = new();
 
     private UIE.VisualTreeAsset layoutAsset;
     private UIE.StyleSheet styleSheet;
@@ -72,15 +72,6 @@ internal sealed class HexActTransitionModalDocumentController
     private bool isInitialized;
     private bool isOpen;
     private bool areTransitionControlsLocked;
-
-    private sealed class TransitionBoonCardView
-    {
-        public UIE.VisualElement Root;
-        public UIE.Image ArtImage;
-        public HexBoonDefinition Boon;
-        public bool IsHovered;
-        public bool IsFocused;
-    }
 
     public HexActTransitionModalDocumentController(MonoBehaviour owner)
     {
@@ -353,13 +344,13 @@ internal sealed class HexActTransitionModalDocumentController
 
     private void RebuildIntermissionResourceSummary(HexActTransitionDisplayData displayData)
     {
-        SetLabelText(intermissionCurrentFoodValueLabel, displayData.CurrentResources.Food.ToString());
-        SetLabelText(intermissionCurrentMoraleValueLabel, displayData.CurrentResources.Morale.ToString());
-        SetLabelText(intermissionCurrentGoldValueLabel, displayData.CurrentResources.Gold.ToString());
+        HexActTransitionModalElementFactory.SetLabelText(intermissionCurrentFoodValueLabel, displayData.CurrentResources.Food.ToString());
+        HexActTransitionModalElementFactory.SetLabelText(intermissionCurrentMoraleValueLabel, displayData.CurrentResources.Morale.ToString());
+        HexActTransitionModalElementFactory.SetLabelText(intermissionCurrentGoldValueLabel, displayData.CurrentResources.Gold.ToString());
 
-        SetLabelText(intermissionRewardFoodValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActFood));
-        SetLabelText(intermissionRewardMoraleValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActMorale));
-        SetLabelText(intermissionRewardGoldValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActGold));
+        HexActTransitionModalElementFactory.SetLabelText(intermissionRewardFoodValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActFood));
+        HexActTransitionModalElementFactory.SetLabelText(intermissionRewardMoraleValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActMorale));
+        HexActTransitionModalElementFactory.SetLabelText(intermissionRewardGoldValueLabel, HexActTransitionModalText.FormatSigned(displayData.BetweenActGold));
     }
 
     private void RebuildSelectionCarryOverSummary(CaravanResourceSnapshot currentResources)
@@ -370,9 +361,9 @@ internal sealed class HexActTransitionModalDocumentController
         }
 
         selectionResourceStripContainer.Clear();
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Food", currentResources.Food.ToString()));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Morale", currentResources.Morale.ToString()));
-        selectionResourceStripContainer.Add(CreateResourceMiniModule("Gold", currentResources.Gold.ToString()));
+        selectionResourceStripContainer.Add(HexActTransitionModalElementFactory.CreateResourceMiniModule("Food", currentResources.Food.ToString()));
+        selectionResourceStripContainer.Add(HexActTransitionModalElementFactory.CreateResourceMiniModule("Morale", currentResources.Morale.ToString()));
+        selectionResourceStripContainer.Add(HexActTransitionModalElementFactory.CreateResourceMiniModule("Gold", currentResources.Gold.ToString()));
     }
 
     private void RebuildSelectionCards()
@@ -394,73 +385,17 @@ internal sealed class HexActTransitionModalDocumentController
             }
 
             boon.Validate();
-            TransitionBoonCardView cardView = CreateCardView(boon);
+            HexActTransitionBoonCardView cardView = HexActTransitionModalElementFactory.CreateBoonCard(
+                boon,
+                owner,
+                HandleCardClicked,
+                HandleCardHovered,
+                HandleCardFocused);
             cardViews.Add(cardView);
             cardsContainer.Add(cardView.Root);
         }
 
         RefreshCardVisuals();
-    }
-
-    private TransitionBoonCardView CreateCardView(HexBoonDefinition boon)
-    {
-        UIE.VisualElement root = new();
-        root.AddToClassList("act-transition-card");
-        root.focusable = true;
-        root.tabIndex = 0;
-        root.pickingMode = UIE.PickingMode.Position;
-
-        UIE.VisualElement artFrame = new();
-        artFrame.AddToClassList("act-transition-card-art-frame");
-
-        UIE.VisualElement artInset = new();
-        artInset.AddToClassList("act-transition-card-art-inset");
-
-        UIE.Image artImage = new();
-        artImage.AddToClassList("act-transition-card-art-image");
-        artImage.scaleMode = ScaleMode.ScaleToFit;
-
-        artInset.Add(artImage);
-        artFrame.Add(artInset);
-        root.Add(artFrame);
-        HexAudioUiBinder.BindClickable(root, owner, clickSfx: HexSfxId.BoonSelect);
-
-        Texture cardTexture = boon.GetPortraitTexture();
-        if (cardTexture != null)
-        {
-            artImage.image = cardTexture;
-            artImage.style.display = UIE.DisplayStyle.Flex;
-        }
-        else
-        {
-            artImage.image = null;
-            artImage.style.display = UIE.DisplayStyle.None;
-        }
-
-        root.RegisterCallback<UIE.ClickEvent>(_ => HandleCardClicked(boon));
-        root.RegisterCallback<UIE.PointerEnterEvent>(_ => HandleCardHovered(boon, true));
-        root.RegisterCallback<UIE.PointerLeaveEvent>(_ => HandleCardHovered(boon, false));
-        root.RegisterCallback<UIE.FocusInEvent>(_ => HandleCardFocused(boon, true));
-        root.RegisterCallback<UIE.FocusOutEvent>(_ => HandleCardFocused(boon, false));
-        root.RegisterCallback<UIE.KeyDownEvent>(evt =>
-        {
-            if (evt.keyCode != KeyCode.Return && evt.keyCode != KeyCode.Space)
-            {
-                return;
-            }
-
-            HandleCardClicked(boon);
-            evt.StopPropagation();
-        });
-
-        root.SetEnabled(boon.isEnabled);
-
-        return new TransitionBoonCardView
-        {
-            Root = root,
-            ArtImage = artImage,
-            Boon = boon
-        };
     }
 
     private void HandleCardClicked(HexBoonDefinition boon)
@@ -481,7 +416,7 @@ internal sealed class HexActTransitionModalDocumentController
     {
         for (int index = 0; index < cardViews.Count; index++)
         {
-            TransitionBoonCardView view = cardViews[index];
+            HexActTransitionBoonCardView view = cardViews[index];
             if (view.Boon == null || !string.Equals(view.Boon.id, boon.id, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -508,7 +443,7 @@ internal sealed class HexActTransitionModalDocumentController
     {
         for (int index = 0; index < cardViews.Count; index++)
         {
-            TransitionBoonCardView view = cardViews[index];
+            HexActTransitionBoonCardView view = cardViews[index];
             if (view.Boon == null || !string.Equals(view.Boon.id, boon.id, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -551,7 +486,7 @@ internal sealed class HexActTransitionModalDocumentController
     {
         for (int index = 0; index < cardViews.Count; index++)
         {
-            TransitionBoonCardView view = cardViews[index];
+            HexActTransitionBoonCardView view = cardViews[index];
             if (view?.Root == null)
             {
                 continue;
@@ -578,17 +513,17 @@ internal sealed class HexActTransitionModalDocumentController
         HexBoonDefinition inspectBoon = hoveredBoon ?? focusedBoon ?? selectedBoon;
         if (inspectBoon == null)
         {
-            SetLabelText(detailTitleLabel, string.Empty);
+            HexActTransitionModalElementFactory.SetLabelText(detailTitleLabel, string.Empty);
             SetFamilyRow(null);
-            SetDetailLabel(detailEffectLabel, string.Empty);
+            HexActTransitionModalElementFactory.SetDetailLabel(detailEffectLabel, string.Empty);
             RebuildSelectionGlossary(null);
             return;
         }
 
         inspectBoon.Validate();
-        SetLabelText(detailTitleLabel, inspectBoon.GetResolvedDisplayName());
+        HexActTransitionModalElementFactory.SetLabelText(detailTitleLabel, inspectBoon.GetResolvedDisplayName());
         SetFamilyRow(inspectBoon);
-        SetDetailLabel(detailEffectLabel, HexActTransitionModalText.BuildSelectionDescription(inspectBoon));
+        HexActTransitionModalElementFactory.SetDetailLabel(detailEffectLabel, HexActTransitionModalText.BuildSelectionDescription(inspectBoon));
         RebuildSelectionGlossary(inspectBoon);
     }
 
@@ -651,21 +586,6 @@ internal sealed class HexActTransitionModalDocumentController
         detailFamilyRow.style.display = UIE.DisplayStyle.Flex;
     }
 
-    private UIE.VisualElement CreateResourceMiniModule(string label, string value)
-    {
-        UIE.VisualElement module = new();
-        module.AddToClassList("act-transition-resource-mini");
-
-        UIE.Label labelElement = new(label);
-        labelElement.AddToClassList("act-transition-resource-mini-label");
-        UIE.Label valueElement = new(value);
-        valueElement.AddToClassList("act-transition-resource-mini-value");
-
-        module.Add(labelElement);
-        module.Add(valueElement);
-        return module;
-    }
-
     private void RebuildSelectionGlossary(HexBoonDefinition boon)
     {
         if (detailGlossaryScrollView == null)
@@ -689,53 +609,12 @@ internal sealed class HexActTransitionModalDocumentController
                 continue;
             }
 
-            UIE.VisualElement row = CreateSelectionGlossaryRow(keyword);
+            UIE.VisualElement row = HexActTransitionModalElementFactory.CreateSelectionGlossaryRow(keyword);
             detailGlossaryScrollView.contentContainer.Add(row);
             rowCount++;
         }
 
         detailGlossaryScrollView.style.display = rowCount == 0 ? UIE.DisplayStyle.None : UIE.DisplayStyle.Flex;
-    }
-
-    private UIE.VisualElement CreateSelectionGlossaryRow(HexBoonKeywordPresentationData keyword)
-    {
-        UIE.VisualElement row = new();
-        row.AddToClassList("act-transition-glossary-row");
-
-        UIE.Label termLabel = new(keyword.label.Trim());
-        termLabel.AddToClassList("act-transition-glossary-term");
-
-        UIE.Label descriptionLabel = new(
-            string.IsNullOrWhiteSpace(keyword.explanation)
-                ? string.Empty
-                : HexActTransitionModalText.NormalizeInlineText(keyword.explanation));
-        descriptionLabel.AddToClassList("act-transition-glossary-text");
-
-        row.Add(termLabel);
-        row.Add(descriptionLabel);
-        return row;
-    }
-
-    private static void SetDetailLabel(UIE.Label label, string text)
-    {
-        if (label == null)
-        {
-            return;
-        }
-
-        bool hasText = !string.IsNullOrWhiteSpace(text);
-        label.text = hasText ? text.Trim() : string.Empty;
-        label.style.display = hasText ? UIE.DisplayStyle.Flex : UIE.DisplayStyle.None;
-    }
-
-    private static void SetLabelText(UIE.Label label, string text)
-    {
-        if (label == null)
-        {
-            return;
-        }
-
-        label.text = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
     }
 
     private void ApplyIntermissionTypographyTheme()
