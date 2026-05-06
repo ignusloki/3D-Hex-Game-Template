@@ -292,6 +292,9 @@ MonoBehaviour:
   startupFullScreenMode: 3
   controlSceneBoot: 1
   enableBootDebugLogging: 0
+  enableHoldReturnToMenu: 1
+  returnToMenuHoldSeconds: 5
+  enableReturnToMenuInputDebugLogging: 1
   playerController: {fileID: 1822504938}
   mapGenerator: {fileID: 1722897116}
   pitstopSpawner: {fileID: 1900944118}
@@ -817,6 +820,8 @@ MonoBehaviour:
   currentTileSelectionScale: 1
   currentTileSelectionYOffset: 0.12
   outOfRangeSelectionColor: {r: 0.42, g: 0.65, b: 0.95, a: 1}
+  enableMockQuestMarkers: 0
+  allowDebugPlaceholderVisuals: 1
 --- !u!114 &1822504939
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1073,7 +1078,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaravanMetricsController
   playerController: {fileID: 1822504938}
-  food: 10
+  food: 200
   morale: 3
   gold: 3
   applyDelaySeconds: 0.3
