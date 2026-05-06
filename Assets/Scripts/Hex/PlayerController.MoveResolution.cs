@@ -78,43 +78,20 @@ public partial class PlayerController
             return;
         }
 
-        PitstopEventResult pitstopEventResult = turnResult.PitstopEventResult;
-        string pitstopBoonHint = turnResult.PitstopBoonHint;
-        if (pitstopEventResult.RequiresChoice)
+        if (turnResult.PitstopEventResult.RequiresChoice)
         {
-            pendingPitstopBoonHint = pitstopBoonHint;
+            pendingPitstopBoonHint = turnResult.PitstopBoonHint;
             pendingDeferredNemesisResult = turnResult.HasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
             SetRunPhase(HexRunPhase.PitstopChoice, "Pitstop");
-            pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
-        }
-        else if (pitstopEventResult.Triggered || (pitstopEventResult.Site != null && pitstopEventResult.Site.Visited))
-        {
-            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            hudPresenter.ShowPitstopEvent(currentTile, pitstopEventResult, caravanResources.ToSnapshot());
-            if (!string.IsNullOrWhiteSpace(pitstopBoonHint))
+            if (!runUiReporter.PresentPitstopChoice(turnResult, caravanResources, HandlePitstopChoiceResolved))
             {
-                hudPresenter.ShowHint(pitstopBoonHint);
+                HandlePitstopChoiceResolved(turnResult.PitstopEventResult);
             }
+            return;
         }
-        else if (obstacleTurnResult.ContactResult.HasContact)
-        {
-            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            hudPresenter.ShowObstacleEncounter(currentTile, obstacleTurnResult.ContactResult, caravanResources.ToSnapshot());
-            if (!string.IsNullOrWhiteSpace(obstacleTurnResult.ContactPenaltyIgnoreNote))
-            {
-                hudPresenter.ShowHint(obstacleTurnResult.ContactPenaltyIgnoreNote);
-            }
-        }
-        else if (nemesisTurnResult.Active && (nemesisTurnResult.Acted || nemesisTurnResult.DestroyedPitstops.Count > 0))
-        {
-            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            hudPresenter.ShowNemesisUpdate(currentTile, nemesisTurnResult);
-        }
-        else
-        {
-            FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            hudPresenter.ShowMoveComplete(currentTile, moveCost, caravanResources.ToSnapshot());
-        }
+
+        FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
+        runUiReporter.ReportTurnResolved(turnResult, currentTile, caravanResources.ToSnapshot());
 
         if (!isRunOver && runState.Phase == HexRunPhase.ResolvingMove)
         {
@@ -138,19 +115,11 @@ public partial class PlayerController
             return;
         }
 
-        if (eventResult != null && eventResult.Site != null)
-        {
-            hudPresenter.ShowPitstopChoiceResolved(currentTile, eventResult, caravanResources.ToSnapshot());
-        }
-        else
-        {
-            hudPresenter.ShowCaravanIdle(currentTile);
-        }
-
-        if (!string.IsNullOrWhiteSpace(pendingPitstopBoonHint))
-        {
-            hudPresenter.ShowHint(pendingPitstopBoonHint);
-        }
+        runUiReporter.ReportPitstopChoiceResolved(
+            currentTile,
+            eventResult,
+            caravanResources.ToSnapshot(),
+            pendingPitstopBoonHint);
 
         pendingPitstopBoonHint = string.Empty;
         SyncGameFlowStateFromRuntimeState();

@@ -58,6 +58,7 @@ public partial class PlayerController : MonoBehaviour
     private HexRunSessionController runSessionController;
     private HexGameFlowController gameFlowController;
     private readonly HexTurnResolver turnResolver = new();
+    private readonly HexRunUiReporter runUiReporter = new();
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
@@ -502,6 +503,11 @@ public partial class PlayerController : MonoBehaviour
             pitstopEventController,
             mockQuestMarkerController,
             globalTransitionController);
+        runUiReporter.Configure(
+            hudPresenter,
+            pitstopEventController,
+            runEndModalPresenter,
+            actTransitionModalPresenter);
     }
 
     private void InitializeObstacleSystem(HexFogUpdateResult initialFogUpdate)

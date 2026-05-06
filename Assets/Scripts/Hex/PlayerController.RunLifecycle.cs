@@ -42,8 +42,7 @@ public partial class PlayerController
         pitstopEventController?.HideActiveModal();
         HideMockQuestMarkerModal();
         RefreshTileDetails(currentTile);
-        hudPresenter.ShowVictory(goalTile, caravanResources.ToSnapshot());
-        runEndModalPresenter?.ShowVictory(ReturnToMainMenuAfterFade);
+        runUiReporter.ReportVictory(goalTile, caravanResources.ToSnapshot(), ReturnToMainMenuAfterFade);
     }
 
     private bool TryBeginActTransition()
@@ -55,8 +54,7 @@ public partial class PlayerController
 
         HexActTransitionDisplayData displayData = HexActTransitionService.BuildTransitionDisplayData(caravanResources.ToSnapshot());
         PrepareForActTransitionModalState();
-        hudPresenter.ShowHint($"Act {HexActTransitionService.GetCurrentActNumber()} complete. Preparing the next crossing.");
-        actTransitionModalPresenter?.ShowTransition(displayData, ContinueToNextAct);
+        runUiReporter.ReportActTransition(displayData, HexActTransitionService.GetCurrentActNumber(), ContinueToNextAct);
         return true;
     }
 
@@ -80,8 +78,7 @@ public partial class PlayerController
         pitstopEventController?.HideActiveModal();
         HideMockQuestMarkerModal();
         RefreshTileDetails(currentTile);
-        hudPresenter.ShowDefeat(currentTile, defeatReason);
-        runEndModalPresenter?.ShowDefeat(RetryCurrentScene, ReturnToMainMenuWithFade);
+        runUiReporter.ReportDefeat(currentTile, defeatReason, RetryCurrentScene, ReturnToMainMenuWithFade);
     }
 
     private void PrepareForActTransitionModalState()
