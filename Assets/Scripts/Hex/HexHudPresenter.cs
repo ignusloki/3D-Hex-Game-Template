@@ -417,7 +417,7 @@ public sealed class HexHudPresenter
         {
             Biome.forest => "Dense woodland. Travel is slower here.",
             Biome.mountain => "Broken highland terrain. Crossing it costs more.",
-            Biome.water => "Open water blocks normal caravan travel.",
+            Biome.water => "Open water. Crossing it costs more.",
             Biome.desert => "Dry open ground. The route is exposed and demanding.",
             _ => "Open grassland. Travel is straightforward here."
         };
