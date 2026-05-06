@@ -4,33 +4,44 @@ public partial class PlayerController
     {
         SetRunPhase(HexRunPhase.ResolvingMove, string.Empty);
         ClearHighlights();
-        HexCoordinates previousCoordinates = currentTile.Coordinates;
+        HexTurnResolutionResult turnResult = turnResolver.ResolveMove(new HexTurnResolutionRequest(
+            currentTile,
+            destinationTile,
+            goalTile,
+            moveCost,
+            caravanResources,
+            BuildAlwaysKnownCoordinates(),
+            fogOfWarController,
+            obstacleController,
+            nemesisController,
+            pitstopEventController,
+            pitstopSpawner,
+            boonRuntime));
 
-        currentTile.TileData?.SetOccupied(false);
-        currentTile = destinationTile;
-        currentTile.TileData?.SetOccupied(true);
+        currentTile = turnResult.CurrentTile;
         SyncRunStateCoordinates();
-        caravanResources.Spend(CaravanResourceType.Food, moveCost);
-        UpdateResourcesText();
+        if (turnResult.ResourcesChanged || turnResult.BoonStateChanged)
+        {
+            UpdateResourcesText();
+        }
 
         AttachCaravanToTile(currentTile);
-        HexFogUpdateResult fogUpdate = RefreshFogOfWar();
 
         selectedTile = null;
         previewPath = null;
         caravanSelectionActive = false;
 
         travelTimePresenter.Reset();
-        if (nemesisController != null && nemesisController.TryResolveImmediateCaravanContact(currentTile.Coordinates, out string immediateContactDefeatReason))
+        if (turnResult.DefeatSource == HexTurnDefeatSource.ImmediateNemesisContact)
         {
             RefreshTileDetails(currentTile);
-            EndRunAsDefeat(immediateContactDefeatReason);
+            EndRunAsDefeat(turnResult.DefeatReason);
             return;
         }
 
-        HexObstacleTurnResult obstacleTurnResult = ProcessObstacleTurn(fogUpdate);
+        HexObstacleTurnResult obstacleTurnResult = turnResult.ObstacleTurnResult;
         PlayGameplaySfx(obstacleTurnResult.ContactResult.HasContact ? HexSfxId.ObstacleTravel : HexSfxId.CaravanMove);
-        HexNemesisTurnResult nemesisTurnResult = ProcessNemesisTurn(previousCoordinates, currentTile.Coordinates);
+        HexNemesisTurnResult nemesisTurnResult = turnResult.NemesisTurnResult;
         if (nemesisTurnResult.Moved)
         {
             PlayGameplaySfx(HexSfxId.NemesisMove);
@@ -40,24 +51,20 @@ public partial class PlayerController
 
         if (nemesisTurnResult.CausedDefeat)
         {
-            EndRunAsDefeat(nemesisTurnResult.DefeatReason);
+            EndRunAsDefeat(turnResult.DefeatReason);
             return;
         }
 
-        if (goalTile != null && currentTile == goalTile)
+        if (turnResult.Outcome == HexTurnResolutionOutcome.GoalReached)
         {
             EndRunAsVictory();
             return;
         }
 
-        PitstopEventResult pitstopEventResult = ProcessPitstopArrival();
-        string pitstopBoonHint = ProcessPitstopRecharge();
-        bool hasDeferredNemesisPitstopDestruction = nemesisTurnResult.DeferredPitstopDestructions.Count > 0;
-
-        if (caravanResources.IsDefeated)
+        if (turnResult.DefeatSource == HexTurnDefeatSource.Resources)
         {
             FinalizeDeferredNemesisPitstopDestructionIfNeeded(nemesisTurnResult);
-            EndRunAsDefeat(caravanResources.GetDefeatReason());
+            EndRunAsDefeat(turnResult.DefeatReason);
             return;
         }
 
@@ -71,10 +78,12 @@ public partial class PlayerController
             return;
         }
 
+        PitstopEventResult pitstopEventResult = turnResult.PitstopEventResult;
+        string pitstopBoonHint = turnResult.PitstopBoonHint;
         if (pitstopEventResult.RequiresChoice)
         {
             pendingPitstopBoonHint = pitstopBoonHint;
-            pendingDeferredNemesisResult = hasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
+            pendingDeferredNemesisResult = turnResult.HasDeferredNemesisPitstopDestruction ? nemesisTurnResult : null;
             SetRunPhase(HexRunPhase.PitstopChoice, "Pitstop");
             pitstopEventController.PresentChoice(pitstopEventResult, caravanResources, HandlePitstopChoiceResolved);
         }
@@ -161,77 +170,4 @@ public partial class PlayerController
         }
     }
 
-    private HexObstacleTurnResult ProcessObstacleTurn(HexFogUpdateResult fogUpdate)
-    {
-        if (obstacleController == null)
-        {
-            return HexObstacleTurnResult.Empty;
-        }
-
-        HexObstacleTurnResult turnResult = obstacleController.ProcessTurn(fogUpdate, currentTile.Coordinates, caravanResources.ToSnapshot());
-        if (!turnResult.ContactResult.HasContact)
-        {
-            return turnResult;
-        }
-
-        if (boonRuntime != null && boonRuntime.TryConsumeObstacleIgnore(out HexBoonChargeChangeResult chargeChange))
-        {
-            turnResult.ContactPenaltyIgnored = true;
-            turnResult.ContactPenaltyIgnoreNote = chargeChange.Message;
-            UpdateResourcesText();
-            return turnResult;
-        }
-
-        caravanResources.Spend(turnResult.ContactResult.AffectedResource, turnResult.ContactResult.AmountDrained);
-        UpdateResourcesText();
-        return turnResult;
-    }
-
-    private PitstopEventResult ProcessPitstopArrival()
-    {
-        if (pitstopEventController == null || currentTile == null)
-        {
-            return PitstopEventResult.Empty;
-        }
-
-        PitstopEventResult result = pitstopEventController.ProcessArrival(currentTile.Coordinates, caravanResources);
-        if (result == null || !result.Triggered || !result.EffectsApplied)
-        {
-            return result ?? PitstopEventResult.Empty;
-        }
-
-        UpdateResourcesText();
-        return result;
-    }
-
-    private string ProcessPitstopRecharge()
-    {
-        if (boonRuntime == null
-            || currentTile == null
-            || pitstopSpawner == null
-            || !pitstopSpawner.TryGetPitstop(currentTile.Coordinates, out PitstopSite site)
-            || site == null
-            || site.IsDestroyed)
-        {
-            return string.Empty;
-        }
-
-        if (!boonRuntime.TryRecharge(HexBoonRechargeTrigger.PitstopArrival, out HexBoonChargeChangeResult chargeChange))
-        {
-            return string.Empty;
-        }
-
-        UpdateResourcesText();
-        return chargeChange.Message;
-    }
-
-    private HexNemesisTurnResult ProcessNemesisTurn(HexCoordinates previousCoordinates, HexCoordinates currentCoordinates)
-    {
-        if (nemesisController == null)
-        {
-            return HexNemesisTurnResult.Empty;
-        }
-
-        return nemesisController.ProcessCaravanMove(previousCoordinates, currentCoordinates);
-    }
 }

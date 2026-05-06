@@ -57,6 +57,7 @@ public partial class PlayerController : MonoBehaviour
     private HexAudioSystem audioSystem;
     private HexRunSessionController runSessionController;
     private HexGameFlowController gameFlowController;
+    private readonly HexTurnResolver turnResolver = new();
     private HexNemesisTurnResult pendingDeferredNemesisResult;
     private HexBoonRuntimeState boonRuntime;
     private readonly CaravanResourceState caravanResources = new();
