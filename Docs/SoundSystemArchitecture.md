@@ -1,6 +1,6 @@
 # Sound System Architecture
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -168,8 +168,9 @@ Boon cards play `BoonSelect` when clicked.
 
 ## Gameplay SFX
 
-Gameplay SFX are fired from `PlayerController`, where gameplay context is
-available.
+Gameplay SFX are fired from `PlayerController` after `HexTurnResolver` returns a
+turn result. The audio system remains a presentation/service layer and does not
+own gameplay state.
 
 Current behavior:
 
@@ -185,10 +186,10 @@ Obstacle selection uses:
 HexObstacleController.TryGetVisibleObstacle(tile.Coordinates, out _)
 ```
 
-Obstacle travel uses:
+Obstacle travel uses the turn result:
 
 ```csharp
-HexObstacleTurnResult.ContactResult.HasContact
+HexTurnResolutionResult.ObstacleTurnResult.ContactResult.HasContact
 ```
 
 If a boon ignores the obstacle penalty, the movement still plays

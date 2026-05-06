@@ -1,6 +1,6 @@
 # UI Animation System Architecture
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -40,6 +40,8 @@ Main runtime types:
 - owns the full-screen blackout element in the `GlobalTransition` layer
 - runs fade-to-black and fade-from-black sequences
 - masks scene reloads and map generation
+- contributes to input blocking by driving visible transition state; gameplay
+  availability is still answered by `HexGameFlowController`
 
 `HexMainMenuTransitionService`:
 
@@ -61,6 +63,8 @@ Main runtime types:
 - New Game disables menu interaction.
 - Global fade hides the transition.
 - Menu is hidden and gameplay is activated while black.
+- `HexGameFlowController` moves from menu/preparing flow into gameplay input
+  availability after activation.
 - Gameplay fades in.
 
 ### Act Complete / Boon Selection
@@ -68,6 +72,8 @@ Main runtime types:
 - Screen reveal uses the shared chapter-page transition profile.
 - Buttons are locked during transition playback.
 - Act-to-act map reload after boon selection is hidden behind global fade.
+- The active run session is advanced by `HexRunSessionController`; the animation
+  layer only masks the reload.
 
 ### Pitstop Modal
 
@@ -102,6 +108,7 @@ The animation system should not:
 
 - own gameplay state
 - decide when victory/defeat/act transition happens
+- replace `HexGameFlowController` as the phase/input owner
 - load scenes directly
 - compute layout
 - replace UXML/USS

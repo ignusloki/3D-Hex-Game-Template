@@ -1,6 +1,6 @@
 # Map Generation Architecture
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -42,7 +42,7 @@ Current generation layers include:
 `HexMapGenerationModifiers` is the shared bundle for generation changes from:
 
 - act profiles
-- boons
+- boons selected in the active `HexRunState`
 - scene/debug requests
 - future scenario rules
 
@@ -87,13 +87,20 @@ Not yet production-complete:
 
 ## Act Integration
 
-The act system can select act-specific map profiles:
+The act system selects act-specific map profiles from the active run session:
 
 - Act 1: general starting map
 - Act 2: desert-biased map
 - Act 3: general/final map with locked-family nemesis support
 
-Act-to-act map reloads are hidden behind the shared global UI fade.
+`HexRunSessionController` owns the current act, selected boons, and locked
+family. `HexActTransitionService` computes transition display/advance data and
+keeps compatibility accessors for systems that still request act profiles or
+boon modifiers through it.
+
+Act-to-act map reloads are hidden behind the shared global UI fade. Generation
+should consume the session-derived act profile and modifier bundle rather than
+holding separate act-transition state.
 
 ## Design Constraints
 

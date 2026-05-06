@@ -1,6 +1,6 @@
 # Act Transition UI Reference
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -18,6 +18,16 @@ The act-end flow remains two separate screens:
 The screens are implemented in UI Toolkit inside the shared gameplay UI root modal
 layer. They use the shared UI transition system rather than local one-off animation
 loops.
+
+Runtime ownership:
+
+- `HexRunSessionController` owns the active run state carried between acts.
+- `HexActTransitionService` computes intermission display data, validates boon
+  choices, and builds the advance result for the next act.
+- `HexRunUiReporter` opens and updates the act-transition modal from run/turn
+  results.
+- `HexGameFlowController` places the game in the act-transition phase so map and
+  camera input remain blocked while the modal flow is active.
 
 ## Shared Visual Direction
 

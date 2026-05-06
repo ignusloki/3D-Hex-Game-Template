@@ -7,17 +7,38 @@ Last updated: 2026-05-05
 This document defines task 5 from the production-readiness audit: introduce a
 real run/game state architecture.
 
-The current game loop is playable, but state ownership is still spread across
-`PlayerController`, `HexActTransitionService`, modal presenters, bootstrap
-logic, and several runtime helpers. That makes regressions hard to reason about
-because movement, act transitions, defeat, UI modal state, boon state, and scene
-reload state are controlled by different objects.
+Slices 1 through 5 are implemented. The current game loop is still the same
+single-scene playable prototype, but the major runtime ownership boundaries are
+now explicit instead of being spread across `PlayerController`,
+`HexActTransitionService`, modal presenters, bootstrap logic, and several
+runtime helpers.
 
 The goal is not to rewrite the game. The goal is to make the runtime state
 explicit enough that a human or AI can verify one turn, one act transition, and
 one run end without reconstructing hidden static state.
 
-## Current Problems
+## Current Implementation Status
+
+Implemented runtime boundaries:
+
+- `HexRunState` and `HexRunStateSnapshot` represent active run facts as plain
+  serializable data.
+- `HexRunSessionController` owns the active in-memory run, survives the current
+  scene reload flow, and replaced the act-transition service's previous static
+  session ownership.
+- `HexGameFlowController` owns high-level phase/input gating for gameplay and
+  camera input.
+- `HexTurnResolver` resolves movement and turn outcomes from a request into a
+  result object.
+- `HexRunUiReporter` translates run/turn results into HUD and modal presenter
+  calls.
+
+Remaining work in this task is Slice 6 only: focused regression tests and
+verification. Slice 6 should not introduce a gameplay refactor. Small
+testability-only adjustments are acceptable if a test exposes a defect, but the
+architecture work is otherwise complete.
+
+## Original Problems Driving The Task
 
 - `PlayerController` owns too many gameplay concerns: input gating, current
   tile, selected tile, resources, move resolution, pitstop arrival, obstacle
@@ -32,11 +53,11 @@ one run end without reconstructing hidden static state.
 - Run data is not represented as one serializable model, which blocks clean
   save/load later.
 
-## Target Architecture
+## Implemented Architecture
 
 ### `HexRunState`
 
-Create a serializable model that owns the current run facts:
+`HexRunState` is a serializable model that owns the current run facts:
 
 - current act number
 - resources
@@ -48,11 +69,11 @@ Create a serializable model that owns the current run facts:
 - run outcome if finished
 - pending modal context when needed
 
-This should be plain data first. It should not depend on `MonoBehaviour`.
+This is plain data and does not depend on `MonoBehaviour`.
 
 ### `HexGameFlowController`
 
-Create one flow owner for high-level runtime phase:
+`HexGameFlowController` is the flow owner for high-level runtime phase:
 
 - `Booting`
 - `MainMenu`
@@ -64,15 +85,15 @@ Create one flow owner for high-level runtime phase:
 - `Victory`
 - `Defeat`
 
-This controller should answer questions such as "can gameplay input run now?"
+This controller answers questions such as "can gameplay input run now?"
 instead of each controller checking every modal.
 
 ### `HexRunSessionController`
 
-Own the active `HexRunState`, bridge scene reloads, and replace the current
-static session storage in `HexActTransitionService`.
+`HexRunSessionController` owns the active `HexRunState`, bridges scene reloads,
+and replaces the previous static session storage in `HexActTransitionService`.
 
-This can start simple:
+Current scope:
 
 - one active in-memory run state
 - survives current scene reload flow
@@ -82,7 +103,8 @@ Save/load can use this later, but save/load is not part of this task.
 
 ### `HexTurnResolver`
 
-Move turn resolution out of `PlayerController`:
+`HexTurnResolver` owns movement turn resolution that previously lived in
+`PlayerController`:
 
 - spend movement food
 - update caravan coordinates
@@ -92,24 +114,30 @@ Move turn resolution out of `PlayerController`:
 - process pitstop arrival/recharge
 - detect defeat/victory
 
-The resolver should return a result object. UI presenters should consume that
-result rather than the resolver directly updating HUD text.
+The resolver returns a result object. UI presenters consume that result through
+`HexRunUiReporter` rather than the resolver directly updating HUD text.
 
 ### `PlayerController` After Refactor
 
-`PlayerController` should become an input and visual bridge:
+After Slices 1-5, `PlayerController` is an input, visual, audio, and lifecycle
+bridge:
 
 - click/select tile
-- request move from flow/session controller
+- request move resolution through `HexTurnResolver`
+- synchronize active run data through `HexRunSessionController`
 - attach caravan/goal visuals
 - refresh highlights
 - forward tile-inspector requests
+- play contextual SFX after turn results
+- call lifecycle callbacks for retry, return-to-menu, act transition, victory,
+  and defeat
 
-It should not own act-transition session state or decide run lifecycle outcomes.
+It no longer owns act-transition session storage, scattered input/modal gating,
+the movement decision tree, or the HUD/modal reporting decision tree.
 
-## Proposed Slices
+## Slice History And Remaining Work
 
-### Slice 1: Introduce State Types Without Behavior Changes
+### Slice 1: Introduce State Types Without Behavior Changes (Complete)
 
 Add:
 
@@ -128,14 +156,15 @@ Test checkpoint:
 - act 1 to act 2 transition still works
 - defeat/victory modal still opens
 
-### Slice 2: Move Act Session Ownership Out Of Static Service
+### Slice 2: Move Act Session Ownership Out Of Static Service (Complete)
 
 Create `HexRunSessionController`.
 
 Refactor `HexActTransitionService` so it computes transition data and validates
 boons, but does not own the current run session.
 
-Keep compatibility wrappers only temporarily if needed.
+Compatibility wrappers remain for current callers while ownership lives in
+`HexRunSessionController`.
 
 Test checkpoint:
 
@@ -144,7 +173,7 @@ Test checkpoint:
 - act 3 nemesis family lock still works
 - returning to main menu resets run state
 
-### Slice 3: Centralize Flow/Input Gating
+### Slice 3: Centralize Flow/Input Gating (Complete)
 
 Create `HexGameFlowController` or fold phase control into
 `HexRunSessionController` if a separate class is too much.
@@ -160,7 +189,7 @@ Test checkpoint:
 - camera input blocked while run-end modal is open
 - input returns after modal close
 
-### Slice 4: Extract Turn Resolution
+### Slice 4: Extract Turn Resolution (Complete)
 
 Create `HexTurnResolver` and result types:
 
@@ -179,7 +208,7 @@ Test checkpoint:
 - move that causes resource defeat
 - move that reaches goal and starts act transition
 
-### Slice 5: Separate UI Reporting From Gameplay Decisions
+### Slice 5: Separate UI Reporting From Gameplay Decisions (Complete)
 
 Create one adapter that translates turn/run results into HUD/modal actions.
 
@@ -193,7 +222,7 @@ Test checkpoint:
 - act transition modal still works
 - victory/game over overlays still work
 
-### Slice 6: Regression Tests
+### Slice 6: Regression Tests (Remaining)
 
 Add focused EditMode or PlayMode coverage around the extracted state and
 resolver logic.

@@ -1,6 +1,6 @@
 # Pitstop System
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -10,8 +10,8 @@ choice-based events, and reward route-planning detours.
 ## Gameplay Flow
 
 1. The caravan reaches a pitstop hex.
-2. The pitstop grants its base arrival reward if applicable.
-3. A choice-based event modal opens.
+2. `HexTurnResolver` applies the pitstop arrival/recharge result if applicable.
+3. `HexRunUiReporter` opens the choice-based event modal.
 4. The player selects one available choice.
 5. The result state appears in the same modal.
 6. The player returns to the map.
@@ -49,7 +49,7 @@ The pitstop inspector shows:
 The pitstop event modal is an interactive UI Toolkit modal in the shared modal
 layer. While it is open:
 
-- gameplay/map input is blocked
+- gameplay/map input is blocked through `HexGameFlowController`
 - HUD/context layers are visually suppressed as needed
 - choice buttons are disabled until modal open transition completes
 - the choice-to-result swap intentionally does not use a transition
@@ -64,6 +64,14 @@ Primary runtime objects:
 - `PitstopEventResolver`
 - `PitstopEventModalPresenter`
 - `HexHudPresenter`
+- `HexTurnResolver`
+- `HexRunUiReporter`
+- `HexGameFlowController`
+
+`HexTurnResolver` owns the movement-turn decision to process pitstop arrival and
+recharge. `PitstopEventResolver` owns the event choice result. `HexRunUiReporter`
+bridges those results into the modal presenter, and `HexGameFlowController`
+keeps map input blocked while the modal flow is active.
 
 Data assets:
 

@@ -1,6 +1,6 @@
 # Hex Game
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Game Summary
 
@@ -47,6 +47,30 @@ Implemented:
 - Victory and Game Over overlays
 - shared UI Toolkit architecture
 - shared UI transition system
+- explicit run/session state architecture
+
+## Runtime Architecture
+
+The game remains one scene, but the run loop is now split across explicit
+runtime owners:
+
+- `HexRunState` stores current run facts such as act, resources, boons, caravan
+  coordinates, goal coordinates, phase, and run outcome.
+- `HexRunSessionController` owns the active in-memory run, survives act-to-act
+  scene reloads, and exposes start/configure/advance/reset operations.
+- `HexActTransitionService` computes act-transition data, validates boon
+  choices, and keeps compatibility entry points, but it no longer owns the
+  active run session.
+- `HexGameFlowController` is the high-level phase/input gate for gameplay and
+  camera controls.
+- `HexTurnResolver` resolves one movement turn, including resource spend,
+  coordinate updates, fog refresh, obstacle contact, nemesis movement, pitstop
+  arrival/recharge, and defeat/victory checks.
+- `HexRunUiReporter` maps turn/run results into HUD and modal presenter calls.
+
+`PlayerController` now bridges player input, board visuals, highlights, audio,
+and lifecycle callbacks. It should not be treated as the owner of run session
+state, input flow policy, turn resolution, or UI reporting decisions.
 
 ## Resources
 
@@ -75,6 +99,11 @@ Between acts:
 - the player selects one boon
 - Act 1 -> Act 2 choice locks the Act 3 family
 - Act 2 -> Act 3 choice is filtered by the locked family
+
+Between-act state is carried by `HexRunSessionController` through the current
+scene reload flow. Act transition display/advance data is computed by
+`HexActTransitionService`, and the selected boon is committed back into the run
+state before the next act loads.
 
 Currently authored final-act boon content is strongest for Hunter. Echo and
 Corruptor final boon pools remain content follow-up.
@@ -152,6 +181,10 @@ Major UI surfaces:
 - Victory overlay
 - Game Over overlay
 - global fade/blackout transition layer
+
+Gameplay services do not directly own UI state. Feature presenters own their
+surfaces, while `HexRunUiReporter` adapts gameplay/run results into the HUD,
+pitstop, act-transition, victory, and game-over presenter calls.
 
 See:
 
