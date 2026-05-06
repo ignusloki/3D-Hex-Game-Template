@@ -14,9 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexMapObjectDefinition
   id: quest-marker
   displayName: Quest Marker
-  description: A placeholder quest marker placed by the shared map-object placement
-    pipeline.
-  isEnabled: 1
+  description: Development-only quest marker definition. Disabled for production content.
+  isEnabled: 0
   objectType: 2
   prefab: {fileID: 919132149155446097, guid: d6fa0e50153a142249a629f613a1f054, type: 3}
   edgePadding: 0

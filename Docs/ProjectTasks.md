@@ -1,6 +1,6 @@
 # Project Tasks
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Current Core State
 
@@ -13,9 +13,14 @@ The project is a playable single-scene Unity 6 prototype with:
 - one-step caravan movement and click-to-inspect map interaction
 - `Food`, `Morale`, and `Gold` resource economy
 - fog of war
-- obstacle spawning/contact pressure
+- obstacle spawning/contact pressure tied to newly discovered fog tiles
 - pitstop placement and choice events
 - multi-act run flow across Acts 1, 2, and 3
+- explicit `HexRunState` / `HexRunSessionController` ownership for active run
+  data and act-to-act scene reload continuity
+- centralized `HexGameFlowController` phase/input gating for map and camera input
+- extracted `HexTurnResolver` movement/turn resolution
+- `HexRunUiReporter` adapter for HUD and modal reporting
 - act-complete and boon-selection modals
 - stacked boon runtime by Act 3
 - locked-family Act 3 nemesis activation
@@ -24,7 +29,22 @@ The project is a playable single-scene Unity 6 prototype with:
 
 ## Current Priority
 
-### 1. Final Map Screen UI Regression
+### 1. Run Architecture Regression Tests
+
+The major task-5 architecture slices are implemented. The remaining work is
+Slice 6: automated regression coverage and verification around the extracted
+state, flow, and resolver boundaries.
+
+Minimum useful coverage:
+
+- starting run state initializes correctly
+- movement spends food and updates coordinates
+- movement is allowed even if it causes resource defeat
+- goal movement starts act transition before final victory when more acts remain
+- selected boon advances the run state correctly
+- modal/flow phase blocks gameplay input
+
+### 2. Final Map Screen UI Regression
 
 Use `Docs/Example.png` as the visual reference for the final map UI check.
 
@@ -37,7 +57,7 @@ Verify:
 - right-side unified inspector
 - biome, pitstop, obstacle, nemesis, and unknown-tile inspector states
 
-### 2. Content Expansion
+### 3. Content Expansion
 
 The systems are in place, but authored content is still thin.
 
@@ -49,7 +69,7 @@ High-value content work:
 - replace mock quest-marker interactions with real quest data and state
 - add real outpost behavior if outposts stay in scope
 
-### 3. Presentation Polish
+### 4. Presentation Polish
 
 Remaining polish work:
 
@@ -60,13 +80,13 @@ Remaining polish work:
 - add caravan movement animation later
 - review final UI flow consistency across main menu, act transition, victory, and game over
 
-### 4. Balance And Testing
+### 5. Balance And Testing
 
 Balance remains open across:
 
 - starting resources
 - terrain travel costs
-- obstacle pressure
+- obstacle pressure within the documented spawn/cap rules
 - pitstop density
 - event rewards
 - act grants
@@ -74,15 +94,15 @@ Balance remains open across:
 
 Testing gaps:
 
-- full gameplay-loop automated tests
-- act transition regression tests
+- Slice 6 run-state, flow, resolver, and act-transition regression tests
+- broader full gameplay-loop automated tests
 - victory/defeat/retry/return-to-menu tests
 - map-generation validity tests
 - boon-data validation tests
 
 ## Deferred Work
 
-- Audio layer
+- full audio content and mix polish
 - Full quest system
 - Advanced movement animation
 - Advanced render-pipeline migration

@@ -21,6 +21,13 @@ public sealed class HexGameBootstrap : MonoBehaviour
     [SerializeField] private bool controlSceneBoot = true;
     [SerializeField] private bool enableBootDebugLogging;
 
+    [Header("Return To Menu Input")]
+    [SerializeField] private bool enableHoldReturnToMenu = true;
+    [SerializeField, Min(0.1f)] private float returnToMenuHoldSeconds = 5f;
+    [SerializeField] private bool enableReturnToMenuInputDebugLogging = true;
+
+    private const KeyCode ReturnToMenuKey = KeyCode.R;
+
     [Header("Scene References")]
     [SerializeField] private PlayerController playerController;
     [SerializeField] private MapGenerator mapGenerator;
@@ -35,6 +42,10 @@ public sealed class HexGameBootstrap : MonoBehaviour
     private static BootDestination? requestedNextBootDestination;
     private bool isBooting;
     private bool isStartingGameplay;
+    private bool isReturningToMenuFromInput;
+    private float returnToMenuHoldTimer;
+    private string lastReturnToMenuInputBlockReason = string.Empty;
+    private bool didLogReturnToMenuKeyDown;
 
     public static bool HasActiveBootController => activeBootstrap != null && activeBootstrap.controlSceneBoot;
 
@@ -89,6 +100,12 @@ public sealed class HexGameBootstrap : MonoBehaviour
         PrepareBootBlackout();
     }
 
+    private void OnValidate()
+    {
+        targetResolution = new Vector2Int(Mathf.Max(1, targetResolution.x), Mathf.Max(1, targetResolution.y));
+        returnToMenuHoldSeconds = Mathf.Max(0.1f, returnToMenuHoldSeconds);
+    }
+
     private IEnumerator Start()
     {
         if (!controlSceneBoot)
@@ -130,6 +147,11 @@ public sealed class HexGameBootstrap : MonoBehaviour
         {
             activeBootstrap = null;
         }
+    }
+
+    private void Update()
+    {
+        ProcessReturnToMenuHoldInput();
     }
 
     private void ApplyStartupResolution()
@@ -278,6 +300,150 @@ public sealed class HexGameBootstrap : MonoBehaviour
             playerController?.ActivateGameplaySession();
             isStartingGameplay = false;
         }
+    }
+
+    private void ProcessReturnToMenuHoldInput()
+    {
+        if (Input.GetKeyDown(ReturnToMenuKey))
+        {
+            LogReturnToMenuInputDebug($"R key down detected. enabled={enableHoldReturnToMenu}, gameplayActive={playerController != null && playerController.IsGameplaySessionActive}, runOver={playerController != null && playerController.IsRunOver}, menuOpen={mainMenuPresenter != null && mainMenuPresenter.IsOpen}.");
+        }
+
+        if (!ShouldProcessReturnToMenuInput(out string blockReason))
+        {
+            LogReturnToMenuInputBlock(blockReason);
+            ResetReturnToMenuHold();
+            return;
+        }
+
+        if (!Input.GetKey(ReturnToMenuKey))
+        {
+            if (didLogReturnToMenuKeyDown)
+            {
+                LogReturnToMenuInputDebug($"key released before completion at {returnToMenuHoldTimer:0.00}/{returnToMenuHoldSeconds:0.00}s.");
+            }
+
+            ResetReturnToMenuHold();
+            return;
+        }
+
+        if (!didLogReturnToMenuKeyDown)
+        {
+            didLogReturnToMenuKeyDown = true;
+            lastReturnToMenuInputBlockReason = string.Empty;
+            LogReturnToMenuInputDebug($"key hold started. key={ReturnToMenuKey}, requiredSeconds={returnToMenuHoldSeconds:0.00}.");
+        }
+
+        returnToMenuHoldTimer += Time.unscaledDeltaTime;
+        if (returnToMenuHoldTimer < returnToMenuHoldSeconds)
+        {
+            return;
+        }
+
+        isReturningToMenuFromInput = true;
+        ResetReturnToMenuHold();
+        LogReturnToMenuInputDebug($"hold completed via key={ReturnToMenuKey}. Triggering main menu transition.");
+        ReloadActiveSceneToMainMenu(this, resetRunSession: true);
+    }
+
+    private bool ShouldProcessReturnToMenuInput(out string blockReason)
+    {
+        if (!controlSceneBoot)
+        {
+            blockReason = "controlSceneBoot=false";
+            return false;
+        }
+
+        if (!enableHoldReturnToMenu)
+        {
+            blockReason = "enableHoldReturnToMenu=false";
+            return false;
+        }
+
+        if (isBooting)
+        {
+            blockReason = "isBooting=true";
+            return false;
+        }
+
+        if (isStartingGameplay)
+        {
+            blockReason = "isStartingGameplay=true";
+            return false;
+        }
+
+        if (isReturningToMenuFromInput)
+        {
+            blockReason = "isReturningToMenuFromInput=true";
+            return false;
+        }
+
+        ResolveReturnToMenuInputReferences();
+        if (playerController == null)
+        {
+            blockReason = "playerController=null";
+            return false;
+        }
+
+        if (!playerController.IsGameplaySessionActive)
+        {
+            blockReason = "playerController.IsGameplaySessionActive=false";
+            return false;
+        }
+
+        if (playerController.IsRunOver)
+        {
+            blockReason = "playerController.IsRunOver=true";
+            return false;
+        }
+
+        if (mainMenuPresenter != null && mainMenuPresenter.IsOpen)
+        {
+            blockReason = "mainMenuPresenter.IsOpen=true";
+            return false;
+        }
+
+        blockReason = string.Empty;
+        return true;
+    }
+
+    private void ResetReturnToMenuHold()
+    {
+        returnToMenuHoldTimer = 0f;
+        didLogReturnToMenuKeyDown = false;
+    }
+
+    private void ResolveReturnToMenuInputReferences()
+    {
+        playerController ??= GetComponent<PlayerController>() ?? FindAnyObjectByType<PlayerController>();
+        mainMenuPresenter ??= GetComponent<HexMainMenuPresenter>() ?? FindAnyObjectByType<HexMainMenuPresenter>();
+    }
+
+    private void LogReturnToMenuInputBlock(string blockReason)
+    {
+        if (!Input.GetKey(ReturnToMenuKey))
+        {
+            lastReturnToMenuInputBlockReason = string.Empty;
+            return;
+        }
+
+        if (string.Equals(lastReturnToMenuInputBlockReason, blockReason, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        lastReturnToMenuInputBlockReason = blockReason;
+        LogReturnToMenuInputDebug($"key is held but input is blocked. key={ReturnToMenuKey}, reason={blockReason}.");
+    }
+
+    private void LogReturnToMenuInputDebug(string message)
+    {
+        if (!enableReturnToMenuInputDebugLogging)
+        {
+            return;
+        }
+
+        Debug.Log($"[ReturnToMenuInput] {message}", this);
     }
 
     private static void ReloadActiveScene(MonoBehaviour owner, BootDestination destination, bool resetRunSession, bool playFadeToBlack)

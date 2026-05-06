@@ -154,6 +154,12 @@ public sealed class CaravanMetricsController : MonoBehaviour
     [ContextMenu("Debug/Open Mock Quest Modal")]
     public void DebugOpenMockQuestModal()
     {
+        if (!HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            Debug.LogWarning("[QuestModalPreview] Mock quest modal previews are disabled outside development builds.", this);
+            return;
+        }
+
         if (!EnsurePlayMode("[QuestModalPreview]", "opening the mock quest modal preview"))
         {
             return;
@@ -226,9 +232,12 @@ public sealed class CaravanMetricsController : MonoBehaviour
         actTransitionModalPresenter ??= playerObject != null
             ? playerObject.GetComponent<HexActTransitionModalPresenter>() ?? playerObject.AddComponent<HexActTransitionModalPresenter>()
             : FindAnyObjectByType<HexActTransitionModalPresenter>();
-        mockQuestMarkerController ??= playerObject != null
-            ? playerObject.GetComponent<HexMockQuestMarkerController>()
-            : FindAnyObjectByType<HexMockQuestMarkerController>();
+        if (HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            mockQuestMarkerController ??= playerObject != null
+                ? playerObject.GetComponent<HexMockQuestMarkerController>()
+                : FindAnyObjectByType<HexMockQuestMarkerController>();
+        }
         pitstopEventController ??= FindAnyObjectByType<PitstopEventController>();
         globalTransitionController ??= HexGlobalUiTransitionController.ResolveShared(this);
     }
@@ -246,7 +255,10 @@ public sealed class CaravanMetricsController : MonoBehaviour
     private void PrepareDebugModalState()
     {
         pitstopEventController?.HideActiveModal();
-        mockQuestMarkerController?.HideActiveModal();
+        if (HexDevelopmentContentGate.AllowsDevelopmentOnlyContent)
+        {
+            mockQuestMarkerController?.HideActiveModal();
+        }
         runEndModalPresenter?.Hide();
     }
 

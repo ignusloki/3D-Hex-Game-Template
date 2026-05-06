@@ -9,12 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5fa83e1604f14ee88cdbb58474b6d781, type: 3}
+  m_Script: {fileID: 11500000, guid: 304036ea940d44ed9035d8af531f4179, type: 3}
   m_Name: ActTransitionPlaceholderArtLibrary
   m_EditorClassIdentifier: Assembly-CSharp::HexActTransitionPlaceholderArtLibrary
   act1ToAct2:
-  - {fileID: 2800000, guid: df52435c8aae14cdc9ac9f1fd8de2362, type: 3}
+  - {fileID: 2800000, guid: ea1cb63539c284d0e8138ba8ec0e2f18, type: 3}
   - {fileID: 2800000, guid: 2b107e82ea6fa4374bcb12230d5d114a, type: 3}
   act2ToAct3:
-  - {fileID: 2800000, guid: 57ca38d83166343129ff33e048b64109, type: 3}
+  - {fileID: 2800000, guid: e5c9028382ae841edbf17118e8ff0fd2, type: 3}
   - {fileID: 2800000, guid: d4a9be87abc154cc18d38499ebaa45be, type: 3}

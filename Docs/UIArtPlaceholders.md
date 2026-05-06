@@ -1,11 +1,15 @@
 # UI Art Slots
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
 This document tracks current UI art slots that should be authored or replaced
 through data/assets rather than hardcoded presenter changes.
+
+The current run-state refactor did not move art ownership into gameplay
+services. UI art remains presenter/data-asset owned; `HexRunUiReporter` only
+routes gameplay results to the existing UI presenters.
 
 ## Act Complete Hero Images
 

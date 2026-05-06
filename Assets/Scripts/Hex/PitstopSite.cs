@@ -11,7 +11,7 @@ public sealed class PitstopSite : MonoBehaviour
     [field: SerializeField] public string EventTitle { get; private set; } = "Pitstop";
     [field: SerializeField] public bool HasRefuelPoint { get; private set; } = true;
     [field: SerializeField] public bool Repeatable { get; private set; }
-    [field: SerializeField] public string SpecialEventDescription { get; private set; } = "placeholder";
+    [field: SerializeField] public string SpecialEventDescription { get; private set; } = string.Empty;
 
     public HexCoordinates Coordinates => new(Row, Column);
 
@@ -23,7 +23,7 @@ public sealed class PitstopSite : MonoBehaviour
         IsDestroyed = false;
         Visited = false;
         VisitCount = 0;
-        ConfigureEventMetadata(kind.ToString(), "placeholder", true, false);
+        ConfigureEventMetadata(kind.ToString(), string.Empty, true, false);
     }
 
     public void MarkVisited()
@@ -40,7 +40,7 @@ public sealed class PitstopSite : MonoBehaviour
     public void ConfigureEventMetadata(string title, string description, bool hasRefuelPoint, bool repeatable)
     {
         EventTitle = string.IsNullOrWhiteSpace(title) ? Kind.ToString() : title;
-        SpecialEventDescription = string.IsNullOrWhiteSpace(description) ? "placeholder" : description;
+        SpecialEventDescription = string.IsNullOrWhiteSpace(description) ? string.Empty : description;
         HasRefuelPoint = hasRefuelPoint;
         Repeatable = repeatable;
     }

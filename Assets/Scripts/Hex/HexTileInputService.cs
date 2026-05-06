@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public sealed class HexTileInputService
@@ -23,12 +24,33 @@ public sealed class HexTileInputService
             return false;
         }
 
-        if (!Physics.Raycast(camera.ScreenPointToRay(pointerPosition), out RaycastHit hit))
+        RaycastHit[] hits = Physics.RaycastAll(camera.ScreenPointToRay(pointerPosition));
+        if (hits.Length == 0)
         {
             return false;
         }
 
-        tile = hit.collider.GetComponent<HexagonTile>();
+        Array.Sort(hits, static (left, right) => left.distance.CompareTo(right.distance));
+        for (int index = 0; index < hits.Length; index++)
+        {
+            if (TryResolveTile(hits[index].collider, out tile))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryResolveTile(Collider collider, out HexagonTile tile)
+    {
+        tile = null;
+        if (collider == null)
+        {
+            return false;
+        }
+
+        tile = collider.GetComponent<HexagonTile>() ?? collider.GetComponentInParent<HexagonTile>();
         return tile != null;
     }
 }

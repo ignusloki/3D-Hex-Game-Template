@@ -1,6 +1,6 @@
 # UI Architecture
 
-Last updated: 2026-05-02
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -63,6 +63,22 @@ Current layers:
 The game remains a single-scene flow. Returning to menu reloads the same scene and
 boots back into the menu state.
 
+Act-to-act scene reloads keep active run data through `HexRunSessionController`.
+UI boot code should read the active flow/session state rather than treating scene
+reloads as implicit run ownership.
+
+## Runtime Flow Ownership
+
+High-level UI blocking and gameplay availability are controlled by
+`HexGameFlowController`, backed by `HexRunState` phase changes. Gameplay and
+camera input should ask the flow controller whether input is allowed.
+
+`HexRunUiReporter` is the adapter between gameplay results and UI presenters. It
+translates `HexTurnResolutionResult` and run lifecycle results into HUD text,
+pitstop modals, act-transition modals, victory overlays, and game-over overlays.
+The reporter does not own the presenters' UXML/USS layout and does not compute
+gameplay results.
+
 ## Feature Presenters
 
 Current presenter ownership:
@@ -76,7 +92,8 @@ Current presenter ownership:
 - `HexGlobalUiTransitionController`: global blackout/fade layer
 
 Feature presenters own content and callbacks. They should not own global game
-state.
+state. Gameplay code should route state/result presentation through
+`HexRunUiReporter` instead of duplicating HUD/modal decision trees.
 
 ## Layout Rules
 
@@ -91,8 +108,8 @@ state.
 - Passive HUD/context layers use ignored picking unless they contain explicit
   controls.
 - Modal, menu, and global-transition layers own input while active.
-- Gameplay input is blocked while modals, menu, or full-screen transitions are
-  active.
+- Gameplay and camera input are blocked through `HexGameFlowController` while
+  modals, menu, or full-screen transitions are active.
 - Buttons are disabled during transition playback when interaction would cause
   duplicate actions.
 
