@@ -156,7 +156,6 @@ Transform:
   - {fileID: 1822504944}
   - {fileID: 1900944117}
   - {fileID: 2114172011}
-  - {fileID: 2114172001}
   - {fileID: 2114172021}
   - {fileID: 2000020001}
   m_Father: {fileID: 0}
@@ -418,38 +417,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1568106469}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1452999513
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1452999514}
-  m_Layer: 0
-  m_Name: Archive
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1452999514
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1452999513}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1880823900}
-  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1568106468
 GameObject:
@@ -1078,9 +1045,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaravanMetricsController
   playerController: {fileID: 1822504938}
-  food: 200
-  morale: 3
-  gold: 3
+  food: 30
+  morale: 5
+  gold: 5
   applyDelaySeconds: 0.3
   selectedBoonsSummary: 'Act: 1
 
@@ -1141,129 +1108,6 @@ MonoBehaviour:
     hunterProfile: {fileID: 11400000, guid: 2f44c8ba3d7d4f46b92ca78c4cd81fd8, type: 2}
     echoProfile: {fileID: 11400000, guid: 7a2dbfdd12d84ab1be2f856d3db3fd2d, type: 2}
     corruptorProfile: {fileID: 11400000, guid: a1c31f54d6a54f57a63ccd0bb2363cb0, type: 2}
---- !u!1 &1880823898
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1880823900}
-  - component: {fileID: 1880823899}
-  m_Layer: 0
-  m_Name: Map Generator - original
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &1880823899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1880823898}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 306c406b288e45045a7b94cc8c8edf41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forestTiles: []
-  grassTiles: []
-  mountainTiles: []
-  waterTiles: []
-  desertTiles: []
-  hexProperties: []
-  mapSize: 10
-  biomeGenerationSettings:
-    enableGrass: 1
-    enableForest: 1
-    enableMountain: 1
-    enableWater: 1
-    enableDesert: 0
-    useRandomSeed: 1
-    seed: 12345
-    elevationFrequency: 0.12
-    moistureFrequency: 0.1
-    heatFrequency: 0.08
-    noiseOctaves: 3
-    noisePersistence: 0.5
-    noiseLacunarity: 2
-    waterThreshold: 0.28
-    mountainThreshold: 0.72
-    forestMoistureThreshold: 0.6
-    desertMoistureThreshold: 0.35
-    desertHeatThreshold: 0.58
-    isolatedAnomalyChance: 0.025
-    microPatchChance: 0.04
-    microPatchMinSize: 2
-    microPatchMaxSize: 4
-    regionSettings:
-      enableMacroRegions: 1
-      restrictBaseToLandBiomes: 1
-      fiveByFiveMinRegions: 3
-      fiveByFiveMaxRegions: 4
-      tenByTenMinRegions: 6
-      tenByTenMaxRegions: 9
-      boundaryNoiseStrength: 0.55
-      localVariationChance: 0.08
-      seedSpacingBias: 0.75
-    featureSettings:
-      enableFeatureOverlays: 1
-      minForestFeatureCount: 1
-      maxForestFeatureCount: 2
-      forestFeatureMinRatio: 0.12
-      forestFeatureMaxRatio: 0.22
-      minWaterFeatureCount: 0
-      maxWaterFeatureCount: 1
-      waterFeatureMinRatio: 0.03
-      waterFeatureMaxRatio: 0.08
-      minMountainFeatureCount: 0
-      maxMountainFeatureCount: 1
-      mountainFeatureMinRatio: 0.02
-      mountainFeatureMaxRatio: 0.05
-      featureEdgePadding: 1
-      compactnessBias: 0.8
-      ridgeTurnChance: 0.35
-      ridgeBranchChance: 0.2
-    qualitySettings:
-      enableQualityRerolls: 1
-      maxGenerationAttempts: 10
-      maxDominantBiomeRatio: 0.68
-      minDistinctBiomeCount: 3
-      minSecondaryRegionRatio: 0.12
-      minMeaningfulRegionSize: 3
-      maxSmallSecondaryRegionRatio: 0.08
-  specialTileSettings:
-    enforceStartBiome: 1
-    startBiome: 3
-    enforceGoalBiome: 1
-    goalBiome: 3
-  terrainLandmarkRequests: []
-  mapObjectPlacementRequests: []
-  enableGenerationDebugLogging: 0
-  enableVerboseGenerationPhaseLogging: 0
-  X1stTileSpacing: 1
-  XTileSpacing: 1
-  YTileSpacing: 0.75
-  rotation: 30
---- !u!4 &1880823900
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1880823898}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1452999514}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1900944116
 GameObject:
   m_ObjectHideFlags: 0
@@ -1445,52 +1289,6 @@ MonoBehaviour:
   debugMusicStage: 0
   debugSfxId: 1
   logMissingClips: 0
---- !u!1 &2114172000
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2114172001}
-  - component: {fileID: 2114172002}
-  m_Layer: 0
-  m_Name: Boon System
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2114172001
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2114172000}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 67381634}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2114172002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2114172000}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2892db3c4d90e404b94abe457f5b73b2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HexBoonSystemController
-  applySelectedBoonAtRunStart: 1
-  selectedBoon: {fileID: 11400000, guid: 16a3407d8ce4f4fffa9cb9eec604f311, type: 2}
 --- !u!1 &2114172010
 GameObject:
   m_ObjectHideFlags: 0
@@ -1624,4 +1422,3 @@ SceneRoots:
   - {fileID: 959898466}
   - {fileID: 67381634}
   - {fileID: 1568106469}
-  - {fileID: 1452999514}
