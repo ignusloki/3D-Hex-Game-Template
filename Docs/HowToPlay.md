@@ -1,15 +1,17 @@
-# How To Play
+HOW TO PLAY
 
-Guide the caravan across three procedural hex maps. Reach the goal in Act 1 and Act 2 to continue; reach the goal in Act 3 to win.
+Lead the caravan through three acts. Reach the goal in Acts 1 and 2 to continue. Reach the goal in Act 3 to win.
 
-You start with 30 Food, 5 Morale, and 5 Gold. Food pays for movement. Morale keeps the caravan together. Gold is useful for events, but reaching 0 Gold does not defeat you. If Food or Morale reaches 0, the run ends unless that move completes the act.
+You start with 30 Food, 5 Morale, and 5 Gold. Moving spends Food. Morale keeps the caravan together. Gold helps in events, but reaching 0 Gold does not defeat you. If Food or Morale reaches 0, the run ends unless that move reaches the goal.
 
-To move, click the caravan, click an adjacent hex to preview it, then click that same hex again to travel. Each move costs Food based on terrain: Grass 1, Forest 2, Mountain 3, Water 3, Desert 5. Goal hexes cost 1 Food.
+To move, click the caravan, click an adjacent hex to preview the move, then click that same hex again to travel.
 
-Use pitstops when you can. Mills give Food, Wall Towers give Morale, and Mansions give Gold. Pitstops may also offer a choice event. Unaffordable choices are disabled.
+Terrain costs: Grass 1 Food, Forest 2, Mountain 3, Water 3, Desert 5. Goal hexes cost 1 Food.
 
-Watch the fog. New terrain is revealed around the caravan, and hazards can appear as you uncover hexes. Wolves cost Food, Bandits cost Gold or Morale, and Ruined Caravans cost Morale.
+Fog hides the road ahead. New hexes are revealed around the caravan, and hazards may appear when terrain is uncovered. Wolves cost Food. Bandits cost Gold, or Morale if you have no Gold. Ruined Caravans cost Morale.
 
-After Act 1 and Act 2, your resources carry forward, you receive extra supplies, and you choose a reward for the next act. In Act 3, the Hunter is active. If it catches you, you lose.
+Pitstops can help you recover. Mills give Food, Wall Towers give Morale, and Mansions give Gold. Some pitstops also offer choices. Choices you cannot afford are disabled.
 
-Controls: left click to inspect/select/move, WASD or Arrow Keys to pan, Q/E to rotate, mouse wheel to zoom, Space to reset the camera.
+After Acts 1 and 2, your remaining resources carry forward, you gain extra supplies, and you choose a reward. In Act 3, the Hunter becomes active. If it reaches the caravan, you lose.
+
+Controls: Left Click to inspect, select, preview, and confirm movement. WASD or Arrow Keys to pan. Q/E to rotate. Mouse Wheel to zoom. Space to reset the camera. Hold R for 5 seconds to return to the Main Menu screen.
